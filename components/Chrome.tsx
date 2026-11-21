@@ -1,0 +1,253 @@
+'use client';
+
+import React, { useState } from 'react';
+import Link from 'next/link';
+import { AnimatePresence, motion } from 'motion/react';
+import { Menu, X } from 'lucide-react';
+import {
+  CONTENT,
+  Locale,
+  SECTIONS,
+  SectionId,
+  ViewMode,
+} from '@/lib/content';
+import { useScrollStore } from '@/lib/scrollStore';
+import { soundEngine } from '@/lib/soundEngine';
+
+interface ChromeProps {
+  locale: Locale;
+  mode: ViewMode;
+  activeSection: SectionId;
+  theme: 'light' | 'dark';
+  totalProgress: number;
+  onNavigateSection: (id: SectionId) => void;
+  onSwitchToStory?: () => void;
+}
+
+/**
+ * Top identity bar, hairline progress, edge section ticks, vertical label,
+ * and circular accent hamburger menu for Site mode.
+ * Bottom floating navigation is now rendered by the single shared <DockBar />.
+ */
+export default function Chrome({
+  locale,
+  mode,
+  activeSection,
+  theme,
+  totalProgress,
+  onNavigateSection,
+  onSwitchToStory,
+}: ChromeProps) {
+  const t = CONTENT[locale];
+  const sectionProgress = useScrollStore((s) => s.sectionProgress);
+
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const visibleSections = SECTIONS.filter((s) =>
+    mode === 'story' ? true : !s.storyOnly
+  );
+  const currentMeta =
+    visibleSections.find((s) => s.id === activeSection) ?? visibleSections[0];
+  const activeLocalP = sectionProgress[activeSection] ?? 0;
+
+  const isDark = theme === 'dark';
+  const isRtl = locale === 'fa';
+  const menuClipOrigin = isRtl
+    ? '3rem calc(100% - 3rem)'
+    : 'calc(100% - 3rem) calc(100% - 3rem)';
+
+  return (
+    <>
+      {/* 1. Top hairline progress bar */}
+      <div
+        aria-hidden="true"
+        className={`fixed top-0 inset-x-0 z-40 h-[2px] ${
+          isDark ? 'bg-[#ECEAE6]/10' : 'bg-[#111111]/10'
+        }`}
+      >
+        <div
+          className="h-full rounded-e-full bg-[#5B5BF0] transition-[width] duration-75"
+          style={{ width: `${Math.min(100, Math.max(0, totalProgress * 100))}%` }}
+        />
+      </div>
+
+      {/* 2. Top minimal identity strip (Site keeps section index & percent at top-end) */}
+      <header className="fixed top-3 inset-x-0 z-40 flex items-center justify-between px-5 sm:px-10 pointer-events-none text-white mix-blend-difference">
+        <a
+          href="#hero"
+          data-cursor="view"
+          onClick={(e) => {
+            e.preventDefault();
+            onNavigateSection('hero');
+          }}
+          className="pointer-events-auto inline-flex items-center rounded-full px-2 py-0.5 text-xs font-mono font-semibold tracking-tight whitespace-nowrap shrink-0 hover:opacity-75 transition-opacity"
+        >
+          <span>{t.person.fullName}</span>
+        </a>
+        <div className="pointer-events-auto hidden md:flex items-center gap-3 text-[11px] font-mono opacity-85 whitespace-nowrap">
+          <span>{currentMeta?.index}</span>
+          <span>/</span>
+          <span>{currentMeta?.label[locale]}</span>
+          <span className="tabular-nums">
+            {String(Math.round(activeLocalP * 100)).padStart(2, '0')}%
+          </span>
+        </div>
+      </header>
+
+      {/* 3. Edge section index ticks (inline-end) */}
+      <nav
+        aria-label={locale === 'fa' ? 'ناوبری بخش‌ها' : 'Section index'}
+        className={`fixed end-3 sm:end-5 top-1/2 -translate-y-1/2 z-30 hidden md:flex flex-col items-center gap-2.5 transition-opacity duration-300 ${
+          activeSection === 'work' ? 'opacity-0 pointer-events-none' : 'opacity-100'
+        }`}
+      >
+        {visibleSections.map((sec) => {
+          const active = sec.id === activeSection;
+          const localP = sectionProgress[sec.id] ?? 0;
+          return (
+            <button
+              key={sec.id}
+              type="button"
+              onClick={() => {
+                soundEngine.playStippleTick();
+                onNavigateSection(sec.id);
+              }}
+              title={`${sec.index} · ${sec.label[locale]}`}
+              aria-label={`${sec.index} ${sec.label[locale]}`}
+              className="group relative flex items-center justify-end rounded-full p-1 cursor-pointer"
+            >
+              <span
+                className={`block rounded-full transition-all duration-300 ${
+                  active
+                    ? 'h-5 w-1.5 bg-[#5B5BF0]/30 relative overflow-hidden'
+                    : isDark
+                      ? 'h-[2px] w-2.5 bg-[#ECEAE6]/30 group-hover:w-4 group-hover:bg-[#ECEAE6]'
+                      : 'h-[2px] w-2.5 bg-[#111111]/30 group-hover:w-4 group-hover:bg-[#111111]'
+                }`}
+              >
+                {active && (
+                  <span
+                    className="block w-full rounded-full bg-[#5B5BF0]"
+                    style={{ height: `${Math.max(22, localP * 100)}%` }}
+                  />
+                )}
+              </span>
+            </button>
+          );
+        })}
+      </nav>
+
+      {/* 4. Vertical 90-degree active section label */}
+      <div
+        aria-hidden="true"
+        className={`fixed bottom-24 start-4 sm:start-6 z-40 hidden lg:flex flex-col items-center gap-3 pointer-events-none text-white mix-blend-difference transition-opacity duration-300 ${
+          activeSection === 'work' ? 'opacity-0' : 'opacity-100'
+        }`}
+      >
+        <span className="vertical-label font-mono text-[10px] uppercase tracking-[0.22em] opacity-75">
+          {currentMeta?.index} — {currentMeta?.label[locale]}
+        </span>
+        <span className="h-8 w-[1px] rounded-full bg-current opacity-35" />
+      </div>
+
+      {/* 5. Circular Accent Menu Button (bottom inline-end) */}
+      <button
+        type="button"
+        data-cursor="view"
+        onClick={() => {
+          soundEngine.playStippleTick();
+          setMenuOpen((prev) => !prev);
+        }}
+        aria-label={menuOpen ? t.chrome.closeMenu : t.chrome.menuLabel}
+        aria-expanded={menuOpen}
+        className="fixed bottom-6 end-5 sm:end-8 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-[#5B5BF0] text-white shadow-[0_10px_28px_rgba(91,91,240,0.4)] transition-transform duration-200 hover:scale-105 active:scale-95 cursor-pointer"
+      >
+        {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+      </button>
+
+      {/* 6. Fullscreen Menu Overlay with Circular Clip-Path Reveal */}
+      <AnimatePresence>
+        {menuOpen && (
+          <motion.div
+            initial={{ clipPath: `circle(0% at ${menuClipOrigin})`, opacity: 0.9 }}
+            animate={{ clipPath: `circle(155% at ${menuClipOrigin})`, opacity: 1 }}
+            exit={{ clipPath: `circle(0% at ${menuClipOrigin})`, opacity: 0.85 }}
+            transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
+            className="fixed inset-0 z-40 flex flex-col justify-between bg-[#0A0A0A] text-[#ECEAE6] px-6 py-10 sm:px-14 sm:py-12 overflow-y-auto"
+          >
+            <div className="flex items-center justify-between border-b border-[#ECEAE6]/15 pb-4 text-xs font-mono">
+              <span>{t.person.fullName}</span>
+              <span className="text-[#ECEAE6]/50">{t.person.location}</span>
+            </div>
+
+            <div className="my-8 grid w-full grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-2">
+              {visibleSections.map((sec) => {
+                const isActive = sec.id === activeSection;
+                return (
+                  <button
+                    key={sec.id}
+                    type="button"
+                    data-cursor="view"
+                    onClick={() => {
+                      soundEngine.playStippleTick();
+                      setMenuOpen(false);
+                      onNavigateSection(sec.id);
+                    }}
+                    className={`group flex items-baseline justify-between rounded-[var(--radius-md)] border-b border-[#ECEAE6]/15 px-3 py-4 text-start transition-colors hover:bg-white/[0.04] hover:border-[#5B5BF0] cursor-pointer ${
+                      isActive ? 'text-[#5B5BF0]' : 'text-[#ECEAE6]'
+                    }`}
+                  >
+                    <span className="text-2xl sm:text-3xl font-extrabold tracking-tight group-hover:text-[#5B5BF0] transition-colors">
+                      {sec.label[locale]}
+                    </span>
+                    <span className="font-mono text-xs opacity-50">
+                      {sec.index}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-4 border-t border-[#ECEAE6]/15 pt-4 text-xs font-mono text-[#ECEAE6]/60">
+              <div className="flex flex-wrap items-center gap-4">
+                <a
+                  href={`mailto:${t.person.email}`}
+                  className="rounded-full px-3 py-1 hover:bg-white/10 hover:text-[#8F8FFF] transition-colors"
+                >
+                  {t.person.email}
+                </a>
+                {onSwitchToStory ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onSwitchToStory();
+                    }}
+                    className="rounded-full bg-[#5B5BF0]/15 px-3.5 py-1 text-[#8F8FFF] hover:bg-[#5B5BF0] hover:text-white transition-colors cursor-pointer"
+                  >
+                    {locale === 'fa' ? 'داستان سه‌بعدی (/story)' : '3D Particle Story (/story)'}
+                  </button>
+                ) : (
+                  <Link
+                    href="/story"
+                    onClick={() => setMenuOpen(false)}
+                    className="rounded-full bg-[#5B5BF0]/15 px-3.5 py-1 text-[#8F8FFF] hover:bg-[#5B5BF0] hover:text-white transition-colors"
+                  >
+                    {locale === 'fa' ? 'داستان سه‌بعدی (/story)' : '3D Particle Story (/story)'}
+                  </Link>
+                )}
+                <a
+                  href="/lab"
+                  className="rounded-full px-3 py-1 hover:bg-white/10 hover:text-[#8F8FFF] transition-colors"
+                >
+                  {locale === 'fa' ? 'آزمایشگاه فیزیک (/lab)' : 'Physics Lab (/lab)'}
+                </a>
+              </div>
+              <span>{t.person.availability}</span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  );
+}
