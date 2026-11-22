@@ -33,40 +33,41 @@ export function IntroSection({ locale }: { locale: Locale }) {
       id="intro"
       data-section="intro"
       data-theme="light"
+      data-mobile-height=""
       className="pin-section bg-transparent"
-      style={getSingularitySectionStyle('intro', '400svh')}
+      style={getSingularitySectionStyle('intro', '400svh', '260svh')}
     >
-      <div className="pin-sticky flex flex-col items-center justify-center px-6 sm:px-12 md:px-20">
+      <div className="pin-sticky flex flex-col items-center justify-center px-4 sm:px-12 md:px-20">
         <div className="relative flex w-full items-center justify-center">
           <ParticleSlot
             slotId="intro-name"
             descriptor={`text:${t.intro.particleWord}`}
             aria-label={t.intro.particleWord}
-            className="h-[220px] w-full max-w-[680px] sm:h-[280px]"
+            className="h-[170px] w-full max-w-[680px] sm:h-[280px]"
           />
 
           <ParticleSlot
             slotId="intro-portrait"
             descriptor="image:portrait"
             aria-hidden="true"
-            className="pointer-events-none absolute h-[360px] w-[270px] sm:h-[460px] sm:w-[345px]"
+            className="pointer-events-none absolute h-[280px] w-[210px] sm:h-[460px] sm:w-[345px]"
           />
         </div>
 
         <div
-          className="pointer-events-none absolute inset-x-0 bottom-24 sm:bottom-28 mx-auto max-w-2xl px-6 text-center will-change-transform"
+          className="pointer-events-none absolute inset-x-0 bottom-22 sm:bottom-28 mx-auto max-w-2xl px-4 sm:px-6 text-center will-change-transform"
           style={{
             opacity: leadOpacity,
             transform: `translate3d(0, ${leadY}px, 0)`,
           }}
         >
-          <p className="text-xl sm:text-3xl font-light leading-relaxed tracking-tight text-balance">
+          <p className="text-lg sm:text-3xl font-light leading-relaxed tracking-tight text-balance">
             {t.intro.lead}
           </p>
         </div>
 
         <div
-          className="pointer-events-none absolute bottom-20 flex flex-col items-center gap-2 font-mono text-[11px] opacity-60"
+          className="pointer-events-none absolute bottom-18 sm:bottom-20 flex flex-col items-center gap-2 font-mono text-[11px] opacity-60"
           style={{ opacity: nameCueOpacity * 0.65 }}
         >
           <span>{t.intro.scrollCue}</span>
@@ -269,6 +270,12 @@ export function HeroSection({
     lensTargetRef.current.active = false;
   };
 
+  const handleHeroPointerUp = (e: React.PointerEvent<HTMLElement>) => {
+    if (e.pointerType !== 'mouse') {
+      lensTargetRef.current.active = false;
+    }
+  };
+
   const disperseExit = clamp01((p - 0.74) / 0.24);
   const contentOpacity = 1 - disperseExit * 0.78;
   const scrollHintOpacity = clamp01(1 - p * 4.5);
@@ -303,14 +310,17 @@ export function HeroSection({
       id="hero"
       data-section="hero"
       data-theme={HERO_PORTRAIT_CONFIG.theme}
+      data-mobile-height=""
       className="pin-section bg-transparent"
-      style={getSingularitySectionStyle('hero', '200svh')}
+      style={getSingularitySectionStyle('hero', '200svh', '145svh')}
     >
       <div
         onPointerMove={handleHeroPointerMove}
         onPointerDown={handleHeroPointerMove}
+        onPointerUp={handleHeroPointerUp}
+        onPointerCancel={handleHeroPointerLeave}
         onPointerLeave={handleHeroPointerLeave}
-        className="pin-sticky relative flex flex-col justify-between overflow-hidden px-6 sm:px-10 lg:px-16 pt-20 pb-24 sm:pb-28"
+        className="pin-sticky relative flex flex-col justify-between overflow-hidden px-4 sm:px-10 lg:px-16 pt-16 sm:pt-20 pb-20 sm:pb-28"
       >
         {/* Right/End Full-Height Portrait Stage (100% Particles by default -> localized circular cursor photo reveal) */}
         <div
@@ -323,7 +333,7 @@ export function HeroSection({
         >
           <div
             ref={portraitBoxRef}
-            className="relative h-[100svh] min-h-[720px] w-full max-w-[540px] sm:max-w-[600px] lg:max-w-[700px] opacity-32 sm:opacity-45 lg:opacity-100"
+            className="relative h-[100svh] lg:min-h-[720px] w-full max-w-[540px] sm:max-w-[600px] lg:max-w-[700px] opacity-32 sm:opacity-45 lg:opacity-100"
           >
             {/* Layer 1: Localized Cursor-Masked Real Photograph (hidden by default; reveals ONLY inside cursor lens) */}
             <div
@@ -378,7 +388,7 @@ export function HeroSection({
 
             <h1
               ref={headlineRef}
-              className={`mt-4 sm:mt-5 w-full font-extrabold tracking-[-0.045em] leading-[0.96] ${inkText} text-[clamp(2.65rem,7.0vw,6.6rem)]`}
+              className={`mt-3 sm:mt-5 w-full font-extrabold tracking-[-0.045em] leading-[0.98] sm:leading-[0.96] ${inkText} text-[clamp(2.1rem,8.6vw,6.6rem)]`}
             >
               {hero.lines.map((line, i) => (
                 <span key={`${locale}-${i}`} className="block overflow-hidden py-[0.04em]">
@@ -389,15 +399,15 @@ export function HeroSection({
               ))}
             </h1>
 
-            <div ref={metaRef} className="mt-6 sm:mt-7 w-full max-w-xl">
+            <div ref={metaRef} className="mt-4 sm:mt-7 w-full max-w-xl">
               <p
                 data-hero-fade
-                className={`text-sm sm:text-base lg:text-lg font-normal leading-relaxed ${mutedText}`}
+                className={`text-xs sm:text-base lg:text-lg font-normal leading-relaxed ${mutedText}`}
               >
                 {hero.subline}
               </p>
 
-              <div data-hero-fade className="mt-7 flex flex-wrap items-center gap-4">
+              <div data-hero-fade className="mt-5 sm:mt-7 flex flex-wrap items-center gap-2.5 sm:gap-4">
                 <button
                   type="button"
                   data-cursor="view"
@@ -405,7 +415,7 @@ export function HeroSection({
                     soundEngine.playStippleTick();
                     onOpenContact();
                   }}
-                  className="group inline-flex items-center gap-2.5 rounded-full bg-[#5B5BF0] px-7 py-3.5 text-sm font-semibold text-white shadow-[0_12px_32px_rgba(91,91,240,0.34)] transition-all duration-200 hover:bg-[#4949DC] hover:scale-[1.02] active:scale-[0.98] cursor-pointer whitespace-nowrap"
+                  className="group inline-flex min-h-[44px] items-center gap-2 rounded-full bg-[#5B5BF0] px-5 py-2.5 sm:px-7 sm:py-3.5 text-xs sm:text-sm font-semibold text-white shadow-[0_12px_32px_rgba(91,91,240,0.34)] transition-all duration-200 hover:bg-[#4949DC] hover:scale-[1.02] active:scale-[0.98] cursor-pointer whitespace-nowrap"
                 >
                   <span>{hero.ctaLabel}</span>
                   <ArrowUpRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
@@ -413,7 +423,7 @@ export function HeroSection({
 
                 {/* Booking status chip with subtle blinking green dot */}
                 <div
-                  className={`inline-flex items-center gap-2.5 rounded-full border px-4 py-2 text-xs font-medium backdrop-blur-sm ${chipClasses}`}
+                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 sm:px-4 sm:py-2 text-[11px] sm:text-xs font-medium backdrop-blur-sm ${chipClasses}`}
                 >
                   <span
                     aria-hidden="true"
@@ -428,19 +438,19 @@ export function HeroSection({
 
         {/* Bottom Row: 3 Compact Stats (Start) + Scroll Indicator with Animated Line (Center) */}
         <div
-          className={`relative z-20 flex flex-wrap items-end justify-between gap-6 pt-4 border-t ${dividerBorder}`}
+          className={`relative z-20 flex flex-wrap items-end justify-between gap-4 sm:gap-6 pt-3 sm:pt-4 border-t ${dividerBorder}`}
           style={{ opacity: contentOpacity }}
         >
-          <div className="flex flex-wrap items-center gap-7 sm:gap-10">
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 sm:gap-10">
             {hero.stats.map((item) => (
-              <div key={item.label} className="flex items-baseline gap-2">
+              <div key={item.label} className="flex items-baseline gap-1.5 sm:gap-2">
                 <span
-                  className={`font-mono text-xl sm:text-2xl font-extrabold tracking-tight tabular-nums ${inkText}`}
+                  className={`font-mono text-lg sm:text-2xl font-extrabold tracking-tight tabular-nums ${inkText}`}
                 >
                   {item.value}
                 </span>
                 <span
-                  className={`font-mono text-[11px] uppercase tracking-[0.14em] ${subtleText}`}
+                  className={`font-mono text-[10px] sm:text-[11px] uppercase tracking-[0.12em] sm:tracking-[0.14em] ${subtleText}`}
                 >
                   {item.label}
                 </span>
@@ -506,18 +516,19 @@ export function AboutSection({ locale }: { locale: Locale }) {
       id="about"
       data-section="about"
       data-theme="light"
+      data-mobile-height=""
       className={`pin-section ${hasIncomingTransition('about') ? '' : 'border-t border-[var(--hairline)]'} bg-transparent`}
-      style={getSingularitySectionStyle('about', '300svh')}
+      style={getSingularitySectionStyle('about', '300svh', '210svh')}
     >
-      <div className="pin-sticky flex flex-col justify-center px-6 sm:px-10 lg:px-16 py-16">
+      <div className="pin-sticky flex flex-col justify-center px-4 sm:px-10 lg:px-16 pt-16 pb-20 sm:py-16">
         <div className="w-full">
-          <div className="flex flex-col sm:flex-row items-start justify-between gap-6 sm:gap-8">
+          <div className="flex flex-col sm:flex-row items-start justify-between gap-4 sm:gap-8">
             <div className="flex-1 min-w-0">
-              <span className="font-mono text-xs font-medium text-[#5B5BF0]">
+              <span className="font-mono text-[11px] sm:text-xs font-medium text-[#5B5BF0]">
                 {t.about.kicker}
               </span>
 
-              <p className="mt-5 text-2xl sm:text-4xl lg:text-[2.65rem] leading-[1.32] tracking-tight text-balance">
+              <p className="mt-3 sm:mt-5 text-lg sm:text-4xl lg:text-[2.65rem] leading-[1.34] sm:leading-[1.32] tracking-tight text-balance">
                 {wordTokens.map((tok, idx) => {
                   const lit = idx <= revealCount;
                   return (
@@ -535,11 +546,11 @@ export function AboutSection({ locale }: { locale: Locale }) {
               </p>
             </div>
 
-            <div className="shrink-0 self-end sm:self-start pt-1 sm:pt-3">
+            <div className="shrink-0 self-end sm:self-start pt-0 sm:pt-3">
               <RotatingBadge
                 text={t.about.badgeText}
                 rotationDeg={p * 360}
-                className="h-32 w-32 sm:h-40 sm:w-40 md:h-48 md:w-48"
+                className="h-24 w-24 sm:h-40 sm:w-40 md:h-48 md:w-48"
               >
                 <ParticleSlot
                   slotId="about-trophy"
@@ -552,7 +563,7 @@ export function AboutSection({ locale }: { locale: Locale }) {
           </div>
 
           <div
-            className="mt-10 sm:mt-14 grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4"
+            className="mt-5 sm:mt-14 grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4"
             style={{ opacity: Math.max(0.25, statsOpacity) }}
           >
             {t.about.stats.map((stat) => {
@@ -560,19 +571,19 @@ export function AboutSection({ locale }: { locale: Locale }) {
               return (
                 <div
                   key={stat.label}
-                  className="rounded-[var(--radius-lg)] border border-[var(--hairline)] bg-white/35 p-5 sm:p-6 flex flex-col justify-between backdrop-blur-[2px]"
+                  className="rounded-[var(--radius-lg)] border border-[var(--hairline)] bg-white/35 p-3.5 sm:p-6 flex flex-col justify-between backdrop-blur-[2px]"
                 >
-                  <div className="font-mono text-4xl sm:text-5xl font-extrabold tracking-tight tabular-nums text-[var(--ink)]">
+                  <div className="font-mono text-2xl sm:text-5xl font-extrabold tracking-tight tabular-nums text-[var(--ink)]">
                     <span className="text-[#5B5BF0]">{stat.prefix ?? ''}</span>
                     <span>{liveVal}</span>
                     <span className="text-[#5B5BF0]">{stat.suffix ?? ''}</span>
                   </div>
 
-                  <div className="mt-4">
-                    <div className="text-sm font-bold tracking-tight">
+                  <div className="mt-2 sm:mt-4">
+                    <div className="text-xs sm:text-sm font-bold tracking-tight">
                       {stat.label}
                     </div>
-                    <div className="mt-1 text-xs font-light opacity-65">
+                    <div className="mt-0.5 sm:mt-1 text-[11px] sm:text-xs font-light opacity-65 line-clamp-2">
                       {stat.detail}
                     </div>
                   </div>

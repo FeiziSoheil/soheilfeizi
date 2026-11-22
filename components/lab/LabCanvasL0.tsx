@@ -743,7 +743,7 @@ export default function LabCanvasL0() {
 
     let width = window.innerWidth;
     let height = window.innerHeight;
-    const dpr = isSoftwareGl ? 1 : Math.min(window.devicePixelRatio || 1, 2);
+    let dpr = isSoftwareGl ? 1 : Math.min(window.devicePixelRatio || 1, width < 768 ? 1.5 : 2);
 
     const renderer = new THREE.WebGLRenderer({
       antialias: !isSoftwareGl,
@@ -1154,11 +1154,17 @@ export default function LabCanvasL0() {
     };
     const onPointerDown = (e: PointerEvent) => {
       if ((e.target as HTMLElement | null)?.closest('button, a, input, .lil-gui')) return;
+      const p = toWebgl(e.clientX, e.clientY);
+      mouseTarget.set(p.x, p.y);
+      mouseActive = 1;
       mouseHold = 1;
       useLabStore.getState().setCursorMagnetHold(true);
     };
-    const onPointerUp = () => {
+    const onPointerUp = (e: PointerEvent) => {
       mouseHold = 0;
+      if (e.pointerType !== 'mouse') {
+        mouseActive = 0;
+      }
       useLabStore.getState().setCursorMagnetHold(false);
     };
     const onPointerLeave = () => {
@@ -1169,11 +1175,13 @@ export default function LabCanvasL0() {
     const onResize = () => {
       width = window.innerWidth;
       height = window.innerHeight;
+      dpr = isSoftwareGl ? 1 : Math.min(window.devicePixelRatio || 1, width < 768 ? 1.5 : 2);
       camera.left = -width / 2;
       camera.right = width / 2;
       camera.top = height / 2;
       camera.bottom = -height / 2;
       camera.updateProjectionMatrix();
+      renderer.setPixelRatio(dpr);
       renderer.setSize(width, height);
       renderTarget.setSize(Math.max(1, Math.floor(width * dpr)), Math.max(1, Math.floor(height * dpr)));
       dustMat.uniforms.uResolution.value.set(width, height);
@@ -1188,8 +1196,10 @@ export default function LabCanvasL0() {
     window.addEventListener('pointermove', onPointerMove, { passive: true });
     window.addEventListener('pointerdown', onPointerDown, { passive: true });
     window.addEventListener('pointerup', onPointerUp, { passive: true });
+    window.addEventListener('pointercancel', onPointerLeave, { passive: true });
     window.addEventListener('pointerleave', onPointerLeave);
     window.addEventListener('resize', onResize);
+    window.addEventListener('orientationchange', onResize);
     document.addEventListener('visibilitychange', onVis);
 
     let fpsFrames = 0;
@@ -1450,8 +1460,10 @@ export default function LabCanvasL0() {
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerdown', onPointerDown);
       window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener('pointercancel', onPointerLeave);
       window.removeEventListener('pointerleave', onPointerLeave);
       window.removeEventListener('resize', onResize);
+      window.removeEventListener('orientationchange', onResize);
       document.removeEventListener('visibilitychange', onVis);
       baseQuad.dispose();
       dustGeo.dispose();

@@ -91,9 +91,8 @@ export class ScrollEngine {
         lerp: params.lerp,
         wheelMultiplier: 0.62,
         smoothWheel: true,
-        syncTouch: true,
-        touchInertiaExponent: 1.65,
-        touchMultiplier: 1.25,
+        syncTouch: false,
+        touchMultiplier: 1.15,
       });
 
       this.lenis.on('scroll', () => {

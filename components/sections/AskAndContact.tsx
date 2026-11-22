@@ -104,21 +104,21 @@ export function AskMeSection({ locale }: { locale: Locale }) {
       id="ask"
       data-section="ask"
       data-theme="dark"
-      className="relative z-10 border-t border-white/10 bg-[#0A0A0A] text-[#ECEAE6] px-6 py-24 sm:px-10 sm:py-32 lg:px-16"
+      className="relative z-10 border-t border-white/10 bg-[#0A0A0A] text-[#ECEAE6] px-4 py-16 sm:px-10 sm:py-32 lg:px-16"
     >
       <div className="w-full">
-        <span className="font-mono text-xs font-medium text-[#8F8FFF]">
+        <span className="font-mono text-[11px] sm:text-xs font-medium text-[#8F8FFF]">
           {t.ask.kicker}
         </span>
-        <h2 className="display-xl mt-3 text-3xl sm:text-5xl text-[#ECEAE6] text-balance">
+        <h2 className="display-xl mt-2.5 sm:mt-3 text-2xl sm:text-5xl text-[#ECEAE6] text-balance">
           {t.ask.heading}
         </h2>
-        <p className="mt-4 max-w-2xl text-sm sm:text-base font-light text-[#ECEAE6]/72 leading-relaxed">
+        <p className="mt-3 sm:mt-4 max-w-2xl text-sm sm:text-base font-light text-[#ECEAE6]/72 leading-relaxed">
           {t.ask.subline}
         </p>
 
         {/* Starter questions (dark obsidian chips) */}
-        <div className="mt-8 flex flex-wrap gap-2.5">
+        <div className="mt-6 sm:mt-8 flex flex-wrap gap-2 sm:gap-2.5">
           {t.ask.starters.map((prompt) => (
             <button
               key={prompt}
@@ -126,7 +126,7 @@ export function AskMeSection({ locale }: { locale: Locale }) {
               data-cursor="view"
               onClick={() => void sendMessage(prompt)}
               disabled={loading}
-              className="rounded-full border border-white/14 bg-white/[0.04] px-4 py-2 text-xs sm:text-sm text-start text-[#ECEAE6]/85 hover:border-[#5B5BF0] hover:bg-[#5B5BF0]/15 hover:text-white transition-colors cursor-pointer disabled:opacity-40"
+              className="min-h-[40px] rounded-full border border-white/14 bg-white/[0.04] px-3.5 sm:px-4 py-2 text-xs sm:text-sm text-start text-[#ECEAE6]/85 hover:border-[#5B5BF0] hover:bg-[#5B5BF0]/15 hover:text-white transition-colors cursor-pointer disabled:opacity-40"
             >
               {prompt}
             </button>
@@ -134,10 +134,10 @@ export function AskMeSection({ locale }: { locale: Locale }) {
         </div>
 
         {/* Conversation pane (completely dark obsidian) */}
-        <div className="mt-8 overflow-hidden rounded-[var(--radius-lg)] border border-white/12 bg-[#111114] shadow-[0_18px_50px_rgba(0,0,0,0.55)]">
+        <div className="mt-6 sm:mt-8 overflow-hidden rounded-[var(--radius-lg)] border border-white/12 bg-[#111114] shadow-[0_18px_50px_rgba(0,0,0,0.55)]">
           <div
             ref={listRef}
-            className="max-h-[340px] min-h-[160px] overflow-y-auto p-5 sm:p-7 space-y-5"
+            className="max-h-[340px] min-h-[150px] overflow-y-auto p-4 sm:p-7 space-y-4 sm:space-y-5"
             aria-live="polite"
           >
             {messages.length === 0 ? (
@@ -186,7 +186,7 @@ export function AskMeSection({ locale }: { locale: Locale }) {
 
           <form
             onSubmit={handleSubmit}
-            className="flex items-center gap-3 border-t border-white/10 bg-white/[0.02] p-3 sm:p-4"
+            className="flex items-center gap-2 sm:gap-3 border-t border-white/10 bg-white/[0.02] p-2.5 sm:p-4"
           >
             <input
               type="text"
@@ -196,12 +196,12 @@ export function AskMeSection({ locale }: { locale: Locale }) {
               maxLength={500}
               disabled={loading}
               aria-label={t.ask.placeholder}
-              className="flex-1 rounded-[var(--radius-sm)] bg-transparent px-3 py-2 text-sm sm:text-base text-[#ECEAE6] placeholder:text-[#ECEAE6]/40 focus:outline-none"
+              className="flex-1 min-w-0 rounded-[var(--radius-sm)] bg-transparent px-2.5 sm:px-3 py-2 text-base text-[#ECEAE6] placeholder:text-[#ECEAE6]/40 focus:outline-none"
             />
             <button
               type="submit"
               disabled={loading || !input.trim()}
-              className="inline-flex items-center gap-2 rounded-full bg-[#5B5BF0] px-5 py-2.5 text-xs font-semibold text-white hover:bg-[#6A6AF8] transition-colors disabled:opacity-40 cursor-pointer whitespace-nowrap shrink-0"
+              className="inline-flex min-h-[40px] items-center gap-2 rounded-full bg-[#5B5BF0] px-4 sm:px-5 py-2 text-xs font-semibold text-white hover:bg-[#6A6AF8] transition-colors disabled:opacity-40 cursor-pointer whitespace-nowrap shrink-0"
             >
               <span>{t.ask.send}</span>
               <Send className="h-3.5 w-3.5" />
@@ -296,17 +296,17 @@ export function FinalContactSection({
       id="contact"
       data-section="contact"
       data-theme="dark"
-      className={`pin-section ${hasIncomingTransition('contact') ? '' : 'border-t border-[var(--hairline)]'} bg-transparent`}
+      className={`pin-section pin-section-mobile-flow ${hasIncomingTransition('contact') ? '' : 'border-t border-[var(--hairline)]'} bg-transparent`}
       style={getSingularitySectionStyle('contact', '300svh')}
     >
-      <div className="pin-sticky flex flex-col justify-between px-6 sm:px-10 lg:px-16 pt-20 pb-24 sm:pb-28">
+      <div className="pin-sticky pin-sticky-mobile-flow flex flex-col justify-between gap-6 lg:gap-0 px-4 sm:px-10 lg:px-16 pt-16 sm:pt-20 pb-32 sm:pb-28">
         {/* Top CTA Block with Full Unclipped Typewriter */}
         <div className="w-full max-w-5xl">
-          <span className="font-mono text-xs font-medium text-[#5B5BF0]">
+          <span className="font-mono text-[11px] sm:text-xs font-medium text-[#5B5BF0]">
             11 · {locale === 'fa' ? 'شروع همکاری' : 'START A PROJECT'}
           </span>
 
-          <h2 className="display-xl mt-3 text-2xl sm:text-4xl md:text-[3.25rem] leading-[1.12]">
+          <h2 className="display-xl mt-3 text-2xl sm:text-4xl md:text-[3.25rem] leading-[1.15] sm:leading-[1.12]">
             <span className="block">{t.contact.prefix}</span>
             <PainPointTypewriter key={locale} painPoints={phrases} />
           </h2>
@@ -315,7 +315,7 @@ export function FinalContactSection({
             {t.contact.subline}
           </p>
 
-          <div className="mt-6 flex flex-wrap items-center gap-5">
+          <div className="mt-5 sm:mt-6 flex flex-wrap items-center gap-3 sm:gap-5">
             <MagneticButton variant="accent" onClick={onOpenContact}>
               <span>{t.contact.cta}</span>
               <ArrowUpRight className="h-4 w-4" />
@@ -324,7 +324,7 @@ export function FinalContactSection({
             <a
               href={`mailto:${t.person.email}`}
               data-cursor="view"
-              className="inline-flex items-center gap-2 rounded-full border border-[var(--hairline)] px-4 py-2.5 font-mono text-xs sm:text-sm opacity-80 hover:border-[#5B5BF0] hover:text-[#8F8FFF] transition-colors"
+              className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-[var(--hairline)] px-4 py-2.5 font-mono text-xs sm:text-sm opacity-80 hover:border-[#5B5BF0] hover:text-[#8F8FFF] transition-colors"
             >
               <Mail className="h-4 w-4" />
               <span>{t.person.email}</span>
@@ -333,12 +333,12 @@ export function FinalContactSection({
         </div>
 
         {/* Full-Width GPU Infinite Particle Strip Slot (SOHEIL — SOHEIL — SOHEIL ...) */}
-        <div className="w-screen -mx-6 sm:-mx-10 lg:-mx-16 my-2 flex items-center justify-center overflow-hidden">
+        <div className="w-[calc(100%+2rem)] -mx-4 sm:w-[calc(100%+5rem)] sm:-mx-10 lg:w-[calc(100%+8rem)] lg:-mx-16 my-4 sm:my-2 flex items-center justify-center overflow-hidden">
           <ParticleSlot
             slotId="cta-logo"
             descriptor={`strip:${stripWord}`}
             aria-label={t.person.fullName}
-            className="h-[108px] sm:h-[150px] lg:h-[180px] w-full"
+            className="h-[72px] sm:h-[145px] lg:h-[180px] w-full"
           />
         </div>
 
@@ -346,8 +346,8 @@ export function FinalContactSection({
         <div
           className="w-full border-t border-[var(--hairline)] pt-5"
           style={{
-            opacity: Math.max(0.3, footerReveal),
-            transform: `translate3d(0, ${(1 - footerReveal) * 16}px, 0)`,
+            opacity: Math.max(0.55, footerReveal),
+            transform: `translate3d(0, ${(1 - footerReveal) * 14}px, 0)`,
           }}
         >
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-3 text-xs sm:text-sm">
@@ -425,25 +425,25 @@ export function FinalContactSection({
       {/* Contact Dialog Modal (Rounded) */}
       {contactModalOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-[#0A0A0A]/85 p-6 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[#0A0A0A]/85 p-4 sm:p-6 backdrop-blur-sm"
           onClick={onCloseContact}
         >
           <div
-            className="w-full max-w-lg rounded-[var(--radius-lg)] border border-[#ECEAE6]/20 bg-[#0F0F12] p-7 text-[#ECEAE6] shadow-2xl"
+            className="w-full max-w-lg max-h-[88svh] overflow-y-auto rounded-[var(--radius-lg)] border border-[#ECEAE6]/20 bg-[#0F0F12] p-5 sm:p-7 text-[#ECEAE6] shadow-2xl"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
             aria-label={t.contact.modalTitle}
           >
-            <div className="flex items-start justify-between border-b border-[#ECEAE6]/15 pb-4">
+            <div className="flex items-start justify-between gap-3 border-b border-[#ECEAE6]/15 pb-4">
               <div>
-                <h3 className="text-xl font-extrabold">{t.contact.modalTitle}</h3>
+                <h3 className="text-lg sm:text-xl font-extrabold">{t.contact.modalTitle}</h3>
                 <p className="mt-1 text-xs text-[#ECEAE6]/60">{t.contact.modalSub}</p>
               </div>
               <button
                 type="button"
                 onClick={onCloseContact}
-                className="rounded-full p-1.5 opacity-70 hover:bg-white/10 hover:opacity-100 cursor-pointer"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full opacity-70 hover:bg-white/10 hover:opacity-100 cursor-pointer"
                 aria-label={t.contact.closeLabel}
               >
                 <X className="h-4 w-4" />
@@ -460,7 +460,7 @@ export function FinalContactSection({
                     href={`mailto:${t.person.email}?subject=${encodeURIComponent(
                       `Project Inquiry from ${name}`
                     )}&body=${encodeURIComponent(message)}`}
-                    className="inline-flex items-center gap-2 rounded-full bg-[#5B5BF0] px-5 py-2.5 text-xs font-semibold text-white hover:bg-[#4949DC] transition-colors"
+                    className="inline-flex min-h-[44px] items-center gap-2 rounded-full bg-[#5B5BF0] px-5 py-2.5 text-xs font-semibold text-white hover:bg-[#4949DC] transition-colors"
                   >
                     <span>{t.person.email}</span>
                     <ArrowUpRight className="h-3.5 w-3.5" />
@@ -474,7 +474,7 @@ export function FinalContactSection({
                       setMessage('');
                       onCloseContact();
                     }}
-                    className="rounded-full border border-[#ECEAE6]/25 px-4 py-2.5 text-xs hover:border-[#ECEAE6] transition-colors cursor-pointer"
+                    className="min-h-[44px] rounded-full border border-[#ECEAE6]/25 px-4 py-2.5 text-xs hover:border-[#ECEAE6] transition-colors cursor-pointer"
                   >
                     {t.contact.closeLabel}
                   </button>
@@ -491,7 +491,7 @@ export function FinalContactSection({
                     required
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="w-full rounded-[var(--radius-md)] border border-[#ECEAE6]/20 bg-white/[0.03] px-4 py-2.5 text-sm text-[#ECEAE6] focus:border-[#5B5BF0] focus:outline-none"
+                    className="w-full rounded-[var(--radius-md)] border border-[#ECEAE6]/20 bg-white/[0.03] px-4 py-2.5 text-base sm:text-sm text-[#ECEAE6] focus:border-[#5B5BF0] focus:outline-none"
                   />
                 </div>
                 <div>
@@ -503,7 +503,7 @@ export function FinalContactSection({
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full rounded-[var(--radius-md)] border border-[#ECEAE6]/20 bg-white/[0.03] px-4 py-2.5 text-sm text-[#ECEAE6] focus:border-[#5B5BF0] focus:outline-none"
+                    className="w-full rounded-[var(--radius-md)] border border-[#ECEAE6]/20 bg-white/[0.03] px-4 py-2.5 text-base sm:text-sm text-[#ECEAE6] focus:border-[#5B5BF0] focus:outline-none"
                   />
                 </div>
                 <div>
@@ -515,13 +515,13 @@ export function FinalContactSection({
                     rows={4}
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
-                    className="w-full rounded-[var(--radius-md)] border border-[#ECEAE6]/20 bg-white/[0.03] px-4 py-2.5 text-sm text-[#ECEAE6] focus:border-[#5B5BF0] focus:outline-none resize-none"
+                    className="w-full rounded-[var(--radius-md)] border border-[#ECEAE6]/20 bg-white/[0.03] px-4 py-2.5 text-base sm:text-sm text-[#ECEAE6] focus:border-[#5B5BF0] focus:outline-none resize-none"
                   />
                 </div>
                 <div className="pt-2 flex justify-end">
                   <button
                     type="submit"
-                    className="rounded-full bg-[#5B5BF0] px-6 py-2.5 text-xs font-semibold text-white hover:bg-[#4949DC] transition-colors cursor-pointer"
+                    className="min-h-[44px] rounded-full bg-[#5B5BF0] px-6 py-2.5 text-xs font-semibold text-white hover:bg-[#4949DC] transition-colors cursor-pointer"
                   >
                     {t.contact.submitLabel}
                   </button>

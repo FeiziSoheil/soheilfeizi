@@ -58,28 +58,28 @@ export default function StoryGate({
         opacity: 0,
         transition: { duration: 0.65, ease: [0.16, 1, 0.3, 1] },
       }}
-      className="fixed inset-0 z-50 flex flex-col justify-between bg-[#0A0A0A] text-[#ECEBE7] px-6 py-7 sm:px-12 sm:py-10"
+      className="fixed inset-0 z-50 flex flex-col justify-between overflow-y-auto bg-[#0A0A0A] text-[#ECEBE7] px-4 py-5 sm:px-12 sm:py-10"
     >
       {/* Top identity strip */}
-      <div className="flex items-center justify-between border-b border-[#ECEBE7]/12 pb-4 font-mono text-xs">
-        <div className="flex items-center gap-3">
-          <span className="font-semibold text-[#ECEBE7]">{person.fullName}</span>
+      <div className="flex items-center justify-between gap-2 border-b border-[#ECEBE7]/12 pb-3.5 sm:pb-4 font-mono text-xs">
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="font-semibold text-[#ECEBE7] truncate">{person.fullName}</span>
           <span className="hidden sm:inline text-[#ECEBE7]/45">
             · {person.role}
           </span>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <button
             type="button"
             onClick={() => setSoundChoice((prev) => !prev)}
             aria-pressed={soundChoice}
-            className="inline-flex items-center gap-1.5 rounded-full border border-[#ECEBE7]/18 px-3 py-1 text-[11px] text-[#ECEBE7]/75 hover:border-[#ECEBE7]/45 hover:text-[#ECEBE7] transition-colors cursor-pointer"
+            className="inline-flex items-center justify-center gap-1.5 min-h-[38px] min-w-[38px] sm:min-h-0 sm:min-w-0 rounded-full border border-[#ECEBE7]/18 px-2.5 sm:px-3 py-1 text-[11px] text-[#ECEBE7]/75 hover:border-[#ECEBE7]/45 hover:text-[#ECEBE7] transition-colors cursor-pointer"
           >
             {soundChoice ? (
-              <Volume2 className="h-3.5 w-3.5 text-[#5B5BF0]" />
+              <Volume2 className="h-4 w-4 sm:h-3.5 sm:w-3.5 text-[#5B5BF0]" />
             ) : (
-              <VolumeX className="h-3.5 w-3.5 text-[#ECEBE7]/45" />
+              <VolumeX className="h-4 w-4 sm:h-3.5 sm:w-3.5 text-[#ECEBE7]/45" />
             )}
             <span className="hidden sm:inline">
               {soundChoice ? ui.soundOn : ui.soundOff}
@@ -89,7 +89,7 @@ export default function StoryGate({
           <button
             type="button"
             onClick={onToggleLocale}
-            className="rounded-full border border-[#ECEBE7]/22 px-3 py-1 text-[11px] font-semibold hover:border-[#5B5BF0] hover:text-[#5B5BF0] transition-colors cursor-pointer"
+            className="inline-flex items-center justify-center min-h-[38px] min-w-[44px] sm:min-h-0 sm:min-w-0 rounded-full border border-[#ECEBE7]/22 px-3 py-1 text-[11px] font-semibold hover:border-[#5B5BF0] hover:text-[#5B5BF0] transition-colors cursor-pointer"
           >
             {locale === 'fa' ? 'EN' : 'FA'}
           </button>
@@ -97,13 +97,13 @@ export default function StoryGate({
       </div>
 
       {/* Center: numeric 000 -> 100 preloader -> 01 / 02 choice */}
-      <div className="w-full py-8">
+      <div className="w-full my-auto py-5 sm:py-8">
         {!unlocked ? (
-          <div className="flex flex-col items-start gap-6">
-            <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#ECEBE7]/45">
+          <div className="flex flex-col items-start gap-5 sm:gap-6">
+            <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-[#ECEBE7]/45">
               {ui.gateLoading}
             </span>
-            <div className="font-mono text-7xl sm:text-9xl font-bold tracking-[-0.05em] tabular-nums leading-none text-[#ECEBE7]">
+            <div className="font-mono text-6xl sm:text-9xl font-bold tracking-[-0.05em] tabular-nums leading-none text-[#ECEBE7]">
               {String(displayPct).padStart(3, '0')}
             </div>
             <div className="h-1 w-full max-w-md rounded-full bg-[#ECEBE7]/15 overflow-hidden">
@@ -120,21 +120,21 @@ export default function StoryGate({
             transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
             className="w-full"
           >
-            <div className="mb-4 flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.2em] text-[#ECEBE7]/50">
+            <div className="mb-3.5 sm:mb-4 flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.18em] text-[#ECEBE7]/50">
               <span>100</span>
-              <span className="h-[1px] w-8 bg-[#5B5BF0]" />
-              <span>{ui.gateEyebrow}</span>
+              <span className="h-[1px] w-6 sm:w-8 bg-[#5B5BF0]" />
+              <span className="truncate">{ui.gateEyebrow}</span>
             </div>
 
-            <h1 className="text-4xl sm:text-6xl md:text-7xl font-bold tracking-[-0.03em] text-balance text-[#ECEBE7]">
+            <h1 className="text-3xl sm:text-6xl md:text-7xl font-bold tracking-[-0.03em] text-balance text-[#ECEBE7]">
               {ui.gateHeading}
             </h1>
 
-            <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="mt-6 sm:mt-10 grid grid-cols-1 gap-3.5 sm:gap-4 sm:grid-cols-2">
               {/* 01 The site */}
               <Link
                 href="/?v=site"
-                className="group flex flex-col justify-between rounded-[var(--radius-lg)] border border-[#ECEBE7]/14 bg-white/[0.02] p-7 sm:p-10 text-start transition-colors hover:bg-[#ECEBE7] hover:text-[#0A0A0A]"
+                className="group flex flex-col justify-between rounded-[var(--radius-lg)] border border-[#ECEBE7]/14 bg-white/[0.02] p-5 sm:p-10 text-start transition-colors hover:bg-[#ECEBE7] hover:text-[#0A0A0A]"
               >
                 <div className="flex items-center justify-between">
                   <span className="font-mono text-xs text-[#ECEBE7]/45 group-hover:text-[#0A0A0A]/55">
@@ -142,11 +142,11 @@ export default function StoryGate({
                   </span>
                   <ArrowUpRight className="h-4 w-4 text-[#5B5BF0] transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
                 </div>
-                <div className="mt-12">
-                  <span className="block text-2xl sm:text-3xl font-bold tracking-tight">
+                <div className="mt-6 sm:mt-12">
+                  <span className="block text-xl sm:text-3xl font-bold tracking-tight">
                     {ui.gateOptionSiteTitle}
                   </span>
-                  <span className="mt-2.5 block text-sm font-light opacity-70 leading-relaxed">
+                  <span className="mt-1.5 sm:mt-2.5 block text-xs sm:text-sm font-light opacity-70 leading-relaxed">
                     {ui.gateOptionSiteDesc}
                   </span>
                 </div>
@@ -156,7 +156,7 @@ export default function StoryGate({
               <button
                 type="button"
                 onClick={() => onEnterStory(soundChoice)}
-                className="group flex flex-col justify-between rounded-[var(--radius-lg)] border border-[#5B5BF0]/35 bg-[#5B5BF0]/10 p-7 sm:p-10 text-start transition-colors hover:bg-[#5B5BF0] hover:text-[#ECEBE7] cursor-pointer"
+                className="group flex flex-col justify-between rounded-[var(--radius-lg)] border border-[#5B5BF0]/35 bg-[#5B5BF0]/10 p-5 sm:p-10 text-start transition-colors hover:bg-[#5B5BF0] hover:text-[#ECEBE7] cursor-pointer"
               >
                 <div className="flex items-center justify-between w-full">
                   <span className="font-mono text-xs text-[#5B5BF0] group-hover:text-[#ECEBE7]/85">
@@ -164,11 +164,11 @@ export default function StoryGate({
                   </span>
                   <ArrowUpRight className="h-4 w-4 text-[#5B5BF0] group-hover:text-[#ECEBE7] transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
                 </div>
-                <div className="mt-12">
-                  <span className="block text-2xl sm:text-3xl font-bold tracking-tight">
+                <div className="mt-6 sm:mt-12">
+                  <span className="block text-xl sm:text-3xl font-bold tracking-tight">
                     {ui.gateOptionStoryTitle}
                   </span>
-                  <span className="mt-2.5 block text-sm font-light opacity-78 leading-relaxed">
+                  <span className="mt-1.5 sm:mt-2.5 block text-xs sm:text-sm font-light opacity-78 leading-relaxed">
                     {ui.gateOptionStoryDesc}
                   </span>
                 </div>
@@ -179,7 +179,7 @@ export default function StoryGate({
       </div>
 
       {/* Bottom ambient audio hint & availability */}
-      <div className="flex flex-wrap items-center justify-between gap-4 border-t border-[#ECEBE7]/12 pt-4 font-mono text-[11px] text-[#ECEBE7]/45">
+      <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4 border-t border-[#ECEBE7]/12 pt-3.5 sm:pt-4 font-mono text-[11px] text-[#ECEBE7]/45">
         <span>
           {ui.gateSoundPrompt}: {soundChoice ? ui.soundOn : ui.soundOff}
         </span>

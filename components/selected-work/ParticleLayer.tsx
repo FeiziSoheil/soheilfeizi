@@ -286,13 +286,17 @@ export default function ParticleLayer({
 
     let width = host.clientWidth || window.innerWidth;
     let height = host.clientHeight || window.innerHeight;
-    let dpr = isSoftwareGl ? 1 : Math.min(window.devicePixelRatio || 1, 2);
+    let dpr = isSoftwareGl
+      ? 1
+      : Math.min(window.devicePixelRatio || 1, width < 768 ? 1.5 : 2);
     let pointCount = 0;
 
     const rebuildGrid = () => {
       width = host.clientWidth || window.innerWidth;
       height = host.clientHeight || window.innerHeight;
-      dpr = isSoftwareGl ? 1 : Math.min(window.devicePixelRatio || 1, 2);
+      dpr = isSoftwareGl
+        ? 1
+        : Math.min(window.devicePixelRatio || 1, width < 768 ? 1.5 : 2);
       const spacing = width < 640 ? 12 : width < 1024 ? 9 : 8;
 
       canvas.width = Math.max(1, Math.floor(width * dpr));
@@ -370,6 +374,12 @@ export default function ParticleLayer({
       pointerTarget.active = false;
     };
 
+    const onPointerUp = (e: PointerEvent) => {
+      if (e.pointerType !== 'mouse') {
+        pointerTarget.active = false;
+      }
+    };
+
     let resizeTimer = 0;
     const onResize = () => {
       window.clearTimeout(resizeTimer);
@@ -392,8 +402,12 @@ export default function ParticleLayer({
     io.observe(host);
 
     window.addEventListener('pointermove', onPointerMove, { passive: true });
+    window.addEventListener('pointerdown', onPointerMove, { passive: true });
+    window.addEventListener('pointerup', onPointerUp, { passive: true });
+    window.addEventListener('pointercancel', onPointerLeave, { passive: true });
     window.addEventListener('pointerleave', onPointerLeave);
     window.addEventListener('resize', onResize, { passive: true });
+    window.addEventListener('orientationchange', onResize, { passive: true });
 
     let lastTime = performance.now();
     let smoothScrollParallax = 0;
@@ -498,8 +512,12 @@ export default function ParticleLayer({
       window.clearTimeout(resizeTimer);
       io.disconnect();
       window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerdown', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener('pointercancel', onPointerLeave);
       window.removeEventListener('pointerleave', onPointerLeave);
       window.removeEventListener('resize', onResize);
+      window.removeEventListener('orientationchange', onResize);
       images.forEach((img) => {
         img.onload = null;
       });

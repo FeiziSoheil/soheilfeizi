@@ -25,6 +25,9 @@
     --radius-md: 14px;
     --radius-lg: 22px;
     --radius-full: 9999px;
+
+    /* Responsive Story chapter scroll scale */
+    --story-ch-scale: 1;
   }
 
   /* Scoped theme tokens so overlapping real sections keep crisp independent palettes mid-transition */
@@ -101,6 +104,17 @@
 .pin-section {
   position: relative;
   width: 100%;
+  height: var(--sec-h-desktop, auto);
+}
+
+@media (max-width: 767px) {
+  :root {
+    --story-ch-scale: 0.68;
+  }
+
+  .pin-section[data-mobile-height] {
+    height: var(--sec-h-mobile, var(--sec-h-desktop, auto));
+  }
 }
 
 .pin-sticky {
@@ -109,6 +123,32 @@
   height: 100svh;
   width: 100%;
   overflow: hidden;
+}
+
+/* Tall multi-block sections release sticky overflow on mobile/small tablets so nothing clips */
+@media (max-width: 1023px) {
+  .pin-section-mobile-flow {
+    height: auto !important;
+    min-height: 100svh;
+  }
+
+  .pin-sticky-mobile-flow {
+    position: relative;
+    height: auto;
+    min-height: 100svh;
+    overflow: visible;
+  }
+}
+
+/* Safe-area bottom offset for mobile floating DockBar */
+.dock-bottom-safe {
+  bottom: max(0.875rem, env(safe-area-inset-bottom));
+}
+
+@media (min-width: 640px) {
+  .dock-bottom-safe {
+    bottom: 1.5rem;
+  }
 }
 
 /* Singularity mutually-exclusive circle clipping & inverse radial masking (zero DOM duplication) */

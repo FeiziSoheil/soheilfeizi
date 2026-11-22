@@ -13,6 +13,7 @@ import {
 } from '@/lib/content';
 import { useScrollStore } from '@/lib/scrollStore';
 import { soundEngine } from '@/lib/soundEngine';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface ChromeProps {
   locale: Locale;
@@ -30,7 +31,8 @@ interface ChromeProps {
 /**
  * Top identity bar, hairline progress, edge section ticks, vertical label,
  * and circular accent hamburger menu for Site mode.
- * Bottom floating navigation is now rendered by the single shared <DockBar />.
+ * On mobile (< md), the menu button lives cleanly in the top header so it never
+ * collides with the centered bottom <DockBar />.
  */
 export default function Chrome({
   locale,
@@ -46,6 +48,7 @@ export default function Chrome({
 }: ChromeProps) {
   const t = CONTENT[locale];
   const sectionProgress = useScrollStore((s) => s.sectionProgress);
+  const isMobile = useIsMobile();
 
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -60,9 +63,13 @@ export default function Chrome({
   const secondaryTheme = innerTheme ?? (primaryTheme === 'dark' ? 'light' : 'dark');
   const progressPct = `${Math.min(100, Math.max(0, totalProgress * 100))}%`;
   const isRtl = locale === 'fa';
-  const menuClipOrigin = isRtl
-    ? '3rem calc(100% - 3rem)'
-    : 'calc(100% - 3rem) calc(100% - 3rem)';
+  const menuClipOrigin = isMobile
+    ? isRtl
+      ? '2rem 2rem'
+      : 'calc(100% - 2rem) 2rem'
+    : isRtl
+      ? '3rem calc(100% - 3rem)'
+      : 'calc(100% - 3rem) calc(100% - 3rem)';
 
   const renderProgressBar = (skin: 'light' | 'dark') => {
     const skinDark = skin === 'dark';
@@ -173,7 +180,7 @@ export default function Chrome({
       )}
 
       {/* 2. Top minimal identity strip (mix-blend-difference swaps per-pixel strictly at circle edge) */}
-      <header className="fixed top-3 inset-x-0 z-40 flex items-center justify-between px-5 sm:px-10 pointer-events-none text-white mix-blend-difference">
+      <header className="fixed top-2.5 sm:top-3 inset-x-0 z-40 flex items-center justify-between px-4 sm:px-10 min-h-[44px] pointer-events-none text-white mix-blend-difference">
         <a
           href="#hero"
           data-cursor="view"
@@ -181,7 +188,7 @@ export default function Chrome({
             e.preventDefault();
             onNavigateSection('hero');
           }}
-          className="pointer-events-auto inline-flex items-center rounded-full px-2 py-0.5 text-xs font-mono font-semibold tracking-tight whitespace-nowrap shrink-0 hover:opacity-75 transition-opacity"
+          className="pointer-events-auto inline-flex items-center min-h-[40px] rounded-full px-2 py-0.5 text-xs font-mono font-semibold tracking-tight whitespace-nowrap shrink-0 hover:opacity-75 transition-opacity"
         >
           <span>{t.person.fullName}</span>
         </a>
@@ -227,7 +234,7 @@ export default function Chrome({
         <span className="h-8 w-[1px] rounded-full bg-current opacity-35" />
       </div>
 
-      {/* 5. Circular Accent Menu Button (bottom inline-end) */}
+      {/* 5. Circular Accent Menu Button: Top-end in header on Mobile (< md), Bottom-end FAB on Desktop (md+) */}
       <button
         type="button"
         data-cursor="view"
@@ -237,9 +244,9 @@ export default function Chrome({
         }}
         aria-label={menuOpen ? t.chrome.closeMenu : t.chrome.menuLabel}
         aria-expanded={menuOpen}
-        className="fixed bottom-6 end-5 sm:end-8 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-[#5B5BF0] text-white shadow-[0_10px_28px_rgba(91,91,240,0.4)] transition-transform duration-200 hover:scale-105 active:scale-95 cursor-pointer"
+        className="fixed top-2.5 end-3.5 md:top-auto md:bottom-6 md:end-8 z-50 flex h-10 w-10 md:h-12 md:w-12 items-center justify-center rounded-full bg-[#5B5BF0] text-white shadow-[0_8px_24px_rgba(91,91,240,0.4)] transition-transform duration-200 hover:scale-105 active:scale-95 cursor-pointer"
       >
-        {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        {menuOpen ? <X className="h-4 w-4 md:h-5 md:w-5" /> : <Menu className="h-4 w-4 md:h-5 md:w-5" />}
       </button>
 
       {/* 6. Fullscreen Menu Overlay with Circular Clip-Path Reveal */}
@@ -250,14 +257,14 @@ export default function Chrome({
             animate={{ clipPath: `circle(155% at ${menuClipOrigin})`, opacity: 1 }}
             exit={{ clipPath: `circle(0% at ${menuClipOrigin})`, opacity: 0.85 }}
             transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
-            className="fixed inset-0 z-40 flex flex-col justify-between bg-[#0A0A0A] text-[#ECEAE6] px-6 py-10 sm:px-14 sm:py-12 overflow-y-auto"
+            className="fixed inset-0 z-40 flex flex-col justify-between bg-[#0A0A0A] text-[#ECEAE6] px-5 pt-16 pb-24 sm:px-14 sm:py-12 overflow-y-auto"
           >
-            <div className="flex items-center justify-between border-b border-[#ECEAE6]/15 pb-4 text-xs font-mono">
-              <span>{t.person.fullName}</span>
-              <span className="text-[#ECEAE6]/50">{t.person.location}</span>
+            <div className="flex items-center justify-between gap-3 border-b border-[#ECEAE6]/15 pb-3.5 text-xs font-mono">
+              <span className="truncate">{t.person.fullName}</span>
+              <span className="text-[#ECEAE6]/50 shrink-0">{t.person.location}</span>
             </div>
 
-            <div className="my-8 grid w-full grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-2">
+            <div className="my-5 sm:my-8 grid w-full grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-1 sm:gap-y-2">
               {visibleSections.map((sec) => {
                 const isActive = sec.id === activeSection;
                 return (
@@ -270,11 +277,11 @@ export default function Chrome({
                       setMenuOpen(false);
                       onNavigateSection(sec.id);
                     }}
-                    className={`group flex items-baseline justify-between rounded-[var(--radius-md)] border-b border-[#ECEAE6]/15 px-3 py-4 text-start transition-colors hover:bg-white/[0.04] hover:border-[#5B5BF0] cursor-pointer ${
+                    className={`group flex items-baseline justify-between rounded-[var(--radius-md)] border-b border-[#ECEAE6]/15 px-3 py-3 sm:py-4 min-h-[48px] text-start transition-colors hover:bg-white/[0.04] hover:border-[#5B5BF0] cursor-pointer ${
                       isActive ? 'text-[#5B5BF0]' : 'text-[#ECEAE6]'
                     }`}
                   >
-                    <span className="text-2xl sm:text-3xl font-extrabold tracking-tight group-hover:text-[#5B5BF0] transition-colors">
+                    <span className="text-xl sm:text-3xl font-extrabold tracking-tight group-hover:text-[#5B5BF0] transition-colors">
                       {sec.label[locale]}
                     </span>
                     <span className="font-mono text-xs opacity-50">
@@ -286,10 +293,10 @@ export default function Chrome({
             </div>
 
             <div className="flex flex-wrap items-center justify-between gap-4 border-t border-[#ECEAE6]/15 pt-4 text-xs font-mono text-[#ECEAE6]/60">
-              <div className="flex flex-wrap items-center gap-4">
+              <div className="flex flex-wrap items-center gap-3 sm:gap-4">
                 <a
                   href={`mailto:${t.person.email}`}
-                  className="rounded-full px-3 py-1 hover:bg-white/10 hover:text-[#8F8FFF] transition-colors"
+                  className="rounded-full px-3 py-1.5 hover:bg-white/10 hover:text-[#8F8FFF] transition-colors"
                 >
                   {t.person.email}
                 </a>

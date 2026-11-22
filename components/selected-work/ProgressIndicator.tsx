@@ -31,7 +31,7 @@ export default function ProgressIndicator({
   return (
     <aside
       aria-label={ariaLabel}
-      className="pointer-events-auto absolute end-3.5 sm:end-6 lg:end-8 top-1/2 z-30 -translate-y-1/2 flex flex-col items-center gap-3"
+      className="pointer-events-auto absolute end-3.5 sm:end-6 lg:end-8 top-1/2 z-30 -translate-y-1/2 hidden sm:flex flex-col items-center gap-3"
     >
       {/* Continuous fine dotted progress track */}
       <div

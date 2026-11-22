@@ -54,12 +54,12 @@ export default function Gateway({
     <motion.div
       initial={{ opacity: 1 }}
       exit={{ opacity: 0, transition: { duration: 0.45, ease: [0.16, 1, 0.3, 1] } }}
-      className="fixed inset-0 z-50 flex flex-col justify-between bg-[#ECEBE7]/96 text-[#141414] px-6 py-8 sm:px-12 sm:py-10"
+      className="fixed inset-0 z-50 flex flex-col justify-between overflow-y-auto bg-[#ECEBE7]/96 text-[#141414] px-4 py-5 sm:px-12 sm:py-10"
     >
       {/* Top hairline bar */}
-      <div className="flex items-center justify-between border-b border-[#141414]/15 pb-4 text-xs font-mono">
-        <div className="flex items-center gap-3">
-          <span className="font-semibold tracking-tight">
+      <div className="flex items-center justify-between gap-2 border-b border-[#141414]/15 pb-3.5 sm:pb-4 text-xs font-mono">
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="font-semibold tracking-tight truncate">
             {t.person.fullName}
           </span>
           <span className="hidden sm:inline text-[#141414]/50">
@@ -67,19 +67,19 @@ export default function Gateway({
           </span>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4 shrink-0">
           <button
             type="button"
             onClick={() => {
               soundEngine.playStippleTick();
               setSoundOn((prev) => !prev);
             }}
-            className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs hover:bg-[#141414]/5 hover:text-[#5B5BF0] transition-colors cursor-pointer"
+            className="inline-flex items-center justify-center gap-1.5 min-h-[38px] min-w-[38px] sm:min-h-0 sm:min-w-0 rounded-full px-2.5 sm:px-3 py-1 text-xs hover:bg-[#141414]/5 hover:text-[#5B5BF0] transition-colors cursor-pointer"
           >
             {soundOn ? (
-              <Volume2 className="h-3.5 w-3.5 text-[#5B5BF0]" />
+              <Volume2 className="h-4 w-4 sm:h-3.5 sm:w-3.5 text-[#5B5BF0]" />
             ) : (
-              <VolumeX className="h-3.5 w-3.5 text-[#141414]/50" />
+              <VolumeX className="h-4 w-4 sm:h-3.5 sm:w-3.5 text-[#141414]/50" />
             )}
             <span className="hidden sm:inline">
               {soundOn ? t.gateway.soundDrift : t.gateway.soundMuted}
@@ -92,7 +92,7 @@ export default function Gateway({
               soundEngine.playStippleTick();
               onToggleLocale();
             }}
-            className="rounded-full border border-[#141414]/25 px-3 py-1 text-[11px] font-semibold hover:border-[#5B5BF0] hover:text-[#5B5BF0] transition-colors cursor-pointer"
+            className="inline-flex items-center justify-center min-h-[38px] min-w-[44px] sm:min-h-0 sm:min-w-0 rounded-full border border-[#141414]/25 px-3 py-1 text-[11px] font-semibold hover:border-[#5B5BF0] hover:text-[#5B5BF0] transition-colors cursor-pointer"
           >
             {locale === 'fa' ? 'EN' : 'FA'}
           </button>
@@ -100,15 +100,15 @@ export default function Gateway({
       </div>
 
       {/* Center: 000 -> 100 real loader transitions directly into Gateway choices */}
-      <div className="w-full py-8">
+      <div className="w-full my-auto py-5 sm:py-8">
         {!ready ? (
-          <div className="flex flex-col items-start gap-6">
-            <span className="font-mono text-xs uppercase tracking-[0.2em] text-[#141414]/50">
+          <div className="flex flex-col items-start gap-5 sm:gap-6">
+            <span className="font-mono text-[11px] sm:text-xs uppercase tracking-[0.18em] text-[#141414]/50">
               {locale === 'fa'
                 ? 'آماده‌سازی فونت، بافت و شیدر ذرات WebGL2'
                 : 'INITIALIZING FONTS, ASSETS & WEBGL2 PARTICLE SHADERS'}
             </span>
-            <div className="font-mono text-7xl sm:text-9xl font-extrabold tracking-[-0.05em] tabular-nums leading-none">
+            <div className="font-mono text-6xl sm:text-9xl font-extrabold tracking-[-0.05em] tabular-nums leading-none">
               {formatted}
             </div>
             <div className="h-1 w-full max-w-md rounded-full bg-[#141414]/15 overflow-hidden">
@@ -124,17 +124,17 @@ export default function Gateway({
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
           >
-            <div className="flex items-center gap-3 font-mono text-xs text-[#141414]/55 mb-5">
+            <div className="flex items-center gap-3 font-mono text-[11px] sm:text-xs text-[#141414]/55 mb-3.5 sm:mb-5">
               <span>100</span>
-              <span className="h-[1px] w-8 bg-[#141414]/25" />
-              <span>{t.person.globalNote}</span>
+              <span className="h-[1px] w-6 sm:w-8 bg-[#141414]/25" />
+              <span className="truncate">{t.person.globalNote}</span>
             </div>
 
-            <h1 className="display-xl text-4xl sm:text-6xl md:text-7xl text-balance">
+            <h1 className="display-xl text-3xl sm:text-6xl md:text-7xl text-balance">
               {t.gateway.question}
             </h1>
 
-            <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="mt-6 sm:mt-10 grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
               {/* Site Mode */}
               <button
                 type="button"
@@ -144,17 +144,17 @@ export default function Gateway({
                   onEnter('site', soundOn);
                 }}
                 onMouseEnter={() => soundEngine.playStippleTick()}
-                className="group flex flex-col justify-between rounded-[var(--radius-lg)] border border-[#141414]/15 bg-white/40 p-7 sm:p-9 text-start transition-colors hover:bg-[#111111] hover:text-[#ECEAE6] cursor-pointer"
+                className="group flex flex-col justify-between rounded-[var(--radius-lg)] border border-[#141414]/15 bg-white/40 p-5 sm:p-9 text-start transition-colors hover:bg-[#111111] hover:text-[#ECEAE6] cursor-pointer"
               >
                 <div className="flex items-center justify-between w-full">
                   <span className="font-mono text-xs opacity-50">01 / FAST</span>
                   <ArrowUpRight className="h-4 w-4 text-[#5B5BF0] transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
                 </div>
-                <div className="mt-10">
-                  <span className="block text-2xl sm:text-3xl font-extrabold tracking-tight">
+                <div className="mt-6 sm:mt-10">
+                  <span className="block text-xl sm:text-3xl font-extrabold tracking-tight">
                     {t.gateway.siteTitle}
                   </span>
-                  <span className="mt-2 block text-sm font-light opacity-75 leading-relaxed">
+                  <span className="mt-1.5 sm:mt-2 block text-xs sm:text-sm font-light opacity-75 leading-relaxed">
                     {t.gateway.siteDesc}
                   </span>
                 </div>
@@ -169,7 +169,7 @@ export default function Gateway({
                   useScrollStore.getState().setSoundEnabled(soundOn);
                 }}
                 onMouseEnter={() => soundEngine.playStippleTick()}
-                className="group flex flex-col justify-between rounded-[var(--radius-lg)] border border-[#5B5BF0]/25 bg-[#5B5BF0]/[0.06] p-7 sm:p-9 text-start transition-colors hover:bg-[#5B5BF0] hover:text-white cursor-pointer"
+                className="group flex flex-col justify-between rounded-[var(--radius-lg)] border border-[#5B5BF0]/25 bg-[#5B5BF0]/[0.06] p-5 sm:p-9 text-start transition-colors hover:bg-[#5B5BF0] hover:text-white cursor-pointer"
               >
                 <div className="flex items-center justify-between w-full">
                   <span className="font-mono text-xs text-[#5B5BF0] group-hover:text-white/85">
@@ -177,11 +177,11 @@ export default function Gateway({
                   </span>
                   <ArrowUpRight className="h-4 w-4 text-[#5B5BF0] group-hover:text-white transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
                 </div>
-                <div className="mt-10">
-                  <span className="block text-2xl sm:text-3xl font-extrabold tracking-tight">
+                <div className="mt-6 sm:mt-10">
+                  <span className="block text-xl sm:text-3xl font-extrabold tracking-tight">
                     {t.gateway.storyTitle}
                   </span>
-                  <span className="mt-2 block text-sm font-light opacity-80 leading-relaxed">
+                  <span className="mt-1.5 sm:mt-2 block text-xs sm:text-sm font-light opacity-80 leading-relaxed">
                     {t.gateway.storyDesc}
                   </span>
                 </div>
@@ -192,7 +192,7 @@ export default function Gateway({
       </div>
 
       {/* Bottom hairline footer links */}
-      <div className="flex flex-wrap items-center justify-between gap-4 border-t border-[#141414]/15 pt-4 text-xs font-mono">
+      <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4 border-t border-[#141414]/15 pt-3.5 sm:pt-4 text-[11px] sm:text-xs font-mono">
         <div className="flex items-center gap-6">
           <a
             href={`mailto:${t.person.email}`}

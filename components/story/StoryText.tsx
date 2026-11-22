@@ -94,7 +94,7 @@ export default function StoryText({
       </div>
 
       {/* Fixed editorial narrative column (start-side on desktop, bottom on mobile) */}
-      <div className="pointer-events-none fixed inset-0 z-20 flex flex-col justify-end md:justify-center px-6 pb-24 pt-20 sm:px-10 md:px-14 lg:px-20">
+      <div className="pointer-events-none fixed inset-0 z-20 flex flex-col justify-end md:justify-center px-4 pb-20 pt-16 sm:px-10 sm:pb-24 sm:pt-20 md:px-14 lg:px-20">
         <div
           ref={containerRef}
           key={`${chapter.id}-${locale}`}
@@ -103,22 +103,22 @@ export default function StoryText({
           {/* Kicker */}
           <div
             data-story-fade
-            className="mb-4 inline-flex items-center gap-2.5 font-mono text-[11px] uppercase tracking-[0.2em] text-[#ECEBE7]/60"
+            className="mb-2.5 sm:mb-4 inline-flex items-center gap-2 sm:gap-2.5 font-mono text-[10px] sm:text-[11px] uppercase tracking-[0.18em] sm:tracking-[0.2em] text-[#ECEBE7]/60"
           >
-            <span className="h-[1px] w-6 bg-[#5B5BF0]" />
+            <span className="h-[1px] w-5 sm:w-6 bg-[#5B5BF0]" />
             <span>{copy.kicker}</span>
           </div>
 
           {/* Masked line-by-line display headline */}
           <h1
-            className={`font-bold text-[#ECEBE7] leading-[1.03] ${
+            className={`font-bold text-[#ECEBE7] leading-[1.06] sm:leading-[1.03] ${
               locale === 'fa'
-                ? 'tracking-[-0.01em] text-[clamp(2rem,4.6vw,4.35rem)]'
-                : 'tracking-[-0.038em] text-[clamp(2.2rem,5vw,4.85rem)]'
+                ? 'tracking-[-0.01em] text-[clamp(1.65rem,7vw,4.35rem)]'
+                : 'tracking-[-0.038em] text-[clamp(1.85rem,7.4vw,4.85rem)]'
             }`}
           >
             {copy.lines.map((line, idx) => (
-              <span key={idx} className="block overflow-hidden pb-1">
+              <span key={idx} className="block overflow-hidden pb-0.5 sm:pb-1">
                 <span data-story-line className="block will-change-transform">
                   {line}
                 </span>
@@ -129,7 +129,7 @@ export default function StoryText({
           {/* Supporting paragraph */}
           <p
             data-story-fade
-            className="mt-5 text-sm sm:text-base font-light leading-relaxed text-[#ECEBE7]/72 max-w-md"
+            className="mt-3 sm:mt-5 text-[13px] sm:text-base font-light leading-relaxed text-[#ECEBE7]/76 max-w-md"
           >
             {copy.body}
           </p>
@@ -138,7 +138,7 @@ export default function StoryText({
           {copy.note && (
             <div
               data-story-fade
-              className="mt-7 inline-flex items-center gap-2 font-mono text-[11px] text-[#ECEBE7]/55"
+              className="mt-4 sm:mt-7 inline-flex items-center gap-2 font-mono text-[10px] sm:text-[11px] text-[#ECEBE7]/55"
             >
               <ArrowDown className="h-3.5 w-3.5 text-[#5B5BF0] animate-bounce" />
               <span>{copy.note}</span>
@@ -149,12 +149,12 @@ export default function StoryText({
           {chapter.isClosingCta && (
             <div
               data-story-fade
-              className="mt-8 flex flex-wrap items-center gap-3.5"
+              className="mt-5 sm:mt-8 flex flex-wrap items-center gap-2.5 sm:gap-3.5"
             >
               <button
                 type="button"
                 onClick={onOpenContact}
-                className="group inline-flex items-center gap-2 rounded-full bg-[#5B5BF0] px-6 py-3.5 text-sm font-semibold text-[#ECEBE7] transition-colors hover:bg-[#4B4BE0] cursor-pointer"
+                className="group min-h-[44px] inline-flex items-center gap-2 rounded-full bg-[#5B5BF0] px-5 py-3 sm:px-6 sm:py-3.5 text-xs sm:text-sm font-semibold text-[#ECEBE7] transition-colors hover:bg-[#4B4BE0] cursor-pointer"
               >
                 <span>{ui.startProject}</span>
                 <ArrowUpRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
@@ -162,7 +162,7 @@ export default function StoryText({
 
               <Link
                 href="/?v=site"
-                className="group inline-flex items-center gap-2 rounded-full border border-[#ECEBE7]/28 bg-[#0A0A0C]/80 px-6 py-3.5 text-sm font-medium text-[#ECEBE7] transition-colors hover:border-[#ECEBE7] hover:bg-[#ECEBE7] hover:text-[#0A0A0A]"
+                className="group min-h-[44px] inline-flex items-center gap-2 rounded-full border border-[#ECEBE7]/28 bg-[#0A0A0C]/80 px-5 py-3 sm:px-6 sm:py-3.5 text-xs sm:text-sm font-medium text-[#ECEBE7] transition-colors hover:border-[#ECEBE7] hover:bg-[#ECEBE7] hover:text-[#0A0A0A]"
               >
                 <span>{ui.exploreSite}</span>
                 <ArrowUpRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />

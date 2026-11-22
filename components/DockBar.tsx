@@ -121,25 +121,25 @@ export default function DockBar({
     const dividerClass = skinDark ? 'bg-white/14' : 'bg-[#111111]/12';
 
     const codeClass =
-      'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 font-mono text-[11px] font-medium opacity-80 hover:bg-current/[0.07] hover:opacity-100 hover:text-[#5B5BF0] cursor-pointer whitespace-nowrap';
-    const siteBtnClass = `rounded-full px-3 py-1 font-mono text-[11px] cursor-pointer whitespace-nowrap ${
+      'inline-flex items-center justify-center gap-1.5 rounded-full min-h-[36px] min-w-[36px] sm:min-h-0 sm:min-w-0 px-2 sm:px-3 py-1.5 font-mono text-[11px] font-medium opacity-80 hover:bg-current/[0.07] hover:opacity-100 hover:text-[#5B5BF0] cursor-pointer whitespace-nowrap';
+    const siteBtnClass = `rounded-full min-h-[34px] sm:min-h-0 px-2.5 sm:px-3 py-1 font-mono text-[11px] cursor-pointer whitespace-nowrap ${
       activeView === 'site'
         ? 'bg-[#5B5BF0] text-white font-semibold shadow-[0_4px_14px_rgba(91,91,240,0.4)]'
         : 'opacity-70 hover:opacity-100 hover:bg-current/[0.06]'
     }`;
-    const storyBtnClass = `rounded-full px-3 py-1 font-mono text-[11px] cursor-pointer whitespace-nowrap ${
+    const storyBtnClass = `rounded-full min-h-[34px] sm:min-h-0 px-2.5 sm:px-3 py-1 font-mono text-[11px] cursor-pointer whitespace-nowrap ${
       activeView === 'story'
         ? 'bg-[#5B5BF0] text-white font-semibold shadow-[0_4px_14px_rgba(91,91,240,0.4)]'
         : 'opacity-70 hover:opacity-100 hover:bg-current/[0.06]'
     }`;
     const localeBtnClass =
-      'rounded-full px-2.5 py-1.5 font-mono text-[11px] font-semibold opacity-85 hover:bg-current/[0.07] hover:text-[#5B5BF0] cursor-pointer whitespace-nowrap';
+      'inline-flex items-center justify-center rounded-full min-h-[36px] min-w-[34px] sm:min-h-0 sm:min-w-0 px-2 sm:px-2.5 py-1.5 font-mono text-[11px] font-semibold opacity-85 hover:bg-current/[0.07] hover:text-[#5B5BF0] cursor-pointer whitespace-nowrap';
     const iconBtnClass =
-      'inline-flex h-7 w-7 items-center justify-center rounded-full hover:bg-current/[0.07] hover:text-[#5B5BF0] cursor-pointer';
+      'inline-flex h-9 w-9 sm:h-7 sm:w-7 items-center justify-center rounded-full hover:bg-current/[0.07] hover:text-[#5B5BF0] cursor-pointer shrink-0';
 
     const innerContent = (
       <div
-        className={`inline-flex items-center gap-0.5 sm:gap-1 rounded-full border px-2 py-1.5 backdrop-blur-md ${pillSurface}`}
+        className={`inline-flex items-center gap-0.5 sm:gap-1 rounded-full border px-1.5 sm:px-2 py-1 sm:py-1.5 backdrop-blur-md ${pillSurface}`}
       >
         {/* 1. </> Code */}
         {isMirror ? (
@@ -267,7 +267,7 @@ export default function DockBar({
       return (
         <div
           dir="ltr"
-          className="absolute bottom-6 left-1/2 -translate-x-1/2 max-w-[calc(100vw-24px)] pointer-events-none"
+          className="absolute dock-bottom-safe left-1/2 -translate-x-1/2 max-w-[calc(100vw-20px)] pointer-events-none"
         >
           {innerContent}
         </div>
@@ -278,7 +278,7 @@ export default function DockBar({
       <nav
         aria-label={locale === 'fa' ? 'نوار کنترل اصلی' : 'Primary dock bar'}
         dir="ltr"
-        className="absolute bottom-6 left-1/2 -translate-x-1/2 max-w-[calc(100vw-24px)] pointer-events-auto"
+        className="absolute dock-bottom-safe left-1/2 -translate-x-1/2 max-w-[calc(100vw-20px)] pointer-events-auto"
       >
         {innerContent}
       </nav>
@@ -313,25 +313,25 @@ export default function DockBar({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[60] flex items-center justify-center bg-[#0A0A0A]/80 p-6 backdrop-blur-sm"
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-[#0A0A0A]/80 p-4 sm:p-6 backdrop-blur-sm"
             onClick={() => setCodeModalOpen(false)}
           >
             <div
               dir={locale === 'fa' ? 'rtl' : 'ltr'}
-              className={`w-full max-w-lg rounded-[var(--radius-lg)] border p-7 shadow-2xl ${modalSurface}`}
+              className={`w-full max-w-lg max-h-[88svh] overflow-y-auto rounded-[var(--radius-lg)] border p-5 sm:p-7 shadow-2xl ${modalSurface}`}
               onClick={(e) => e.stopPropagation()}
               role="dialog"
               aria-modal="true"
               aria-label={t.chrome.codeModalTitle}
             >
               <div className={`flex items-center justify-between border-b pb-4 ${modalBorder}`}>
-                <h2 className="text-lg font-extrabold tracking-tight">
+                <h2 className="text-base sm:text-lg font-extrabold tracking-tight">
                   {t.chrome.codeModalTitle}
                 </h2>
                 <button
                   type="button"
                   onClick={() => setCodeModalOpen(false)}
-                  className="rounded-full p-1.5 opacity-70 hover:bg-current/10 hover:opacity-100 cursor-pointer"
+                  className="flex h-9 w-9 items-center justify-center rounded-full opacity-70 hover:bg-current/10 hover:opacity-100 cursor-pointer"
                   aria-label={t.chrome.closeMenu}
                 >
                   <X className="h-4 w-4" />
@@ -342,7 +342,7 @@ export default function DockBar({
                 {t.chrome.codeModalBody}
               </p>
 
-              <div className="mt-5 grid grid-cols-2 gap-2.5 font-mono text-[11px] opacity-85">
+              <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-2.5 font-mono text-[11px] opacity-85">
                 <div className={`rounded-[var(--radius-sm)] border p-2.5 ${modalBorder}`}>
                   Next.js 15 App Router
                 </div>
@@ -405,25 +405,25 @@ export default function DockBar({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[60] flex items-center justify-center bg-[#0A0A0A]/80 p-6 backdrop-blur-sm"
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-[#0A0A0A]/80 p-4 sm:p-6 backdrop-blur-sm"
             onClick={() => setSettingsModalOpen(false)}
           >
             <div
               dir={locale === 'fa' ? 'rtl' : 'ltr'}
-              className={`w-full max-w-md rounded-[var(--radius-lg)] border p-7 shadow-2xl ${modalSurface}`}
+              className={`w-full max-w-md max-h-[88svh] overflow-y-auto rounded-[var(--radius-lg)] border p-5 sm:p-7 shadow-2xl ${modalSurface}`}
               onClick={(e) => e.stopPropagation()}
               role="dialog"
               aria-modal="true"
               aria-label={t.chrome.cookieModalTitle}
             >
               <div className={`flex items-center justify-between border-b pb-4 ${modalBorder}`}>
-                <h2 className="text-lg font-extrabold tracking-tight">
+                <h2 className="text-base sm:text-lg font-extrabold tracking-tight">
                   {t.chrome.cookieModalTitle}
                 </h2>
                 <button
                   type="button"
                   onClick={() => setSettingsModalOpen(false)}
-                  className="rounded-full p-1.5 opacity-70 hover:bg-current/10 hover:opacity-100 cursor-pointer"
+                  className="flex h-9 w-9 items-center justify-center rounded-full opacity-70 hover:bg-current/10 hover:opacity-100 cursor-pointer"
                   aria-label={t.chrome.closeMenu}
                 >
                   <X className="h-4 w-4" />

@@ -2,7 +2,6 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import dynamic from 'next/dynamic';
 import { AnimatePresence } from 'motion/react';
 import { SectionId, ViewMode } from '@/lib/content';
 import { HERO_PORTRAIT_CONFIG } from '@/lib/site.config';
@@ -15,6 +14,7 @@ import Chrome from '@/components/Chrome';
 import DockBar from '@/components/DockBar';
 import CustomCursor from '@/components/CustomCursor';
 import SingularityBackdrop from '@/components/SingularityBackdrop';
+import SiteParticleStage from '@/components/SiteParticleStage';
 import {
   AboutSection,
   HeroSection,
@@ -40,11 +40,6 @@ import {
 } from '@/components/sections/AskAndContact';
 import portraitAsset from '@/src/assets/images/soheil_editorial_portrait_1795200948891.jpg';
 import caseStudyAsset from '@/src/assets/images/case_study_commerce_device_1795200948621.jpg';
-
-const SiteParticleStage = dynamic(
-  () => import('@/components/SiteParticleStage'),
-  { ssr: false }
-);
 
 export default function PortfolioShell() {
   const router = useRouter();

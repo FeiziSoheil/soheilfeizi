@@ -16,6 +16,7 @@ interface ProjectInfoProps {
   copy: SelectedWorkCopy;
   reducedMotion: boolean;
   onSkipNext: () => void;
+  onSelectProject?: (index: number) => void;
 }
 
 /** Splits a project title into 1–2 balanced display lines for line-by-line mask reveal */
@@ -44,6 +45,7 @@ export default function ProjectInfo({
   copy,
   reducedMotion,
   onSkipNext,
+  onSelectProject,
 }: ProjectInfoProps) {
   const outgoingRef = useRef<HTMLDivElement | null>(null);
   const incomingRef = useRef<HTMLDivElement | null>(null);
@@ -167,9 +169,12 @@ export default function ProjectInfo({
     };
   }, [activeIndex, prevProject, scrollDir, reducedMotion]);
 
-  // Magnetic hover attraction on the 100px #5B5BF0 "Visit site" circular button
+  // Magnetic hover attraction on the 100px #5B5BF0 "Visit site" circular button (fine pointers only)
   useEffect(() => {
     if (reducedMotion) return;
+    if (typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches) {
+      return;
+    }
     const btn = ctaBtnRef.current;
     const txt = ctaTextRef.current;
     if (!btn || !txt) return;
@@ -228,25 +233,25 @@ export default function ProjectInfo({
   const totalStr = String(totalProjects).padStart(2, '0');
 
   return (
-    <div className="relative z-20 flex h-full w-full flex-col justify-between ps-11 pe-11 sm:ps-14 sm:pe-16 lg:ps-20 lg:pe-20 pt-14 sm:pt-16 pb-24 sm:pb-28 text-[#ECEAE6]">
+    <div className="relative z-20 flex h-full w-full flex-col justify-between px-4 sm:ps-14 sm:pe-16 lg:ps-20 lg:pe-20 pt-14 sm:pt-16 pb-20 sm:pb-28 text-[#ECEAE6]">
       {/* TOP HEADER BAR: (03) SELECTED WORK + Team and freelance */}
-      <div className="flex items-baseline justify-between gap-4 border-b border-white/15 pb-3.5">
-        <div className="flex items-baseline gap-3">
-          <span className="font-mono text-xs sm:text-sm font-medium text-[#A6A6FF] tabular-nums">
+      <div className="flex items-baseline justify-between gap-3 border-b border-white/15 pb-3 sm:pb-3.5">
+        <div className="flex items-baseline gap-2.5 sm:gap-3 min-w-0">
+          <span className="font-mono text-xs sm:text-sm font-medium text-[#A6A6FF] tabular-nums shrink-0">
             {copy.sectionIndex}
           </span>
-          <h2 className="text-xs sm:text-sm md:text-[15px] font-bold uppercase tracking-[0.22em] text-[#ECEAE6] whitespace-nowrap">
+          <h2 className="text-[11px] sm:text-sm md:text-[15px] font-bold uppercase tracking-[0.18em] sm:tracking-[0.22em] text-[#ECEAE6] truncate">
             {copy.sectionTitle}
           </h2>
         </div>
 
-        <span className="text-[11px] sm:text-xs font-medium tracking-wide text-[#ECEAE6]/80 whitespace-nowrap">
+        <span className="text-[10px] sm:text-xs font-medium tracking-wide text-[#ECEAE6]/80 whitespace-nowrap shrink-0">
           {copy.topRightNote}
         </span>
       </div>
 
-      {/* MIDDLE ROLLING PROJECT COUNTER (01 / 04) */}
-      <div className="my-auto flex items-center justify-between py-2">
+      {/* MIDDLE ROLLING PROJECT COUNTER (01 / 04) + Mobile inline tappable project steps */}
+      <div className="my-auto flex items-center justify-between gap-4 py-2">
         <div
           dir="ltr"
           className="inline-flex items-baseline gap-1.5 font-mono text-sm sm:text-base tracking-tight text-[#ECEAE6] tabular-nums"
@@ -260,6 +265,37 @@ export default function ProjectInfo({
           <span className="text-[#ECEAE6]/45">/</span>
           <span className="text-[#ECEAE6]/75">{totalStr}</span>
         </div>
+
+        {onSelectProject && (
+          <div
+            className="flex sm:hidden items-center gap-1.5"
+            role="tablist"
+            aria-label={copy.projectListAria}
+          >
+            {Array.from({ length: totalProjects }).map((_, idx) => {
+              const isActive = idx === activeIndex;
+              return (
+                <button
+                  key={idx}
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  aria-label={`Project ${String(idx + 1).padStart(2, '0')}`}
+                  onClick={() => onSelectProject(idx)}
+                  className="flex h-8 w-8 items-center justify-center rounded-full cursor-pointer"
+                >
+                  <span
+                    className={`block rounded-full transition-all duration-200 ${
+                      isActive
+                        ? 'h-2 w-5 bg-[#5B5BF0]'
+                        : 'h-1.5 w-1.5 bg-white/40'
+                    }`}
+                  />
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* BOTTOM DUAL-DOM EDITORIAL STACK (Outgoing + Incoming coexist during transitions) */}
@@ -269,24 +305,24 @@ export default function ProjectInfo({
           <div
             ref={outgoingRef}
             aria-hidden="true"
-            className="pointer-events-none absolute inset-x-0 bottom-0 z-10 grid grid-cols-1 items-end gap-6 lg:grid-cols-12 lg:gap-10"
+            className="pointer-events-none absolute inset-x-0 bottom-0 z-10 grid grid-cols-1 items-end gap-4 sm:gap-6 lg:grid-cols-12 lg:gap-10"
           >
             <div className="lg:col-span-7 flex flex-col items-start min-w-0">
-              <div className="mb-2 sm:mb-3 overflow-hidden">
+              <div className="mb-1.5 sm:mb-3 overflow-hidden">
                 <p
                   data-mask-item
-                  className="text-xs sm:text-sm font-normal text-[#ECEAE6]/80 tracking-wide"
+                  className="text-[11px] sm:text-sm font-normal text-[#ECEAE6]/80 tracking-wide"
                 >
                   {copy.titleSubtitle}
                 </p>
               </div>
 
-              <div className="w-full space-y-1">
+              <div className="w-full space-y-0.5 sm:space-y-1">
                 {prevLines.map((line, i) => (
                   <div key={i} className="overflow-hidden py-0.5">
                     <div
                       data-mask-item
-                      className="font-extrabold tracking-[-0.045em] leading-[0.94] text-[#ECEAE6] text-[clamp(2.5rem,11vw,4.25rem)] sm:text-[clamp(3rem,8.5vw,8.5rem)] will-change-transform"
+                      className="font-extrabold tracking-[-0.045em] leading-[0.96] sm:leading-[0.94] text-[#ECEAE6] text-[clamp(2rem,9.2vw,3.4rem)] sm:text-[clamp(3rem,8.5vw,8.5rem)] will-change-transform"
                     >
                       {line}
                     </div>
@@ -295,15 +331,15 @@ export default function ProjectInfo({
               </div>
 
               {/* Placeholder matching skip button height so vertical alignment stays pixel-identical */}
-              <div className="mt-4 sm:mt-6 h-6" />
+              <div className="mt-2.5 sm:mt-6 h-6" />
             </div>
 
-            <div className="lg:col-span-5 flex flex-col sm:flex-row lg:flex-row items-start sm:items-end justify-between gap-6">
-              <div className="max-w-md space-y-2.5 sm:space-y-3 min-w-0">
+            <div className="lg:col-span-5 flex flex-col sm:flex-row lg:flex-row items-start sm:items-end justify-between gap-4 sm:gap-6">
+              <div className="max-w-md space-y-1.5 sm:space-y-3 min-w-0">
                 <div className="overflow-hidden">
                   <p
                     data-mask-item
-                    className="font-mono text-[11px] sm:text-xs font-medium tracking-wide text-[#A6A6FF] leading-snug"
+                    className="font-mono text-[10px] sm:text-xs font-medium tracking-wide text-[#A6A6FF] leading-snug"
                   >
                     {prevProject.tag}
                   </p>
@@ -311,12 +347,12 @@ export default function ProjectInfo({
                 <div className="overflow-hidden">
                   <p
                     data-mask-item
-                    className="text-sm sm:text-[15px] leading-relaxed text-[#ECEAE6]/95 font-normal"
+                    className="text-xs sm:text-[15px] leading-relaxed text-[#ECEAE6]/95 font-normal line-clamp-3 sm:line-clamp-none"
                   >
                     {prevProject.description}
                   </p>
                 </div>
-                <div className="overflow-hidden">
+                <div className="overflow-hidden hidden sm:block">
                   <p
                     data-mask-item
                     className="text-xs leading-relaxed text-[#ECEAE6]/80 font-normal"
@@ -325,7 +361,7 @@ export default function ProjectInfo({
                   </p>
                 </div>
               </div>
-              <div className="h-[88px] w-[88px] sm:h-[100px] sm:w-[100px] shrink-0" />
+              <div className="h-11 w-32 sm:h-[100px] sm:w-[100px] shrink-0" />
             </div>
           </div>
         )}
@@ -333,27 +369,27 @@ export default function ProjectInfo({
         {/* INCOMING / ACTIVE LAYER */}
         <div
           ref={incomingRef}
-          className="relative z-20 grid grid-cols-1 items-end gap-6 lg:grid-cols-12 lg:gap-10"
+          className="relative z-20 grid grid-cols-1 items-end gap-4 sm:gap-6 lg:grid-cols-12 lg:gap-10"
         >
           {/* Bottom-Start: Subtitle + Giant Masked Line-by-Line Title + Skip Link */}
           <div className="lg:col-span-7 flex flex-col items-start min-w-0">
-            <div className="mb-2 sm:mb-3 overflow-hidden">
+            <div className="mb-1.5 sm:mb-3 overflow-hidden">
               <p
                 data-mask-item
                 data-mask-title
-                className="text-xs sm:text-sm font-normal text-[#ECEAE6]/82 tracking-wide"
+                className="text-[11px] sm:text-sm font-normal text-[#ECEAE6]/82 tracking-wide"
               >
                 {copy.titleSubtitle}
               </p>
             </div>
 
-            <h3 className="w-full space-y-1">
+            <h3 className="w-full space-y-0.5 sm:space-y-1">
               {activeLines.map((line, i) => (
                 <span key={`${activeProject.id}-${i}`} className="block overflow-hidden py-0.5">
                   <span
                     data-mask-item
                     data-mask-title
-                    className="block font-extrabold tracking-[-0.045em] leading-[0.94] text-[#ECEAE6] text-[clamp(2.5rem,11vw,4.25rem)] sm:text-[clamp(3rem,8.5vw,8.5rem)] text-balance will-change-transform"
+                    className="block font-extrabold tracking-[-0.045em] leading-[0.96] sm:leading-[0.94] text-[#ECEAE6] text-[clamp(2rem,9.2vw,3.4rem)] sm:text-[clamp(3rem,8.5vw,8.5rem)] text-balance will-change-transform"
                   >
                     {line}
                   </span>
@@ -368,21 +404,21 @@ export default function ProjectInfo({
                 soundEngine.playStippleTick();
                 onSkipNext();
               }}
-              className="group mt-4 sm:mt-6 inline-flex items-center gap-2 rounded-full px-3 py-1 -ms-3 text-xs sm:text-sm font-medium text-[#ECEAE6]/85 hover:bg-white/10 hover:text-white transition-colors cursor-pointer whitespace-nowrap"
+              className="group mt-2.5 sm:mt-6 inline-flex items-center gap-2 rounded-full px-3 py-1 -ms-3 text-xs sm:text-sm font-medium text-[#ECEAE6]/85 hover:bg-white/10 hover:text-white transition-colors cursor-pointer whitespace-nowrap"
             >
               <span>{copy.skipNext}</span>
               <ArrowDownRight className="h-4 w-4 text-[#A6A6FF] transition-transform duration-200 group-hover:translate-x-0.5 group-hover:translate-y-0.5" />
             </button>
           </div>
 
-          {/* Bottom-Center-End: High-Contrast Description Block + Circular Magnetic #5B5BF0 Visit Site CTA */}
-          <div className="lg:col-span-5 flex flex-col sm:flex-row lg:flex-row items-start sm:items-end justify-between gap-6">
-            <div className="max-w-md space-y-2.5 sm:space-y-3 min-w-0">
+          {/* Bottom-Center-End: High-Contrast Description Block + Responsive Visit Site CTA */}
+          <div className="lg:col-span-5 flex flex-col sm:flex-row lg:flex-row items-start sm:items-end justify-between gap-4 sm:gap-6">
+            <div className="max-w-md space-y-1.5 sm:space-y-3 min-w-0">
               <div className="overflow-hidden">
                 <p
                   data-mask-item
                   data-mask-meta
-                  className="font-mono text-[11px] sm:text-xs font-medium tracking-wide text-[#A6A6FF] leading-snug"
+                  className="font-mono text-[10px] sm:text-xs font-medium tracking-wide text-[#A6A6FF] leading-snug"
                 >
                   {activeProject.tag}
                 </p>
@@ -392,13 +428,13 @@ export default function ProjectInfo({
                 <p
                   data-mask-item
                   data-mask-meta
-                  className="text-sm sm:text-[15px] leading-relaxed text-[#ECEAE6]/95 font-normal"
+                  className="text-xs sm:text-[15px] leading-relaxed text-[#ECEAE6]/95 font-normal line-clamp-3 sm:line-clamp-none"
                 >
                   {activeProject.description}
                 </p>
               </div>
 
-              <div className="overflow-hidden">
+              <div className="overflow-hidden hidden sm:block">
                 <p
                   data-mask-item
                   data-mask-meta
@@ -409,7 +445,7 @@ export default function ProjectInfo({
               </div>
             </div>
 
-            {/* 100px Magnetic Circular Visit Site CTA */}
+            {/* Compact pill on mobile (< sm), 100px Magnetic Circular Visit Site CTA on sm+ */}
             <div className="shrink-0 self-start sm:self-end overflow-hidden p-2 -m-2">
               <div data-mask-item data-mask-meta>
                 <a
@@ -420,13 +456,13 @@ export default function ProjectInfo({
                   data-cursor="view"
                   onClick={() => soundEngine.playStippleTick()}
                   aria-label={`${copy.visitSite} — ${activeProject.title}`}
-                  className="group relative flex h-[88px] w-[88px] sm:h-[100px] sm:w-[100px] items-center justify-center rounded-full bg-[#5B5BF0] text-white shadow-[0_14px_38px_rgba(91,91,240,0.45)] transition-colors duration-200 hover:bg-[#6A6AF8] will-change-transform"
+                  className="group relative flex h-11 px-5 w-auto sm:h-[100px] sm:w-[100px] sm:px-0 items-center justify-center rounded-full bg-[#5B5BF0] text-white shadow-[0_14px_38px_rgba(91,91,240,0.45)] transition-colors duration-200 hover:bg-[#6A6AF8] will-change-transform"
                 >
                   <span
                     ref={ctaTextRef}
-                    className="inline-flex flex-col items-center justify-center gap-0.5 text-center text-[11px] sm:text-xs font-semibold tracking-tight whitespace-nowrap leading-tight pointer-events-none"
+                    className="inline-flex flex-col items-center justify-center gap-0.5 text-center text-xs font-semibold tracking-tight whitespace-nowrap leading-tight pointer-events-none"
                   >
-                    <span className="inline-flex items-center gap-1">
+                    <span className="inline-flex items-center gap-1.5 sm:gap-1">
                       <span>{copy.visitSite}</span>
                       <ArrowUpRight className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
                     </span>

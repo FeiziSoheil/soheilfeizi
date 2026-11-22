@@ -286,6 +286,7 @@ export default function StoryExperience() {
     const lenis = new Lenis({
       lerp: STORY_PARTICLE_CONFIG.lenis.lerp,
       smoothWheel: true,
+      syncTouch: false,
       wheelMultiplier: STORY_PARTICLE_CONFIG.lenis.wheelMultiplier,
       touchMultiplier: 1.25,
     });
@@ -387,19 +388,25 @@ export default function StoryExperience() {
     );
     camera.position.set(0, 0.05, 8.2);
 
-    // Asymmetric composition offset: right in LTR, left in RTL, centered on mobile or ?debug=shapes
+    // Asymmetric composition offset: right in LTR, left in RTL, upper-centered on mobile, centered in ?debug=shapes
     let currentViewOffsetX = 0;
+    let currentViewOffsetY = 0;
     const applyViewOffset = (w: number, h: number, tunnelFactor: number, centered: boolean) => {
       const mobileNow = w < 768;
-      const targetOffset =
+      const targetOffsetX =
         mobileNow || centered
           ? 0
           : (localeRef.current === 'fa' ? 1 : -1) * w * 0.165 * (1 - tunnelFactor * 0.9);
-      currentViewOffsetX += (targetOffset - currentViewOffsetX) * 0.12;
-      if (Math.abs(currentViewOffsetX) < 0.25 && (mobileNow || centered)) {
+      const targetOffsetY =
+        mobileNow && !centered
+          ? h * 0.14 * (1 - tunnelFactor * 0.85)
+          : 0;
+      currentViewOffsetX += (targetOffsetX - currentViewOffsetX) * 0.12;
+      currentViewOffsetY += (targetOffsetY - currentViewOffsetY) * 0.12;
+      if (Math.abs(currentViewOffsetX) < 0.25 && Math.abs(currentViewOffsetY) < 0.25) {
         camera.clearViewOffset();
       } else {
-        camera.setViewOffset(w, h, currentViewOffsetX, 0, w, h);
+        camera.setViewOffset(w, h, currentViewOffsetX, currentViewOffsetY, w, h);
       }
     };
 
@@ -427,6 +434,18 @@ export default function StoryExperience() {
       pointerTargetRef.current.y = ny;
       pointerTargetRef.current.active = 1;
     };
+    const onPointerDown = (e: PointerEvent) => {
+      const nx = (e.clientX / Math.max(1, window.innerWidth)) * 2 - 1;
+      const ny = -(e.clientY / Math.max(1, window.innerHeight)) * 2 + 1;
+      pointerTargetRef.current.x = nx;
+      pointerTargetRef.current.y = ny;
+      pointerTargetRef.current.active = 1;
+    };
+    const onPointerUp = (e: PointerEvent) => {
+      if (e.pointerType !== 'mouse') {
+        pointerTargetRef.current.active = 0;
+      }
+    };
     const onPointerLeave = () => {
       pointerTargetRef.current.active = 0;
     };
@@ -448,8 +467,12 @@ export default function StoryExperience() {
     };
 
     window.addEventListener('pointermove', onPointerMove, { passive: true });
+    window.addEventListener('pointerdown', onPointerDown, { passive: true });
+    window.addEventListener('pointerup', onPointerUp, { passive: true });
+    window.addEventListener('pointercancel', onPointerLeave, { passive: true });
     window.addEventListener('pointerleave', onPointerLeave, { passive: true });
     window.addEventListener('resize', onResize, { passive: true });
+    window.addEventListener('orientationchange', onResize, { passive: true });
     document.addEventListener('visibilitychange', onVisibilityChange);
 
     let lastTime = performance.now();
@@ -501,10 +524,17 @@ export default function StoryExperience() {
         );
 
         const isTun = shapeId === 'tunnel';
+        const dbgAspect = w / h;
+        const dbgPullback =
+          !isTun && dbgAspect < 0.75
+            ? Math.min(1.55, 0.78 / Math.max(0.45, dbgAspect))
+            : 1;
         camTargetPos.set(
           ch.camera.position[0],
           ch.camera.position[1],
-          isTun ? STORY_TUNNEL_CONFIG.zStart : Math.min(7.2, ch.camera.position[2])
+          isTun
+            ? STORY_TUNNEL_CONFIG.zStart
+            : Math.min(7.2, ch.camera.position[2]) * dbgPullback
         );
         camTargetLook.set(ch.camera.lookAt[0], ch.camera.lookAt[1], ch.camera.lookAt[2]);
         camPosSmooth.lerp(camTargetPos, Math.min(1, dt * 8));
@@ -563,12 +593,14 @@ export default function StoryExperience() {
         (speedNorm - scrollSpeedRef.current) * Math.min(1, dt * 7);
 
       // SINGLE SOURCE OF TRUTH: map scrollY -> { index, local, ... } via chapter lengths
+      const lengthScale = w < 768 ? 0.68 : 1;
       const frame = evaluateStoryTimeline(
         currentScrollY,
         h,
         STORY_CHAPTERS,
         scrollSpeedRef.current,
-        isRtl
+        isRtl,
+        lengthScale
       );
 
       // Smooth damped morph stage with strict max rate <= 1.2 / sec (never snaps/rushes)
@@ -633,10 +665,14 @@ export default function StoryExperience() {
       const parallaxAmp = reducedMotionRef.current
         ? 0
         : 0.22 * (1 - frame.tunnelFactor * 0.78);
+      const aspect = w / h;
+      const aspectPullback =
+        aspect < 0.75 ? Math.min(1.55, 0.78 / Math.max(0.45, aspect)) : 1;
+      const zScale = 1 + (aspectPullback - 1) * (1 - frame.tunnelFactor);
       camTargetPos.set(
         frame.camPos[0] + pointerSmooth.x * parallaxAmp,
         frame.camPos[1] + pointerSmooth.y * parallaxAmp * 0.75,
-        frame.camPos[2]
+        frame.camPos[2] * zScale
       );
       camTargetLook.set(frame.camLookAt[0], frame.camLookAt[1], frame.camLookAt[2]);
 
@@ -814,8 +850,12 @@ export default function StoryExperience() {
       cancelAnimationFrame(rafId);
       window.clearTimeout(timerId);
       window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerdown', onPointerDown);
+      window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener('pointercancel', onPointerLeave);
       window.removeEventListener('pointerleave', onPointerLeave);
       window.removeEventListener('resize', onResize);
+      window.removeEventListener('orientationchange', onResize);
       document.removeEventListener('visibilitychange', onVisibilityChange);
 
       particleSysRef.current?.dispose();
@@ -867,10 +907,12 @@ export default function StoryExperience() {
   }, [router]);
 
   const handleJumpToChapter = useCallback((index: number) => {
+    const lengthScale = window.innerWidth < 768 ? 0.68 : 1;
     const targetY = getChapterStartScrollY(
       index,
       window.innerHeight,
-      STORY_CHAPTERS
+      STORY_CHAPTERS,
+      lengthScale
     );
     if (lenisRef.current) {
       lenisRef.current.scrollTo(targetY, { duration: 1.4 });
@@ -940,11 +982,11 @@ export default function StoryExperience() {
       {/* DEBUG SHAPES VIEWER (`?debug=shapes`) — Static, zero noise       */}
       {/* ================================================================ */}
       {debugShapes ? (
-        <div className="fixed inset-0 z-30 pointer-events-none flex flex-col justify-between p-6 sm:p-10">
+        <div className="fixed inset-0 z-30 pointer-events-none flex flex-col justify-between p-3.5 sm:p-10">
           {/* Top bar */}
-          <div className="pointer-events-auto flex flex-wrap items-center justify-between gap-4 border-b border-[#ECEAE6]/12 pb-4 font-mono text-xs">
-            <div className="flex items-center gap-3">
-              <span className="rounded-full bg-[#5B5BF0] px-3 py-1 text-[10px] font-bold text-white">
+          <div className="pointer-events-auto flex flex-wrap items-center justify-between gap-2.5 sm:gap-4 border-b border-[#ECEAE6]/12 pb-3 sm:pb-4 font-mono text-xs">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <span className="rounded-full bg-[#5B5BF0] px-2.5 sm:px-3 py-1 text-[10px] font-bold text-white">
                 DEBUG · SHAPES
               </span>
               <span className="text-[#ECEAE6] font-semibold">
@@ -955,7 +997,7 @@ export default function StoryExperience() {
               </span>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               <button
                 type="button"
                 onClick={handleToggleLocale}
@@ -966,7 +1008,7 @@ export default function StoryExperience() {
               <button
                 type="button"
                 onClick={() => toggleDebugShapes(false)}
-                className="rounded-full border border-[#ECEAE6]/22 bg-[#0C0C10]/90 px-3.5 py-1 text-[11px] hover:border-[#5B5BF0] cursor-pointer"
+                className="rounded-full border border-[#ECEAE6]/22 bg-[#0C0C10]/90 px-3 sm:px-3.5 py-1 text-[11px] hover:border-[#5B5BF0] cursor-pointer"
               >
                 Exit Debug → /story
               </button>
@@ -974,15 +1016,15 @@ export default function StoryExperience() {
           </div>
 
           {/* Bottom controls & particle diagnostics */}
-          <div className="pointer-events-auto flex flex-col gap-3">
+          <div className="pointer-events-auto flex flex-col gap-2.5 sm:gap-3">
             {/* Shape quick selector pills */}
-            <div className="flex flex-wrap items-center justify-center gap-1.5 font-mono text-[11px]">
+            <div className="flex flex-nowrap sm:flex-wrap items-center justify-start sm:justify-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5 sm:pb-0 font-mono text-[11px]">
               {STORY_CHAPTERS.map((ch, idx) => (
                 <button
                   key={ch.id}
                   type="button"
                   onClick={() => setDebugIndex(idx)}
-                  className={`rounded-full border px-3 py-1 transition-colors cursor-pointer ${
+                  className={`shrink-0 whitespace-nowrap rounded-full border px-3 py-1 transition-colors cursor-pointer ${
                     idx === debugIndex
                       ? 'border-[#5B5BF0] bg-[#5B5BF0] text-white'
                       : 'border-[#ECEAE6]/15 bg-[#0C0C10]/90 text-[#ECEAE6]/65 hover:border-[#ECEAE6]/45'
@@ -1037,13 +1079,13 @@ export default function StoryExperience() {
         </div>
       ) : (
         <>
-          {/* Subtle directional vignette behind narrative copy */}
+          {/* Subtle directional vignette behind narrative copy (bottom scrim on mobile, side scrim on md+) */}
           <div
             aria-hidden="true"
-            className={`pointer-events-none fixed inset-0 z-[5] ${
+            className={`pointer-events-none fixed inset-0 z-[5] bg-gradient-to-t from-[#0A0A0A]/92 via-[#0A0A0A]/45 to-transparent ${
               locale === 'fa'
-                ? 'bg-gradient-to-l from-[#0A0A0A]/80 via-[#0A0A0A]/28 to-transparent'
-                : 'bg-gradient-to-r from-[#0A0A0A]/80 via-[#0A0A0A]/28 to-transparent'
+                ? 'md:bg-gradient-to-l md:from-[#0A0A0A]/80 md:via-[#0A0A0A]/28 md:to-transparent'
+                : 'md:bg-gradient-to-r md:from-[#0A0A0A]/80 md:via-[#0A0A0A]/28 md:to-transparent'
             }`}
           />
 
@@ -1107,7 +1149,7 @@ export default function StoryExperience() {
               <article
                 key={ch.id}
                 id={`story-${ch.id}`}
-                style={{ height: `${ch.length}vh` }}
+                style={{ height: `calc(${ch.length}vh * var(--story-ch-scale, 1))` }}
                 className="w-full"
                 aria-label={ch.copy[locale].kicker}
               >
@@ -1117,7 +1159,7 @@ export default function StoryExperience() {
                 </div>
               </article>
             ))}
-            <div aria-hidden="true" className="h-[100vh] w-full" />
+            <div aria-hidden="true" className="h-[100svh] w-full" />
           </main>
 
           {/* 6. Full-screen Dark Entry Gate (000 -> 100 + 01 Site / 02 Story) */}
@@ -1142,7 +1184,7 @@ export default function StoryExperience() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[60] flex items-center justify-center bg-[#0A0A0A]/86 p-6 backdrop-blur-sm"
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-[#0A0A0A]/86 p-4 sm:p-6 backdrop-blur-sm"
             onClick={() => setContactOpen(false)}
           >
             <div
@@ -1150,7 +1192,7 @@ export default function StoryExperience() {
               aria-modal="true"
               aria-label={ui.modalTitle}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-lg rounded-[var(--radius-lg)] border border-[#ECEAE6]/16 bg-[#0E0E12] p-7 sm:p-9 text-[#ECEAE6] shadow-2xl"
+              className="w-full max-w-lg max-h-[88svh] overflow-y-auto rounded-[var(--radius-lg)] border border-[#ECEAE6]/16 bg-[#0E0E12] p-5 sm:p-9 text-[#ECEAE6] shadow-2xl"
             >
               <div className="flex items-start justify-between gap-4 border-b border-[#ECEAE6]/12 pb-4">
                 <div>
@@ -1165,7 +1207,7 @@ export default function StoryExperience() {
                   type="button"
                   onClick={() => setContactOpen(false)}
                   aria-label={ui.closeLabel}
-                  className="rounded-full p-1.5 text-[#ECEAE6]/65 hover:bg-white/10 hover:text-[#ECEAE6] cursor-pointer"
+                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[#ECEAE6]/65 hover:bg-white/10 hover:text-[#ECEAE6] cursor-pointer"
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -1185,7 +1227,7 @@ export default function StoryExperience() {
                   </a>
                 </div>
               ) : (
-                <form onSubmit={handleContactSubmit} className="mt-6 space-y-4">
+                <form onSubmit={handleContactSubmit} className="mt-5 sm:mt-6 space-y-4">
                   <div>
                     <label className="block font-mono text-[11px] uppercase tracking-wider text-[#ECEAE6]/55 mb-1.5">
                       {ui.nameLabel}
@@ -1195,7 +1237,7 @@ export default function StoryExperience() {
                       required
                       value={nameInput}
                       onChange={(e) => setNameInput(e.target.value)}
-                      className="w-full rounded-[var(--radius-md)] border border-[#ECEAE6]/18 bg-[#0A0A0D] px-4 py-2.5 text-sm text-[#ECEAE6] outline-none focus:border-[#5B5BF0]"
+                      className="w-full rounded-[var(--radius-md)] border border-[#ECEAE6]/18 bg-[#0A0A0D] px-4 py-2.5 text-base sm:text-sm text-[#ECEAE6] outline-none focus:border-[#5B5BF0]"
                     />
                   </div>
                   <div>
@@ -1207,7 +1249,7 @@ export default function StoryExperience() {
                       required
                       value={emailInput}
                       onChange={(e) => setEmailInput(e.target.value)}
-                      className="w-full rounded-[var(--radius-md)] border border-[#ECEAE6]/18 bg-[#0A0A0D] px-4 py-2.5 text-sm text-[#ECEAE6] outline-none focus:border-[#5B5BF0]"
+                      className="w-full rounded-[var(--radius-md)] border border-[#ECEAE6]/18 bg-[#0A0A0D] px-4 py-2.5 text-base sm:text-sm text-[#ECEAE6] outline-none focus:border-[#5B5BF0]"
                     />
                   </div>
                   <div>
@@ -1219,12 +1261,12 @@ export default function StoryExperience() {
                       required
                       value={briefInput}
                       onChange={(e) => setBriefInput(e.target.value)}
-                      className="w-full rounded-[var(--radius-md)] border border-[#ECEAE6]/18 bg-[#0A0A0D] px-4 py-2.5 text-sm text-[#ECEAE6] outline-none focus:border-[#5B5BF0] resize-none"
+                      className="w-full rounded-[var(--radius-md)] border border-[#ECEAE6]/18 bg-[#0A0A0D] px-4 py-2.5 text-base sm:text-sm text-[#ECEAE6] outline-none focus:border-[#5B5BF0] resize-none"
                     />
                   </div>
                   <button
                     type="submit"
-                    className="w-full rounded-full bg-[#5B5BF0] py-3 text-sm font-semibold text-white hover:bg-[#4949DE] transition-colors cursor-pointer"
+                    className="min-h-[44px] w-full rounded-full bg-[#5B5BF0] py-3 text-sm font-semibold text-white hover:bg-[#4949DE] transition-colors cursor-pointer"
                   >
                     {ui.sendLabel}
                   </button>

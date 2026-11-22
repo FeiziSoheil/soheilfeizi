@@ -907,7 +907,7 @@ export default function SiteParticleStage({
     const gpuStr = dbg ? String(gl2.getParameter(dbg.UNMASKED_RENDERER_WEBGL)) : '';
     const isSoftwareGl = /SwiftShader|llvmpipe|Software/i.test(gpuStr);
 
-    const dpr = isSoftwareGl ? 1 : Math.min(window.devicePixelRatio || 1, 2);
+    const dpr = isSoftwareGl ? 1 : Math.min(window.devicePixelRatio || 1, isMobile ? 1.5 : 2);
     renderer.setPixelRatio(dpr);
     renderer.setSize(width, height);
     renderer.setClearColor(0x000000, 0);
@@ -1185,6 +1185,7 @@ export default function SiteParticleStage({
     let microMorph = 0;
     let lastQuoteTrigger = useScrollStore.getState().quoteMorphTrigger;
     let buildToken = 0;
+    let layoutDirty = false;
 
     const lastFromOrigin = new THREE.Vector2(0, 0);
     const lastToOrigin = new THREE.Vector2(0, 0);
@@ -1316,14 +1317,15 @@ export default function SiteParticleStage({
       let nextKey: string | null = null;
       let nextSpec: LocalSlotSpec | null = null;
       let nextCount: number = nonHeroCount;
-      let nextW = 460;
-      let nextH = 420;
+      const isMobileNow = width < 768;
+      let nextW = isMobileNow ? Math.min(width * 0.65, 220) : 460;
+      let nextH = isMobileNow ? Math.min(height * 0.24, 170) : 420;
       if (resolvedKey === 'hero-portrait') {
         nextKey = 'about-trophy';
         nextSpec = { id: 'about-trophy', descriptor: 'svg:trophy' };
         nextCount = trophyCount;
-        nextW = 132;
-        nextH = 132;
+        nextW = isMobileNow ? 96 : 132;
+        nextH = isMobileNow ? 96 : 132;
       } else if (resolvedKey === 'about-trophy') {
         const firstTab = CONTENT[localeNow].whatido.tabs[0];
         if (firstTab) {
@@ -1389,16 +1391,27 @@ export default function SiteParticleStage({
 
       const token = ++buildToken;
       const spec = resolved.spec;
+      const isMobileNow = width < 768;
       const fallbackW = isHeroPortrait
-        ? Math.min(width * 0.5, 680)
+        ? Math.min(width * (isMobileNow ? 0.78 : 0.5), 680)
         : isTrophySlot
-          ? 132
-          : 460;
+          ? isMobileNow
+            ? 96
+            : 132
+          : isMobileNow
+            ? Math.min(width * 0.65, 220)
+            : 460;
       const fallbackH = isHeroPortrait
-        ? Math.max(height, 720)
+        ? isMobileNow
+          ? Math.min(height * 0.42, 340)
+          : Math.max(height, 720)
         : isTrophySlot
-          ? 132
-          : 420;
+          ? isMobileNow
+            ? 96
+            : 132
+          : isMobileNow
+            ? Math.min(height * 0.24, 170)
+            : 420;
       void particleRegistry
         .buildStoryTargetBuffer(spec, targetSampleCount, fallbackW, fallbackH)
         .then((buf) => {
@@ -1423,6 +1436,7 @@ export default function SiteParticleStage({
 
     const unsubRegistry = particleRegistry.subscribe(() => {
       bufferCache.clear();
+      layoutDirty = true;
     });
 
     // Pointer tracking
@@ -1446,11 +1460,18 @@ export default function SiteParticleStage({
       if ((e.target as HTMLElement | null)?.closest('button, a, input, textarea, .lil-gui')) {
         return;
       }
+      const p = toWebgl(e.clientX, e.clientY);
+      mouseTarget.set(p.x, p.y);
+      mouseActive = 1;
       mouseHold = 1;
       useScrollStore.getState().setCursorMagnetHold(true);
     };
-    const onPointerUp = () => {
+    const onPointerUp = (e: PointerEvent) => {
       mouseHold = 0;
+      if (e.pointerType !== 'mouse') {
+        mouseActive = 0;
+        tiltTarget.set(0, 0);
+      }
       useScrollStore.getState().setCursorMagnetHold(false);
     };
     const onPointerLeave = () => {
@@ -1469,7 +1490,9 @@ export default function SiteParticleStage({
       camera.bottom = -height / 2;
       camera.updateProjectionMatrix();
       renderer.setSize(width, height);
-      const nextDpr = isSoftwareGl ? 1 : Math.min(window.devicePixelRatio || 1, 2);
+      const nextDpr = isSoftwareGl
+        ? 1
+        : Math.min(window.devicePixelRatio || 1, width < 768 ? 1.5 : 2);
       renderer.setPixelRatio(nextDpr);
       morphMat.uniforms.uPixelRatio.value = nextDpr;
       morphMat.uniforms.uResolution.value.set(width, height);
@@ -1477,6 +1500,7 @@ export default function SiteParticleStage({
       dustMat.uniforms.uResolution.value.set(width, height);
       ringMat.uniforms.uPixelRatio.value = nextDpr;
       bufferCache.clear();
+      layoutDirty = true;
     };
 
     let tabVisible = !document.hidden;
@@ -1487,8 +1511,10 @@ export default function SiteParticleStage({
     window.addEventListener('pointermove', onPointerMove, { passive: true });
     window.addEventListener('pointerdown', onPointerDown, { passive: true });
     window.addEventListener('pointerup', onPointerUp, { passive: true });
+    window.addEventListener('pointercancel', onPointerLeave, { passive: true });
     window.addEventListener('pointerleave', onPointerLeave);
     window.addEventListener('resize', onResize);
+    window.addEventListener('orientationchange', onResize);
     document.addEventListener('visibilitychange', onVis);
 
     let fpsFrames = 0;
@@ -1539,7 +1565,8 @@ export default function SiteParticleStage({
         const shapeMeta = SITE_DEBUG_SHAPES[dbgState.idx];
         const debugKey = `debug:${shapeMeta.id}:${dbgState.locale}`;
         const dbgIsHero = shapeMeta.id === 'heroPortrait';
-        if (debugKey !== currentKey) {
+        if (debugKey !== currentKey || layoutDirty) {
+          layoutDirty = false;
           currentKey = debugKey;
           const spec = resolveDebugSpec(shapeMeta.id, dbgState.locale);
           const boxW = dbgIsHero ? Math.min(width * 0.46, 540) : Math.min(width * 0.84, 1180);
@@ -1610,7 +1637,8 @@ export default function SiteParticleStage({
       }
       const secP = st.sectionProgress[st.activeSection] ?? 0;
 
-      if (resolved.key !== currentKey) {
+      if (resolved.key !== currentKey || layoutDirty) {
+        layoutDirty = false;
         requestSlotMorph(resolved, st.locale);
       }
 
@@ -1939,8 +1967,10 @@ export default function SiteParticleStage({
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerdown', onPointerDown);
       window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener('pointercancel', onPointerLeave);
       window.removeEventListener('pointerleave', onPointerLeave);
       window.removeEventListener('resize', onResize);
+      window.removeEventListener('orientationchange', onResize);
       document.removeEventListener('visibilitychange', onVis);
       morphGeo.dispose();
       morphMat.dispose();
@@ -1993,23 +2023,23 @@ export default function SiteParticleStage({
       {debugShapes && (
         <div
           dir="ltr"
-          className="fixed inset-x-0 top-0 z-[65] flex flex-wrap items-center justify-between gap-3 px-6 py-4"
+          className="fixed inset-x-0 top-0 z-[65] flex flex-wrap items-center justify-between gap-2.5 sm:gap-3 px-3.5 py-3 sm:px-6 sm:py-4"
         >
-          <div className="flex items-center gap-3 rounded-full border border-current/15 bg-black/25 px-4 py-2 font-mono text-xs backdrop-blur-md">
-            <span className="h-2 w-2 rounded-full bg-[#5B5BF0]" />
-            <span>SITE SHAPES DEBUG (ZERO NOISE)</span>
-            <span className="opacity-60">
+          <div className="flex items-center gap-2.5 sm:gap-3 rounded-full border border-current/15 bg-black/25 px-3 sm:px-4 py-1.5 sm:py-2 font-mono text-[10px] sm:text-xs backdrop-blur-md">
+            <span className="h-2 w-2 rounded-full bg-[#5B5BF0] shrink-0" />
+            <span className="truncate">SITE SHAPES DEBUG</span>
+            <span className="opacity-60 shrink-0">
               {String(debugIdx + 1).padStart(2, '0')} / {String(SITE_DEBUG_SHAPES.length).padStart(2, '0')}
             </span>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex w-full sm:w-auto flex-nowrap sm:flex-wrap items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar pb-0.5 sm:pb-0">
             {SITE_DEBUG_SHAPES.map((s, idx) => (
               <button
                 key={s.id}
                 type="button"
                 onClick={() => setDebugIdx(idx)}
-                className={`rounded-full px-3.5 py-1.5 font-mono text-[11px] transition-colors ${
+                className={`shrink-0 whitespace-nowrap rounded-full px-3 sm:px-3.5 py-1.5 font-mono text-[11px] transition-colors ${
                   idx === debugIdx
                     ? 'bg-[#5B5BF0] text-white'
                     : 'border border-current/20 opacity-75 hover:opacity-100'
@@ -2022,7 +2052,7 @@ export default function SiteParticleStage({
             <button
               type="button"
               onClick={() => setDebugIdx((i) => (i - 1 + SITE_DEBUG_SHAPES.length) % SITE_DEBUG_SHAPES.length)}
-              className="rounded-full border border-current/20 p-2 hover:border-[#5B5BF0]"
+              className="shrink-0 rounded-full border border-current/20 p-2 hover:border-[#5B5BF0]"
               aria-label="Previous shape"
             >
               <ChevronLeft className="h-4 w-4" />
@@ -2030,7 +2060,7 @@ export default function SiteParticleStage({
             <button
               type="button"
               onClick={() => setDebugIdx((i) => (i + 1) % SITE_DEBUG_SHAPES.length)}
-              className="rounded-full border border-current/20 p-2 hover:border-[#5B5BF0]"
+              className="shrink-0 rounded-full border border-current/20 p-2 hover:border-[#5B5BF0]"
               aria-label="Next shape"
             >
               <ChevronRight className="h-4 w-4" />
@@ -2039,7 +2069,7 @@ export default function SiteParticleStage({
             <button
               type="button"
               onClick={() => setDebugDark((d) => !d)}
-              className="inline-flex items-center gap-1.5 rounded-full border border-current/20 px-3 py-1.5 font-mono text-[11px]"
+              className="shrink-0 whitespace-nowrap inline-flex items-center gap-1.5 rounded-full border border-current/20 px-3 py-1.5 font-mono text-[11px]"
             >
               {debugDark ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
               {debugDark ? 'Dark' : 'Light'}
@@ -2048,7 +2078,7 @@ export default function SiteParticleStage({
             <button
               type="button"
               onClick={() => setLocale(locale === 'fa' ? 'en' : 'fa')}
-              className="rounded-full border border-current/20 px-3 py-1.5 font-mono text-[11px] uppercase"
+              className="shrink-0 rounded-full border border-current/20 px-3 py-1.5 font-mono text-[11px] uppercase"
             >
               {locale}
             </button>
@@ -2057,7 +2087,7 @@ export default function SiteParticleStage({
               <button
                 type="button"
                 onClick={onExitDebug}
-                className="inline-flex items-center gap-1 rounded-full bg-current/10 px-3 py-1.5 font-mono text-[11px] hover:bg-[#5B5BF0] hover:text-white"
+                className="shrink-0 whitespace-nowrap inline-flex items-center gap-1 rounded-full bg-current/10 px-3 py-1.5 font-mono text-[11px] hover:bg-[#5B5BF0] hover:text-white"
               >
                 <X className="h-3.5 w-3.5" />
                 Exit

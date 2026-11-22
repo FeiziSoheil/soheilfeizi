@@ -122,13 +122,18 @@ export default function SelectedWork({
       ref={sectionRef}
       data-section="work"
       data-theme="dark"
+      data-mobile-height=""
       aria-label={copy.sectionTitle}
       className="pin-section relative w-full bg-[#0A0A0A] text-[#ECEAE6]"
-      style={getSingularitySectionStyle('work', `${projects.length * 100}svh`)}
+      style={getSingularitySectionStyle(
+        'work',
+        `${projects.length * 100}svh`,
+        `${projects.length * 72}svh`
+      )}
     >
       <div
         ref={stickyRef}
-        className="pin-sticky sticky top-0 h-screen w-full overflow-hidden bg-[#0A0A0A]"
+        className="pin-sticky sticky top-0 h-[100svh] w-full overflow-hidden bg-[#0A0A0A]"
       >
         {/* Layer 1: GPU-promoted full-bleed crossfading + smooth parallax project imagery */}
         <ProjectBackground
@@ -185,6 +190,7 @@ export default function SelectedWork({
           copy={copy}
           reducedMotion={reducedMotion}
           onSkipNext={handleSkipNext}
+          onSelectProject={handleSelectProject}
         />
 
         {/* Layer 5: Quantized vertical dotted scroll progress indicator */}

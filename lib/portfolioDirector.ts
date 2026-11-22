@@ -171,9 +171,8 @@ export class PortfolioDirector {
         lerp: params.lerp,
         wheelMultiplier: 0.62,
         smoothWheel: true,
-        syncTouch: true,
-        touchInertiaExponent: 1.65,
-        touchMultiplier: 1.25,
+        syncTouch: false,
+        touchMultiplier: 1.15,
       });
 
       this.lenis.on('scroll', () => {
@@ -198,6 +197,7 @@ export class PortfolioDirector {
     window.addEventListener('touchend', this.onTouchEnd, { passive: true });
     window.addEventListener('keydown', this.onKeyDown);
     window.addEventListener('resize', this.onResize);
+    window.addEventListener('orientationchange', this.onResize);
 
     // Run an immediate initial frame so initial clip/hide states are applied before first paint
     this.stepFrame();
@@ -233,6 +233,7 @@ export class PortfolioDirector {
       window.removeEventListener('touchend', this.onTouchEnd);
       window.removeEventListener('keydown', this.onKeyDown);
       window.removeEventListener('resize', this.onResize);
+      window.removeEventListener('orientationchange', this.onResize);
     }
   }
 
@@ -265,8 +266,12 @@ export class PortfolioDirector {
       const theme = (el.dataset.theme as ThemeKind) || 'light';
       const r = el.getBoundingClientRect();
       const stickyEl = el.querySelector<HTMLElement>('.pin-sticky');
-      const isSticky = el.classList.contains('pin-section') && Boolean(stickyEl);
-      const stickyHeight = stickyEl ? Math.max(1, stickyEl.getBoundingClientRect().height) : vh;
+      const isSticky = Boolean(
+        el.classList.contains('pin-section') &&
+          stickyEl &&
+          window.getComputedStyle(stickyEl).position === 'sticky'
+      );
+      const stickyHeight = stickyEl && isSticky ? Math.max(1, stickyEl.getBoundingClientRect().height) : vh;
       const incoming = getIncomingTransition(id);
       const outgoing = getOutgoingTransition(id);
 

@@ -38,13 +38,14 @@ export function StatementSection({ locale }: { locale: Locale }) {
       id="statement"
       data-section="statement"
       data-theme="dark"
+      data-mobile-height=""
       className={`pin-section ${hasIncomingTransition('statement') ? '' : 'border-t border-[var(--hairline)]'} bg-transparent`}
-      style={getSingularitySectionStyle('statement', '300svh')}
+      style={getSingularitySectionStyle('statement', '300svh', '200svh')}
     >
-      <div className="pin-sticky flex flex-col items-center justify-center px-6 sm:px-10 lg:px-16 text-center">
+      <div className="pin-sticky flex flex-col items-center justify-center px-4 sm:px-10 lg:px-16 text-center">
         <div className="w-full max-w-6xl mx-auto flex flex-col items-center">
           <span
-            className="font-mono text-xs uppercase tracking-[0.22em] text-[#8F8FFF] transition-opacity duration-200"
+            className="font-mono text-[11px] sm:text-xs uppercase tracking-[0.22em] text-[#8F8FFF] transition-opacity duration-200"
             style={{ opacity: leadOpacity }}
           >
             {copy.eyebrow}
@@ -52,7 +53,7 @@ export function StatementSection({ locale }: { locale: Locale }) {
 
           {/* Smaller grey lead phrase above */}
           <p
-            className="mt-5 text-2xl sm:text-4xl lg:text-5xl font-light tracking-[-0.02em] text-[#D9D9D9]/58 transition-opacity duration-200"
+            className="mt-4 sm:mt-5 text-xl sm:text-4xl lg:text-5xl font-light tracking-[-0.02em] text-[#D9D9D9]/58 transition-opacity duration-200"
             style={{ opacity: leadOpacity }}
           >
             {copy.lead}
@@ -66,12 +67,12 @@ export function StatementSection({ locale }: { locale: Locale }) {
             slotId="statement-title"
             descriptor={`statement:${copy.particleWord}`}
             aria-hidden="true"
-            className="relative mx-auto mt-2 w-full max-w-[1160px] h-[clamp(5.5rem,17vw,17.5rem)]"
+            className="relative mx-auto mt-2 w-full max-w-[1160px] h-[clamp(4.5rem,20vw,17.5rem)]"
           />
 
           {/* Caption holds cleanly then fades out synchronously with evaporation */}
           <p
-            className="mx-auto mt-6 max-w-2xl text-sm sm:text-lg font-light leading-relaxed text-[#D9D9D9] will-change-transform"
+            className="mx-auto mt-4 sm:mt-6 max-w-2xl text-xs sm:text-lg font-light leading-relaxed text-[#D9D9D9] will-change-transform"
             style={{
               opacity: captionOpacity,
               transform: `translate3d(0, ${captionY}px, 0)`,
@@ -221,36 +222,37 @@ export function ClientNotesSection({ locale }: { locale: Locale }) {
       id="testimonial"
       data-section="testimonial"
       data-theme="light"
+      data-mobile-height=""
       className={`pin-section ${hasIncomingTransition('testimonial') ? '' : 'border-t border-[var(--hairline)]'} bg-transparent`}
-      style={getSingularitySectionStyle('testimonial', '200svh')}
+      style={getSingularitySectionStyle('testimonial', '200svh', '165svh')}
     >
       <div
-        className="pin-sticky flex flex-col justify-between px-6 sm:px-10 lg:px-16 pt-20 pb-24 sm:pb-28"
+        className="pin-sticky flex flex-col justify-between px-4 sm:px-10 lg:px-16 pt-16 sm:pt-20 pb-20 sm:pb-28"
         onMouseEnter={() => setIsPaused(true)}
         onMouseLeave={() => setIsPaused(false)}
       >
         {/* Top Header Row: (06) WHAT THEY SAID + People I have worked with + Hairline */}
-        <div className="flex flex-wrap items-baseline justify-between gap-4 border-b border-[#111111]/15 pb-4">
-          <div className="flex items-baseline gap-3">
+        <div className="flex flex-wrap items-baseline justify-between gap-2 sm:gap-4 border-b border-[#111111]/15 pb-3 sm:pb-4">
+          <div className="flex items-baseline gap-2.5 sm:gap-3">
             <span className="font-mono text-xs sm:text-sm font-medium text-[#5B5BF0] tabular-nums">
               {copy.index}
             </span>
-            <h2 className="text-xs sm:text-sm md:text-[15px] font-extrabold uppercase tracking-[0.22em] text-[#111111]">
+            <h2 className="text-xs sm:text-sm md:text-[15px] font-extrabold uppercase tracking-[0.18em] sm:tracking-[0.22em] text-[#111111]">
               {copy.title}
             </h2>
           </div>
-          <span className="text-xs sm:text-sm font-normal text-[#111111]/60">
+          <span className="text-[11px] sm:text-sm font-normal text-[#111111]/60">
             {copy.subtitle}
           </span>
         </div>
 
         {/* Main 3-Zone Editorial Grid: Avatar Rail | Dual-DOM Quote Stack | Particle Quote Marks */}
-        <div className="my-auto grid w-full grid-cols-1 items-center gap-8 lg:grid-cols-12 lg:gap-10 py-6">
+        <div className="my-auto grid w-full grid-cols-1 items-center gap-5 sm:gap-8 lg:grid-cols-12 lg:gap-10 py-3 sm:py-6">
           {/* Narrow Left Column: Circular Initials Avatars */}
           <div
             role="tablist"
             aria-label={copy.title}
-            className="lg:col-span-1 flex lg:flex-col items-center gap-3.5"
+            className="lg:col-span-1 flex lg:flex-col items-center gap-3 sm:gap-3.5"
           >
             {quotes.map((item, idx) => {
               const isActive = idx === activeIdx;
@@ -263,10 +265,10 @@ export function ClientNotesSection({ locale }: { locale: Locale }) {
                   aria-label={`${item.name} — ${item.role}`}
                   data-cursor="view"
                   onClick={() => switchTo(idx)}
-                  className="group relative flex items-center gap-2.5 cursor-pointer rounded-full"
+                  className="group relative flex items-center gap-2 cursor-pointer rounded-full"
                 >
                   <span
-                    className={`flex h-12 w-12 items-center justify-center rounded-full font-mono text-xs font-bold tracking-wider transition-all duration-300 ${
+                    className={`flex h-11 w-11 sm:h-12 sm:w-12 items-center justify-center rounded-full font-mono text-xs font-bold tracking-wider transition-all duration-300 ${
                       isActive
                         ? 'bg-[#5B5BF0] text-white shadow-[0_10px_24px_rgba(91,91,240,0.36)] scale-105'
                         : 'bg-[#111111]/8 text-[#111111]/55 hover:bg-[#111111]/14 hover:text-[#111111]'
@@ -276,7 +278,7 @@ export function ClientNotesSection({ locale }: { locale: Locale }) {
                   </span>
                   <span
                     aria-hidden="true"
-                    className={`h-1.5 w-1.5 rounded-full transition-all duration-300 ${
+                    className={`hidden sm:inline-block h-1.5 w-1.5 rounded-full transition-all duration-300 ${
                       isActive
                         ? 'bg-[#5B5BF0] scale-100 opacity-100'
                         : 'bg-transparent scale-0 opacity-0'
@@ -288,18 +290,18 @@ export function ClientNotesSection({ locale }: { locale: Locale }) {
           </div>
 
           {/* Center-Left Column: Dual-DOM Masked Quote Stack */}
-          <div className="lg:col-span-7 relative min-h-[300px] sm:min-h-[340px] flex flex-col justify-center">
+          <div className="lg:col-span-7 relative min-h-[230px] sm:min-h-[340px] flex flex-col justify-center">
             {/* Outgoing Quote Layer */}
             {prevQuote && (
               <div
                 ref={outgoingRef}
                 aria-hidden="true"
-                className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 z-10 space-y-5"
+                className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 z-10 space-y-3.5 sm:space-y-5"
               >
                 <div className="overflow-hidden">
                   <div
                     data-q-item
-                    className="font-extrabold tracking-[-0.035em] leading-[1.06] text-[#111111] text-[clamp(2.1rem,4.5vw,4.5rem)] text-balance"
+                    className="font-extrabold tracking-[-0.035em] leading-[1.1] sm:leading-[1.06] text-[#111111] text-[clamp(1.45rem,5.8vw,4.5rem)] text-balance"
                   >
                     <span className="text-[#5B5BF0] me-2">“</span>
                     {prevQuote.headline}
@@ -309,7 +311,7 @@ export function ClientNotesSection({ locale }: { locale: Locale }) {
                 <div className="overflow-hidden">
                   <p
                     data-q-item
-                    className="max-w-2xl text-sm sm:text-base lg:text-lg font-normal leading-relaxed text-[#111111]/75"
+                    className="max-w-2xl text-xs sm:text-base lg:text-lg font-normal leading-relaxed text-[#111111]/75"
                   >
                     {prevQuote.body}
                   </p>
@@ -326,11 +328,11 @@ export function ClientNotesSection({ locale }: { locale: Locale }) {
             )}
 
             {/* Incoming / Active Quote Layer */}
-            <div ref={incomingRef} className="relative z-20 space-y-5">
+            <div ref={incomingRef} className="relative z-20 space-y-3.5 sm:space-y-5">
               <div className="overflow-hidden py-1">
                 <blockquote
                   data-q-item
-                  className="font-extrabold tracking-[-0.035em] leading-[1.06] text-[#111111] text-[clamp(2.1rem,4.5vw,4.5rem)] text-balance will-change-transform"
+                  className="font-extrabold tracking-[-0.035em] leading-[1.1] sm:leading-[1.06] text-[#111111] text-[clamp(1.45rem,5.8vw,4.5rem)] text-balance will-change-transform"
                 >
                   <span className="text-[#5B5BF0] me-2" aria-hidden="true">
                     {locale === 'fa' ? '«' : '“'}
@@ -345,28 +347,28 @@ export function ClientNotesSection({ locale }: { locale: Locale }) {
               <div className="overflow-hidden">
                 <p
                   data-q-item
-                  className="max-w-2xl text-sm sm:text-base lg:text-lg font-normal leading-relaxed text-[#111111]/76"
+                  className="max-w-2xl text-xs sm:text-base lg:text-lg font-normal leading-relaxed text-[#111111]/76"
                 >
                   {activeQuote.body}
                 </p>
               </div>
 
-              <div className="overflow-hidden pt-2">
+              <div className="overflow-hidden pt-1 sm:pt-2">
                 <div
                   data-q-item
-                  className="flex flex-wrap items-center justify-between gap-4 border-t border-[#111111]/12 pt-4"
+                  className="flex flex-wrap items-center justify-between gap-3 sm:gap-4 border-t border-[#111111]/12 pt-3 sm:pt-4"
                 >
                   <div>
-                    <div className="text-base font-extrabold text-[#111111]">
+                    <div className="text-sm sm:text-base font-extrabold text-[#111111]">
                       {activeQuote.name}
                     </div>
-                    <div className="mt-0.5 font-mono text-xs text-[#111111]/60">
+                    <div className="mt-0.5 font-mono text-[11px] sm:text-xs text-[#111111]/60">
                       {activeQuote.role} · {activeQuote.company}
                     </div>
                   </div>
 
                   {/* Rounded metric chip */}
-                  <span className="inline-flex items-center rounded-full border border-[#5B5BF0]/25 bg-[#5B5BF0]/10 px-4 py-1.5 font-mono text-[11px] font-medium text-[#3B3BC8]">
+                  <span className="inline-flex items-center rounded-full border border-[#5B5BF0]/25 bg-[#5B5BF0]/10 px-3 sm:px-4 py-1 sm:py-1.5 font-mono text-[10px] sm:text-[11px] font-medium text-[#3B3BC8]">
                     {activeQuote.metric}
                   </span>
                 </div>
@@ -374,13 +376,13 @@ export function ClientNotesSection({ locale }: { locale: Locale }) {
             </div>
           </div>
 
-          {/* Right/End Column: Giant Borderless Particle Quotation Marks « » */}
-          <div className="lg:col-span-4 flex items-center justify-center">
+          {/* Right/End Column: Giant Borderless Particle Quotation Marks « » (hidden on < sm so quotes never clip) */}
+          <div className="hidden sm:flex lg:col-span-4 items-center justify-center">
             <ParticleSlot
               slotId="testimonial-figure"
               descriptor="quotes:marks"
               aria-hidden="true"
-              className="h-[240px] w-full max-w-[380px] sm:h-[320px] lg:h-[380px]"
+              className="h-[200px] w-full max-w-[380px] md:h-[280px] lg:h-[380px]"
             />
           </div>
         </div>
@@ -432,7 +434,33 @@ export function AfterHoursSection({
   const t = CONTENT[locale];
   const p = useScrollStore((s) => s.sectionProgress.afterhours);
   const sectionRef = useRef<HTMLElement | null>(null);
+  const stickyRef = useRef<HTMLDivElement | null>(null);
+  const contentRef = useRef<HTMLDivElement | null>(null);
   const [liveBars, setLiveBars] = useState<number[]>(IDLE_BARS);
+  const [overflowPx, setOverflowPx] = useState(0);
+
+  useEffect(() => {
+    const stickyEl = stickyRef.current;
+    const contentEl = contentRef.current;
+    if (!stickyEl || !contentEl) return;
+
+    const measure = () => {
+      const nextOverflow = Math.max(0, contentEl.scrollHeight - stickyEl.clientHeight);
+      setOverflowPx(nextOverflow);
+    };
+
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(stickyEl);
+    ro.observe(contentEl);
+    window.addEventListener('resize', measure);
+    window.addEventListener('orientationchange', measure);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', measure);
+      window.removeEventListener('orientationchange', measure);
+    };
+  }, [locale]);
 
   useEffect(() => {
     if (!soundPlaying) return;
@@ -467,6 +495,7 @@ export function AfterHoursSection({
 
   const bars = soundPlaying ? liveBars : IDLE_BARS;
   const isRtl = locale === 'fa';
+  const panY = overflowPx > 0 ? -(p * overflowPx) : 0;
 
   return (
     <section
@@ -474,13 +503,27 @@ export function AfterHoursSection({
       id="afterhours"
       data-section="afterhours"
       data-theme="dark"
+      data-mobile-height=""
       className={`pin-section ${hasIncomingTransition('afterhours') ? '' : 'border-t border-[var(--hairline)]'} bg-transparent`}
-      style={getSingularitySectionStyle('afterhours', '200svh')}
+      style={getSingularitySectionStyle('afterhours', '200svh', '210svh')}
     >
-      <div className="pin-sticky flex items-center px-6 sm:px-10 lg:px-16 py-16">
-        <div className="grid w-full grid-cols-1 gap-10 lg:grid-cols-12">
+      <div
+        ref={stickyRef}
+        className={`pin-sticky flex ${
+          overflowPx > 0 ? 'items-start' : 'items-center'
+        } px-4 sm:px-10 lg:px-16`}
+      >
+        <div
+          ref={contentRef}
+          className="grid w-full grid-cols-1 gap-7 lg:gap-10 lg:grid-cols-12 pt-16 pb-28 lg:py-16 will-change-transform"
+          style={
+            overflowPx > 0
+              ? { transform: `translate3d(0, ${panY.toFixed(1)}px, 0)` }
+              : undefined
+          }
+        >
           {/* Live Procedural Web Audio Player (Rounded Card) */}
-          <div className="lg:col-span-6 flex flex-col justify-between rounded-[var(--radius-lg)] border border-[var(--hairline)] bg-white/[0.02] p-6 sm:p-8">
+          <div className="lg:col-span-6 flex flex-col justify-between rounded-[var(--radius-lg)] border border-[var(--hairline)] bg-white/[0.02] p-5 sm:p-8">
             <div>
               <span className="font-mono text-xs font-medium text-[#5B5BF0]">
                 {t.afterhours.kicker}
@@ -569,25 +612,25 @@ export function AfterHoursSection({
             <div className="space-y-4">
               {t.afterhours.hobbies.map((hobby, idx) => {
                 const entry = clamp01((p - idx * 0.1) / 0.35);
-                const slidePx = (1 - entry) * (isRtl ? -48 : 48);
+                const slidePx = (1 - entry) * (isRtl ? -24 : 24);
                 return (
                   <div
                     key={hobby.title}
-                    className="border-b border-[var(--hairline)] pb-4 will-change-transform"
+                    className="border-b border-[var(--hairline)] pb-3.5 sm:pb-4 will-change-transform"
                     style={{
-                      opacity: Math.max(0.25, entry),
+                      opacity: Math.max(0.55, entry),
                       transform: `translate3d(${slidePx}px, 0, 0)`,
                     }}
                   >
                     <div className="flex items-baseline justify-between gap-3">
-                      <h3 className="text-lg sm:text-xl font-extrabold tracking-tight">
+                      <h3 className="text-base sm:text-xl font-extrabold tracking-tight">
                         {hobby.title}
                       </h3>
                       <span className="font-mono text-xs text-[#5B5BF0]">
                         0{idx + 1}
                       </span>
                     </div>
-                    <p className="mt-1 text-sm font-light opacity-75">
+                    <p className="mt-1 text-xs sm:text-sm font-light opacity-75">
                       {hobby.note}
                     </p>
                   </div>

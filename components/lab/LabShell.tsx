@@ -157,9 +157,11 @@ export default function LabShell() {
 
     computeAnchors();
     window.addEventListener('resize', computeAnchors);
+    window.addEventListener('orientationchange', computeAnchors);
 
     return () => {
       window.removeEventListener('resize', computeAnchors);
+      window.removeEventListener('orientationchange', computeAnchors);
       engine.destroy();
       engineRef.current = null;
     };
@@ -176,6 +178,10 @@ export default function LabShell() {
       const gui = new GUI({ title: '/lab Stabilization & Physics' });
       gui.domElement.style.zIndex = '60';
       gui.domElement.style.top = '54px';
+      gui.domElement.style.maxWidth = 'min(260px, 84vw)';
+      if (window.innerWidth < 768) {
+        gui.close();
+      }
 
       const proxy = { ...useLabStore.getState().params };
 
@@ -346,9 +352,10 @@ export default function LabShell() {
           />
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 sm:px-8 font-mono text-[11px]">
-          <div className="pointer-events-auto flex items-center gap-3">
-            <span className="font-bold tracking-wider">/LAB · STABILIZED</span>
+        <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3 px-3.5 py-2.5 sm:px-8 sm:py-3 font-mono text-[10px] sm:text-[11px]">
+          <div className="pointer-events-auto flex items-center gap-2 sm:gap-3">
+            <span className="font-bold tracking-wider">/LAB</span>
+            <span className="hidden sm:inline font-bold tracking-wider">· STABILIZED</span>
             <span className="opacity-50">|</span>
             <Link
               href="/"
@@ -361,7 +368,7 @@ export default function LabShell() {
           </div>
 
           {/* Mandatory Patch §7 Telemetry: FPS, settled %, avg |vel| px/s, free particles */}
-          <div className="flex flex-wrap items-center gap-3 sm:gap-4 tabular-nums">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-4 tabular-nums">
             <span>
               FPS:{' '}
               <strong>
@@ -374,10 +381,10 @@ export default function LabShell() {
               <strong>{telemetry.settledPct.toFixed(1)}%</strong>
               {settledPass ? ' ✓' : ''}
             </span>
-            <span>
+            <span className="hidden sm:inline">
               AVG |VEL|: <strong>{telemetry.avgVelPxSec.toFixed(2)} px/s</strong>
             </span>
-            <span>
+            <span className="hidden sm:inline">
               FREE: <strong>{telemetry.freeCount}</strong>
             </span>
             <span className="hidden md:inline">
@@ -386,7 +393,7 @@ export default function LabShell() {
             <span className="hidden lg:inline">
               P: <strong>{scroll.pParticles.toFixed(3)}</strong>
             </span>
-            <span className="border border-white/40 px-2 py-0.5 text-[10px]">
+            <span className="border border-white/40 px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[10px]">
               {params.freezeSimulation ? 'FROZEN' : currentPhaseLabel}
             </span>
           </div>
@@ -405,9 +412,9 @@ export default function LabShell() {
       </div>
 
       {/* LAYER 2: Bottom Interactive Pill */}
-      <div className="pointer-events-none fixed bottom-5 inset-x-0 z-40 flex items-center justify-center px-4">
+      <div className="pointer-events-none fixed dock-bottom-safe inset-x-0 z-40 flex items-center justify-center px-2.5 sm:px-4">
         <div
-          className="pointer-events-auto inline-flex flex-wrap items-center justify-center gap-1 border border-white/30 bg-black/20 px-2.5 py-1.5 backdrop-blur-md mix-blend-difference text-white font-mono text-[11px] transition-all duration-300"
+          className="pointer-events-auto inline-flex max-w-[calc(100vw-20px)] flex-nowrap overflow-x-auto no-scrollbar items-center justify-start sm:justify-center gap-1 border border-white/30 bg-black/20 px-2 sm:px-2.5 py-1.5 backdrop-blur-md mix-blend-difference text-white font-mono text-[10px] sm:text-[11px] transition-all duration-300"
           style={{
             transform: pillCompact ? 'scale(0.92) translateY(4px)' : 'scale(1)',
             opacity: pillCompact ? 0.52 : 1,
@@ -417,7 +424,7 @@ export default function LabShell() {
             type="button"
             data-cursor="link"
             onClick={() => engineRef.current?.scrollToProgress(0.02)}
-            className={`px-2 py-1 cursor-pointer transition-opacity ${
+            className={`shrink-0 whitespace-nowrap min-h-[34px] px-2 py-1 cursor-pointer transition-opacity ${
               activeSceneId === 'lab-light-a' ? 'underline underline-offset-4 font-bold' : 'opacity-70 hover:opacity-100'
             }`}
           >
@@ -427,7 +434,7 @@ export default function LabShell() {
             type="button"
             data-cursor="link"
             onClick={() => engineRef.current?.scrollToProgress(0.31)}
-            className="px-2 py-1 opacity-80 hover:opacity-100 cursor-pointer"
+            className="shrink-0 whitespace-nowrap min-h-[34px] px-2 py-1 opacity-80 hover:opacity-100 cursor-pointer"
           >
             Seed→Bloom
           </button>
@@ -435,7 +442,7 @@ export default function LabShell() {
             type="button"
             data-cursor="link"
             onClick={() => engineRef.current?.scrollToProgress(0.5)}
-            className={`px-2 py-1 cursor-pointer transition-opacity ${
+            className={`shrink-0 whitespace-nowrap min-h-[34px] px-2 py-1 cursor-pointer transition-opacity ${
               activeSceneId === 'lab-dark-b' ? 'underline underline-offset-4 font-bold' : 'opacity-70 hover:opacity-100'
             }`}
           >
@@ -445,7 +452,7 @@ export default function LabShell() {
             type="button"
             data-cursor="link"
             onClick={() => engineRef.current?.scrollToProgress(0.73)}
-            className="px-2 py-1 opacity-80 hover:opacity-100 cursor-pointer"
+            className="shrink-0 whitespace-nowrap min-h-[34px] px-2 py-1 opacity-80 hover:opacity-100 cursor-pointer"
           >
             Implosion
           </button>
@@ -453,20 +460,20 @@ export default function LabShell() {
             type="button"
             data-cursor="link"
             onClick={() => engineRef.current?.scrollToProgress(0.95)}
-            className={`px-2 py-1 cursor-pointer transition-opacity ${
+            className={`shrink-0 whitespace-nowrap min-h-[34px] px-2 py-1 cursor-pointer transition-opacity ${
               activeSceneId === 'lab-light-c' ? 'underline underline-offset-4 font-bold' : 'opacity-70 hover:opacity-100'
             }`}
           >
             03 Settle
           </button>
 
-          <span className="h-3.5 w-[1px] bg-white/30 mx-1" />
+          <span className="shrink-0 h-3.5 w-[1px] bg-white/30 mx-1" />
 
           <button
             type="button"
             data-cursor="link"
             onClick={() => updateParam('freezeSimulation', !params.freezeSimulation)}
-            className={`px-2 py-1 cursor-pointer ${
+            className={`shrink-0 whitespace-nowrap min-h-[34px] px-2 py-1 cursor-pointer ${
               params.freezeSimulation ? 'bg-white text-black font-bold' : 'opacity-85 hover:opacity-100'
             }`}
           >
@@ -477,7 +484,7 @@ export default function LabShell() {
             type="button"
             data-cursor="link"
             onClick={() => setMode(mode === 'story' ? 'site' : 'story')}
-            className="px-2 py-1 opacity-85 hover:opacity-100 cursor-pointer"
+            className="shrink-0 whitespace-nowrap min-h-[34px] px-2 py-1 opacity-85 hover:opacity-100 cursor-pointer"
           >
             {mode === 'story' ? 'Story' : 'Site'}
           </button>
@@ -486,7 +493,7 @@ export default function LabShell() {
             type="button"
             data-cursor="link"
             onClick={() => setLocale(locale === 'fa' ? 'en' : 'fa')}
-            className="px-2 py-1 font-bold cursor-pointer"
+            className="shrink-0 whitespace-nowrap min-h-[34px] px-2 py-1 font-bold cursor-pointer"
           >
             {locale === 'fa' ? 'EN' : 'FA'}
           </button>
@@ -496,7 +503,7 @@ export default function LabShell() {
             data-cursor="link"
             onClick={toggleSound}
             aria-label="Toggle physics audio"
-            className="inline-flex items-center gap-1 px-2 py-1 cursor-pointer"
+            className="shrink-0 whitespace-nowrap min-h-[34px] inline-flex items-center gap-1 px-2 py-1 cursor-pointer"
           >
             {soundEnabled ? <Volume2 className="h-3.5 w-3.5" /> : <VolumeX className="h-3.5 w-3.5 opacity-60" />}
             <span className="hidden sm:inline">{soundEnabled ? 'SFX ON' : 'SFX'}</span>
@@ -509,22 +516,28 @@ export default function LabShell() {
         {/* SCENE 01 — LIGHT (#ECEBE7) */}
         <section
           id="lab-light-a"
+          data-mobile-height=""
           className="pin-section"
-          style={{ height: '300svh' }}
+          style={
+            {
+              '--sec-h-desktop': '300svh',
+              '--sec-h-mobile': '210svh',
+            } as React.CSSProperties
+          }
         >
-          <div className="pin-sticky flex items-center px-6 sm:px-10 lg:px-16 pt-20 pb-24">
-            <div className="grid w-full grid-cols-1 items-center gap-10 lg:grid-cols-12">
+          <div className="pin-sticky flex items-center px-4 sm:px-10 lg:px-16 pt-16 pb-20 sm:pt-20 sm:pb-24">
+            <div className="grid w-full grid-cols-1 items-center gap-5 sm:gap-8 lg:gap-10 lg:grid-cols-12">
               <div className="lg:col-span-6">
-                <span className="font-mono text-xs text-[#5B5BF0]">
+                <span className="font-mono text-[10px] sm:text-xs text-[#5B5BF0]">
                   {locale === 'fa'
                     ? '۰۱ · قفل مختصات محلی و فنر بحرانی میرا'
                     : '01 · ELEMENT-LOCKED LOCAL SPACE & CRITICALLY DAMPED SPRING'}
                 </span>
 
                 <h1
-                  className="mt-4 tracking-[-0.04em] leading-[0.98] text-balance will-change-transform text-[#141414]"
+                  className="mt-2.5 sm:mt-4 tracking-[-0.04em] leading-[1.02] sm:leading-[0.98] text-balance will-change-transform text-[#141414]"
                   style={{
-                    fontSize: 'clamp(48px, 7.6vw, 120px)',
+                    fontSize: 'clamp(2rem, 7.6vw, 7.5rem)',
                     fontWeight: headingWeight,
                     transform: `skewY(${headingSkewY.toFixed(2)}deg) scaleY(${headingScaleY.toFixed(3)})`,
                   }}
@@ -532,18 +545,18 @@ export default function LabShell() {
                   {locale === 'fa' ? 'آرام، قفل و پایدار.' : 'Still, Locked & Crisp.'}
                 </h1>
 
-                <p className="mt-6 max-w-xl text-sm sm:text-base font-light leading-relaxed text-[#141414]/80">
+                <p className="mt-3 sm:mt-6 max-w-xl text-xs sm:text-base font-light leading-relaxed text-[#141414]/80">
                   {locale === 'fa'
                     ? 'ذرات دیاگرام سمت مقابل در مختصات محلی ذخیره و از همان مقدار اسکرول Lenis قفل شده‌اند. پس از حدود ۸۰۰ میلی‌ثانیه روی ۱۰۰٪ Settled قفل می‌شوند و با اسکرول آهسته بدون یک پیکسل لرزش همراه المان حرکت می‌کنند.'
                     : 'Particles in the diagram box live strictly in element-local coordinates driven by the exact Lenis scroll value. Within ~800ms they snap to 100% Settled with zero drift on slow scroll.'}
                 </p>
 
-                <div className="mt-8 flex flex-wrap items-center gap-4 font-mono text-xs text-[#141414]/75">
+                <div className="mt-4 sm:mt-8 flex flex-wrap items-center gap-3 sm:gap-4 font-mono text-xs text-[#141414]/75">
                   <button
                     type="button"
                     data-cursor="link"
                     onClick={() => engineRef.current?.scrollToProgress(0.35)}
-                    className="inline-flex items-center gap-2 border border-[#141414]/25 px-4 py-2.5 hover:border-[#5B5BF0] hover:text-[#5B5BF0] transition-colors cursor-pointer"
+                    className="min-h-[40px] inline-flex items-center gap-2 border border-[#141414]/25 px-3.5 sm:px-4 py-2 sm:py-2.5 hover:border-[#5B5BF0] hover:text-[#5B5BF0] transition-colors cursor-pointer"
                   >
                     <Compass className="h-3.5 w-3.5" />
                     <span>
@@ -559,9 +572,9 @@ export default function LabShell() {
               <div className="lg:col-span-6 flex items-center justify-center gap-6">
                 <LabAnchorBox
                   anchorId="lab-light-a"
-                  className="relative h-[280px] w-[280px] sm:h-[340px] sm:w-[340px] border border-[#141414]/15"
+                  className="relative h-[175px] w-[175px] sm:h-[300px] sm:w-[300px] lg:h-[340px] lg:w-[340px] border border-[#141414]/15"
                 >
-                  <span className="absolute bottom-2.5 start-3 font-mono text-[10px] text-[#141414]/45">
+                  <span className="absolute bottom-2 start-2.5 sm:bottom-2.5 sm:start-3 font-mono text-[9px] sm:text-[10px] text-[#141414]/45">
                     LOCAL ELEMENT A · uElementOrigin
                   </span>
                 </LabAnchorBox>
@@ -592,14 +605,20 @@ export default function LabShell() {
         {/* SCENE 02 — DARK (#0A0A0A) */}
         <section
           id="lab-dark-b"
+          data-mobile-height=""
           className="pin-section"
-          style={{ height: '450svh' }}
+          style={
+            {
+              '--sec-h-desktop': '450svh',
+              '--sec-h-mobile': '300svh',
+            } as React.CSSProperties
+          }
         >
-          <div className="pin-sticky flex flex-col justify-center px-6 sm:px-10 lg:px-16 pt-20 pb-24 text-[#ECEBE7]">
-            <div className="grid w-full grid-cols-1 items-center gap-10 lg:grid-cols-12">
+          <div className="pin-sticky flex flex-col justify-center px-4 sm:px-10 lg:px-16 pt-16 pb-20 sm:pt-20 sm:pb-24 text-[#ECEBE7]">
+            <div className="grid w-full grid-cols-1 items-center gap-5 sm:gap-8 lg:gap-10 lg:grid-cols-12">
               <div className="lg:col-span-7">
                 <span
-                  className="font-mono text-xs text-[#8F8FFF] transition-opacity duration-200"
+                  className="font-mono text-[10px] sm:text-xs text-[#8F8FFF] transition-opacity duration-200"
                   style={{ opacity: darkHeadReveal }}
                 >
                   {locale === 'fa'
@@ -609,9 +628,9 @@ export default function LabShell() {
 
                 <h2
                   ref={darkHeadRef}
-                  className="mt-4 tracking-[-0.04em] leading-[0.98] text-balance will-change-transform"
+                  className="mt-2.5 sm:mt-4 tracking-[-0.04em] leading-[1.02] sm:leading-[0.98] text-balance will-change-transform"
                   style={{
-                    fontSize: 'clamp(48px, 8vw, 130px)',
+                    fontSize: 'clamp(2rem, 8vw, 8.1rem)',
                     fontWeight: headingWeight,
                     opacity: darkHeadReveal,
                     transform: `translate3d(0, ${((1 - darkHeadReveal) * 24).toFixed(1)}px, 0) skewY(${headingSkewY.toFixed(2)}deg) scaleY(${headingScaleY.toFixed(3)})`,
@@ -620,19 +639,19 @@ export default function LabShell() {
                   {locale === 'fa' ? 'نور از دل تاریکی.' : 'Light Inside Dark.'}
                 </h2>
 
-                <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div className="mt-4 sm:mt-8 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-5">
                   <div
                     ref={darkCard1Ref}
-                    className="border border-[#ECEBE7]/15 p-5"
+                    className="border border-[#ECEBE7]/15 p-3.5 sm:p-5"
                     style={{
                       opacity: darkCard1Reveal,
                       transform: `translate3d(0, ${((1 - darkCard1Reveal) * 20).toFixed(1)}px, 0)`,
                     }}
                   >
-                    <div className="font-mono text-[11px] text-[#8F8FFF]">
+                    <div className="font-mono text-[10px] sm:text-[11px] text-[#8F8FFF]">
                       01 / TIME-BASED ASSEMBLE
                     </div>
-                    <p className="mt-2 text-xs sm:text-sm font-light leading-relaxed text-[#ECEBE7]/80">
+                    <p className="mt-1.5 sm:mt-2 text-xs sm:text-sm font-light leading-relaxed text-[#ECEBE7]/80">
                       {locale === 'fa'
                         ? 'شکل‌گیری المان بر اساس تایملاین ۸۰۰ms و پس از ۱۲۰ms debounce سرعت اسکرول شروع می‌شود؛ ذرات قبل از assemble با alpha=0 پنهان‌اند.'
                         : 'Element assembly triggers on an 800ms easeOutCubic timeline after a 120ms low-speed debounce; idle Morph particles stay hidden (alpha 0).'}
@@ -641,16 +660,16 @@ export default function LabShell() {
 
                   <div
                     ref={darkCard2Ref}
-                    className="border border-[#ECEBE7]/15 p-5"
+                    className="border border-[#ECEBE7]/15 p-3.5 sm:p-5"
                     style={{
                       opacity: darkCard2Reveal,
                       transform: `translate3d(0, ${((1 - darkCard2Reveal) * 20).toFixed(1)}px, 0)`,
                     }}
                   >
-                    <div className="font-mono text-[11px] text-[#8F8FFF]">
+                    <div className="font-mono text-[10px] sm:text-[11px] text-[#8F8FFF]">
                       02 / MAX 6PX STRETCH & 6% ACCENT
                     </div>
-                    <p className="mt-2 text-xs sm:text-sm font-light leading-relaxed text-[#ECEBE7]/80">
+                    <p className="mt-1.5 sm:mt-2 text-xs sm:text-sm font-light leading-relaxed text-[#ECEBE7]/80">
                       {locale === 'fa'
                         ? 'کشیدگی سرعتی برای ذرات settled دقیقاً صفر و برای متحرک‌ها حداکثر ۶px است؛ اثر سرعت اسکرول فقط روی ۱۸۰۰ ذره‌ی Dust اعمال می‌شود.'
                         : 'Velocity stretch is strictly 0 for settled particles and capped at 6px for moving ones; scroll velocity stretches Dust only.'}
@@ -662,9 +681,9 @@ export default function LabShell() {
               <div className="lg:col-span-5 flex justify-center">
                 <LabAnchorBox
                   anchorId="lab-dark-b"
-                  className="relative h-[280px] w-[280px] sm:h-[340px] sm:w-[340px] border border-[#ECEBE7]/15"
+                  className="relative h-[165px] w-[165px] sm:h-[300px] sm:w-[300px] lg:h-[340px] lg:w-[340px] border border-[#ECEBE7]/15"
                 >
-                  <span className="absolute bottom-2.5 start-3 font-mono text-[10px] text-[#ECEBE7]/45">
+                  <span className="absolute bottom-2 start-2.5 sm:bottom-2.5 sm:start-3 font-mono text-[9px] sm:text-[10px] text-[#ECEBE7]/45">
                     LOCAL ELEMENT B · TORUS
                   </span>
                 </LabAnchorBox>
@@ -676,33 +695,39 @@ export default function LabShell() {
         {/* SCENE 03 — LIGHT (#ECEBE7) */}
         <section
           id="lab-light-c"
+          data-mobile-height=""
           className="pin-section"
-          style={{ height: '350svh' }}
+          style={
+            {
+              '--sec-h-desktop': '350svh',
+              '--sec-h-mobile': '230svh',
+            } as React.CSSProperties
+          }
         >
-          <div className="pin-sticky flex items-center px-6 sm:px-10 lg:px-16 pt-20 pb-24 text-[#141414]">
-            <div className="grid w-full grid-cols-1 items-center gap-10 lg:grid-cols-12">
+          <div className="pin-sticky flex items-center px-4 sm:px-10 lg:px-16 pt-16 pb-20 sm:pt-20 sm:pb-24 text-[#141414]">
+            <div className="grid w-full grid-cols-1 items-center gap-5 sm:gap-8 lg:gap-10 lg:grid-cols-12">
               <div className="lg:col-span-5 flex justify-center order-2 lg:order-1">
                 <LabAnchorBox
                   anchorId="lab-light-c"
-                  className="relative h-[280px] w-[280px] sm:h-[340px] sm:w-[340px] border border-[#141414]/15"
+                  className="relative h-[175px] w-[175px] sm:h-[300px] sm:w-[300px] lg:h-[340px] lg:w-[340px] border border-[#141414]/15"
                 >
-                  <span className="absolute bottom-2.5 start-3 font-mono text-[10px] text-[#141414]/45">
+                  <span className="absolute bottom-2 start-2.5 sm:bottom-2.5 sm:start-3 font-mono text-[9px] sm:text-[10px] text-[#141414]/45">
                     LOCAL ELEMENT C · LATTICE
                   </span>
                 </LabAnchorBox>
               </div>
 
               <div className="lg:col-span-7 order-1 lg:order-2">
-                <span className="font-mono text-xs text-[#5B5BF0]">
+                <span className="font-mono text-[10px] sm:text-xs text-[#5B5BF0]">
                   {locale === 'fa'
                     ? '۰۳ · درون‌پاشی (Implosion) و تثبیت دقیق'
                     : '03 · DARK → LIGHT IMPLOSION & SETTLE'}
                 </span>
 
                 <h2
-                  className="mt-4 tracking-[-0.04em] leading-[0.98] text-balance will-change-transform"
+                  className="mt-2.5 sm:mt-4 tracking-[-0.04em] leading-[1.02] sm:leading-[0.98] text-balance will-change-transform"
                   style={{
-                    fontSize: 'clamp(48px, 7.6vw, 120px)',
+                    fontSize: 'clamp(2rem, 7.6vw, 7.5rem)',
                     fontWeight: headingWeight,
                     transform: `skewY(${headingSkewY.toFixed(2)}deg) scaleY(${headingScaleY.toFixed(3)})`,
                   }}
@@ -710,18 +735,18 @@ export default function LabShell() {
                   {locale === 'fa' ? 'بازگشت به کاغذ.' : 'Return to Paper.'}
                 </h2>
 
-                <p className="mt-6 max-w-xl text-sm sm:text-base font-light leading-relaxed text-[#141414]/80">
+                <p className="mt-3 sm:mt-6 max-w-xl text-xs sm:text-base font-light leading-relaxed text-[#141414]/80">
                   {locale === 'fa'
                     ? 'برای عیب‌یابی ایزوله، دکمه‌ی Freeze را در نوار پایین یا پنل lil-gui بزن و آهسته اسکرول کن: می‌بینی ذرات بدون یک پیکسل لغزش روی قاب المان قفل می‌مانند.'
                     : 'Toggle Freeze simulation in lil-gui or the bottom bar and scroll gently: particles stay pixel-locked to the element frame with zero jitter.'}
                 </p>
 
-                <div className="mt-8">
+                <div className="mt-4 sm:mt-8">
                   <button
                     type="button"
                     data-cursor="link"
                     onClick={() => engineRef.current?.scrollToProgress(0)}
-                    className="border border-[#141414]/25 px-5 py-2.5 font-mono text-xs hover:border-[#5B5BF0] hover:text-[#5B5BF0] transition-colors cursor-pointer"
+                    className="min-h-[40px] border border-[#141414]/25 px-4 sm:px-5 py-2 sm:py-2.5 font-mono text-xs hover:border-[#5B5BF0] hover:text-[#5B5BF0] transition-colors cursor-pointer"
                   >
                     {locale === 'fa' ? 'بازگشت نرم به ابتدا ↑' : 'Smooth Scroll to Top ↑'}
                   </button>

@@ -53,20 +53,21 @@ export function WhatIDoSection({
       id="whatido"
       data-section="whatido"
       data-theme="light"
+      data-mobile-height=""
       className={`pin-section ${hasIncomingTransition('whatido') ? '' : 'border-t border-[var(--hairline)]'} bg-transparent`}
-      style={getSingularitySectionStyle('whatido', '720svh')}
+      style={getSingularitySectionStyle('whatido', '720svh', '420svh')}
     >
       <div
-        className="pin-sticky flex flex-col justify-between px-6 sm:px-10 lg:px-16 pt-14 pb-32 sm:pb-36"
+        className="pin-sticky flex flex-col justify-between px-4 sm:px-10 lg:px-16 pt-14 pb-20 sm:pb-36"
         style={{ contain: 'layout style' }}
       >
         {/* Top Kicker & Heading */}
-        <div className="flex w-full items-end justify-between gap-4 border-b border-[var(--hairline)] pb-3">
+        <div className="flex w-full shrink-0 items-end justify-between gap-4 border-b border-[var(--hairline)] pb-2 sm:pb-3">
           <div>
-            <span className="font-mono text-xs font-medium text-[#5B5BF0]">
+            <span className="font-mono text-[11px] sm:text-xs font-medium text-[#5B5BF0]">
               {t.whatido.kicker}
             </span>
-            <h2 className="mt-1 text-xl sm:text-3xl font-extrabold tracking-tight">
+            <h2 className="mt-0.5 sm:mt-1 text-base sm:text-3xl font-extrabold tracking-tight leading-tight">
               {t.whatido.heading}
             </h2>
           </div>
@@ -85,15 +86,15 @@ export function WhatIDoSection({
         </div>
 
         {/* Center Split: Left Info with clip-path title | Right Sticky Particle Diagram */}
-        <div className="grid w-full flex-1 min-h-0 grid-cols-1 items-center gap-6 py-4 lg:grid-cols-12">
-          <div className="lg:col-span-5 flex min-h-[240px] sm:min-h-[270px] flex-col justify-center">
-            <span className="font-mono text-xs text-[#5B5BF0]">
+        <div className="flex w-full flex-1 min-h-0 flex-col lg:grid lg:grid-cols-12 lg:items-center gap-2 sm:gap-6 py-1.5 sm:py-4">
+          <div className="shrink-0 lg:col-span-5 flex min-h-0 sm:min-h-[270px] flex-col justify-center">
+            <span className="font-mono text-[11px] sm:text-xs text-[#5B5BF0]">
               0{activeIdx + 1} / 0{count}
             </span>
 
-            <div className="mt-3 overflow-hidden">
+            <div className="mt-1 sm:mt-3 overflow-hidden">
               <h3
-                className="display-xl text-4xl sm:text-6xl will-change-[clip-path]"
+                className="display-xl text-xl sm:text-5xl lg:text-6xl will-change-[clip-path]"
                 style={{
                   clipPath: `inset(${clipTop}% 0% 0% 0%)`,
                 }}
@@ -102,18 +103,18 @@ export function WhatIDoSection({
               </h3>
             </div>
 
-            <p className="mt-5 text-base sm:text-lg font-light leading-relaxed opacity-85">
+            <p className="mt-1.5 sm:mt-5 text-xs sm:text-lg font-light leading-snug sm:leading-relaxed opacity-85 line-clamp-2 sm:line-clamp-none">
               {activeTab.desc}
             </p>
 
-            <div className="mt-6 border-t border-[var(--hairline)] pt-4 font-mono text-xs text-[#5B5BF0]">
+            <div className="mt-2 sm:mt-6 border-t border-[var(--hairline)] pt-2 sm:pt-4 font-mono text-[10px] sm:text-xs text-[#5B5BF0] truncate">
               {activeTab.metrics}
             </div>
           </div>
 
           {/* Sticky Diagram Slot rendered on L0 */}
-          <div className="lg:col-span-7 flex h-full min-h-0 items-center justify-center">
-            <div className="relative h-[320px] w-full sm:h-[420px] lg:h-[520px] max-h-[55svh]">
+          <div className="flex flex-1 min-h-[120px] lg:col-span-7 lg:h-full items-center justify-center py-1">
+            <div className="relative h-full w-full max-w-[230px] max-h-[25svh] sm:max-w-none sm:h-[400px] lg:h-[520px] sm:max-h-[55svh] mx-auto">
               <ParticleSlot
                 slotId="whatido-diagram"
                 descriptor={`svg:${activeTab.id}`}
@@ -124,7 +125,7 @@ export function WhatIDoSection({
               {/* Crisp radial node captions specifically for Integrations */}
               {activeTab.id === 'integrations' && (
                 <div className="pointer-events-none absolute inset-0">
-                  <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 font-mono text-[10px] font-bold text-[#5B5BF0]">
+                  <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 font-mono text-[9px] sm:text-[10px] font-bold text-[#5B5BF0]">
                     CORE
                   </span>
                   {INTEGRATION_NODES.map((node, nIdx) => {
@@ -132,7 +133,7 @@ export function WhatIDoSection({
                     return (
                       <span
                         key={node.label}
-                        className="absolute -translate-x-1/2 -translate-y-1/2 font-mono text-[10px] transition-opacity duration-300"
+                        className="absolute -translate-x-1/2 -translate-y-1/2 font-mono text-[9px] sm:text-[10px] transition-opacity duration-300"
                         style={{
                           left: node.x,
                           top: node.y,
@@ -149,8 +150,8 @@ export function WhatIDoSection({
           </div>
         </div>
 
-        {/* 6 Bottom Progress Bars (clickable to scrollTo exact step, clears DockBar by >= 16px) */}
-        <div className="relative z-20 grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 pt-2">
+        {/* 6 Bottom Progress Bars (clickable to scrollTo exact step, clears DockBar) */}
+        <div className="relative z-20 grid w-full shrink-0 grid-cols-3 lg:grid-cols-6 gap-1.5 sm:gap-3 pt-1 sm:pt-2">
           {t.whatido.tabs.map((tab, idx) => {
             const fill =
               idx < activeIdx ? 100 : idx === activeIdx ? localP * 100 : 0;
@@ -164,7 +165,7 @@ export function WhatIDoSection({
                   soundEngine.playStippleTick();
                   onJumpToStep(idx);
                 }}
-                className="group flex flex-col items-start gap-2 rounded-[var(--radius-sm)] p-1 text-start cursor-pointer"
+                className="group flex min-h-[36px] flex-col items-start justify-center gap-1.5 sm:gap-2 rounded-[var(--radius-sm)] p-1 text-start cursor-pointer min-w-0"
               >
                 <div className="h-[3px] w-full rounded-full bg-[var(--hairline)] overflow-hidden">
                   <div
@@ -173,7 +174,7 @@ export function WhatIDoSection({
                   />
                 </div>
                 <span
-                  className={`font-mono text-[11px] transition-opacity ${
+                  className={`w-full truncate font-mono text-[10px] sm:text-[11px] transition-opacity ${
                     isActive
                       ? 'text-[#5B5BF0] font-semibold opacity-100'
                       : 'opacity-50 group-hover:opacity-90'
@@ -215,44 +216,45 @@ export function ProcessSection({
       id="process"
       data-section="process"
       data-theme="dark"
+      data-mobile-height=""
       className={`pin-section ${hasIncomingTransition('process') ? '' : 'border-t border-[var(--hairline)]'} bg-transparent`}
-      style={getSingularitySectionStyle('process', '660svh')}
+      style={getSingularitySectionStyle('process', '660svh', '390svh')}
     >
-      <div className="pin-sticky flex flex-col justify-between px-6 sm:px-10 lg:px-16 pt-16 pb-32 sm:pb-36">
+      <div className="pin-sticky flex flex-col justify-between px-4 sm:px-10 lg:px-16 pt-14 sm:pt-16 pb-20 sm:pb-36">
         {/* Header */}
         <div className="w-full">
-          <span className="font-mono text-xs font-medium text-[#5B5BF0]">
+          <span className="font-mono text-[11px] sm:text-xs font-medium text-[#5B5BF0]">
             {t.process.kicker}
           </span>
-          <h2 className="mt-2 text-2xl sm:text-4xl font-extrabold tracking-tight">
+          <h2 className="mt-1 sm:mt-2 text-xl sm:text-4xl font-extrabold tracking-tight">
             {t.process.heading}
           </h2>
         </div>
 
         {/* Center L0 Particle Stage Visualization (thick granular tubes matching Section 2) */}
-        <div className="flex w-full flex-1 min-h-0 flex-col items-center justify-center py-4">
+        <div className="flex w-full flex-1 min-h-0 flex-col items-center justify-center py-1.5 sm:py-4">
           <ParticleSlot
             slotId="process-stage"
             descriptor={`process:${activeIdx}`}
             aria-label={activeStage.title}
-            className="h-[280px] w-[280px] sm:h-[360px] sm:w-[360px] lg:h-[420px] lg:w-[420px] max-h-[46svh]"
+            className="h-[140px] w-[140px] sm:h-[340px] sm:w-[340px] lg:h-[420px] lg:w-[420px] max-h-[24svh] sm:max-h-[46svh]"
           />
 
-          <div className="mt-4 max-w-2xl text-center">
-            <div className="font-mono text-xs text-[#5B5BF0]">
+          <div className="mt-2.5 sm:mt-4 max-w-2xl text-center">
+            <div className="font-mono text-[11px] sm:text-xs text-[#5B5BF0]">
               {activeStage.step} / 0{count}
             </div>
-            <h3 className="mt-2 text-2xl sm:text-4xl font-extrabold tracking-tight">
+            <h3 className="mt-1 sm:mt-2 text-xl sm:text-4xl font-extrabold tracking-tight">
               {activeStage.title}
             </h3>
-            <p className="mt-3 text-sm sm:text-base font-light opacity-80 leading-relaxed">
+            <p className="mt-1.5 sm:mt-3 text-xs sm:text-base font-light opacity-80 leading-relaxed line-clamp-3 sm:line-clamp-none">
               {activeStage.sentence}
             </p>
           </div>
         </div>
 
         {/* Horizontal Row of 6 Stages (Discover -> Support) */}
-        <div className="grid w-full grid-cols-3 sm:grid-cols-6 gap-2 border-t border-[var(--hairline)] pt-5">
+        <div className="grid w-full grid-cols-3 sm:grid-cols-6 gap-1.5 sm:gap-2 border-t border-[var(--hairline)] pt-3 sm:pt-5">
           {t.process.stages.map((stage, idx) => {
             const isActive = idx === activeIdx;
             const isPast = idx < activeIdx;
@@ -265,9 +267,9 @@ export function ProcessSection({
                   soundEngine.playStippleTick();
                   onJumpToStage(idx);
                 }}
-                className="flex flex-col items-start gap-1 rounded-[var(--radius-sm)] px-2 py-1 text-start transition-transform duration-300 cursor-pointer"
+                className="flex min-h-[40px] flex-col items-start justify-center gap-0.5 sm:gap-1 rounded-[var(--radius-sm)] px-1.5 sm:px-2 py-1 text-start transition-transform duration-300 cursor-pointer min-w-0"
                 style={{
-                  transform: isActive ? 'scale(1.06)' : 'scale(0.96)',
+                  transform: isActive ? 'scale(1.04)' : 'scale(0.96)',
                   opacity: isActive ? 1 : isPast ? 0.65 : 0.35,
                 }}
               >
@@ -279,7 +281,7 @@ export function ProcessSection({
                   {stage.step}
                 </span>
                 <span
-                  className={`text-xs sm:text-sm tracking-tight ${
+                  className={`w-full truncate text-[11px] sm:text-sm tracking-tight ${
                     isActive ? 'font-extrabold text-[#5B5BF0]' : 'font-medium'
                   }`}
                 >

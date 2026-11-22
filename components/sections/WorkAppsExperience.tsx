@@ -92,7 +92,7 @@ export function OwnAppsSection({
 
       // Exact CSS formula fallback if DOM hasn't painted yet
       const cssCardW = Math.min(vw * 0.84, Math.max(380, Math.min(vw * 0.29, 560)));
-      const cssGap = Math.max(40, Math.min(vw * 0.05, 96));
+      const cssGap = Math.max(20, Math.min(vw * 0.05, 96));
 
       const cw = cardEl ? cardEl.offsetWidth : cssCardW;
       let gap = cssGap;
@@ -111,6 +111,7 @@ export function OwnAppsSection({
 
     measure();
     window.addEventListener('resize', measure);
+    window.addEventListener('orientationchange', measure);
 
     let active = true;
     if (typeof document !== 'undefined' && document.fonts?.ready) {
@@ -122,12 +123,14 @@ export function OwnAppsSection({
     return () => {
       active = false;
       window.removeEventListener('resize', measure);
+      window.removeEventListener('orientationchange', measure);
     };
   }, [locale, cardCount]);
 
-  // Total section height = n * 90vh + 40vh (40vh hold window at end where pEff stays locked at 1)
+  // Total section height = n * 90vh + 40vh on desktop, shorter touch-friendly span on mobile
   const totalHeightVh =
     cardCount * OWN_APPS_CONFIG.scrollPerCardVh + OWN_APPS_CONFIG.endHoldVh;
+  const mobileTotalHeightVh = cardCount * 65 + 30;
   const scrollableSpanVh = Math.max(1, totalHeightVh - 100);
   const holdFrac = Math.min(0.45, OWN_APPS_CONFIG.endHoldVh / scrollableSpanVh);
   const pEff = Math.max(0, Math.min(1, p / Math.max(0.01, 1 - holdFrac)));
@@ -148,21 +151,22 @@ export function OwnAppsSection({
       id="apps"
       data-section="apps"
       data-theme="dark"
+      data-mobile-height=""
       className={`pin-section ${hasIncomingTransition('apps') ? '' : 'border-t border-[var(--hairline)]'} bg-transparent`}
-      style={getSingularitySectionStyle('apps', `${totalHeightVh}svh`)}
+      style={getSingularitySectionStyle('apps', `${totalHeightVh}svh`, `${mobileTotalHeightVh}svh`)}
     >
-      <div className="pin-sticky flex flex-col justify-center overflow-hidden pt-16 pb-28 sm:pb-32">
+      <div className="pin-sticky flex flex-col justify-center overflow-hidden pt-14 sm:pt-16 pb-20 sm:pb-32">
         {/* Section Header + Live Counter (01 / 04) */}
-        <div className="w-full px-6 sm:px-10 lg:px-16 mb-10 flex items-end justify-between gap-4">
+        <div className="w-full px-4 sm:px-10 lg:px-16 mb-5 sm:mb-10 flex items-end justify-between gap-4">
           <div>
-            <span className="font-mono text-xs font-medium text-[#5B5BF0]">
+            <span className="font-mono text-[11px] sm:text-xs font-medium text-[#5B5BF0]">
               {t.apps.kicker}
             </span>
-            <h2 className="mt-2 text-2xl sm:text-4xl font-extrabold tracking-tight">
+            <h2 className="mt-1 sm:mt-2 text-xl sm:text-4xl font-extrabold tracking-tight">
               {t.apps.heading}
             </h2>
           </div>
-          <span className="font-mono text-xs sm:text-sm opacity-60 tabular-nums">
+          <span className="font-mono text-xs sm:text-sm opacity-60 tabular-nums shrink-0">
             {String(activeDisplayIdx).padStart(2, '0')} / {String(cardCount).padStart(2, '0')}
           </span>
         </div>
@@ -173,7 +177,7 @@ export function OwnAppsSection({
             ref={trackRef}
             className="flex w-max items-center will-change-transform"
             style={{
-              gap: 'clamp(40px, 5vw, 96px)',
+              gap: 'clamp(20px, 5vw, 96px)',
               paddingInlineStart: `${metrics.pad}px`,
               paddingInlineEnd: `${metrics.pad}px`,
             }}
@@ -186,8 +190,8 @@ export function OwnAppsSection({
               const scale = OWN_APPS_CONFIG.activeScale - 0.06 * Math.min(d, 1.5);
 
               const cardStyle: React.CSSProperties = {
-                width: 'min(84vw, clamp(380px, 29vw, 560px))',
-                height: `${OWN_APPS_CONFIG.cardHeightPx}px`,
+                width: 'min(84vw, clamp(300px, 29vw, 560px))',
+                height: `clamp(275px, 46svh, ${OWN_APPS_CONFIG.cardHeightPx}px)`,
                 transform: `scale(${scale.toFixed(4)})`,
                 opacity,
                 filter: blurPx > 0.15 ? `blur(${blurPx.toFixed(2)}px)` : 'none',
@@ -227,11 +231,11 @@ export function OwnAppsSection({
                   key={app.id}
                   ref={idx === 0 ? (el) => { firstCardRef.current = el; } : undefined}
                   data-cursor="view"
-                  className="flex shrink-0 flex-col justify-between rounded-[var(--radius-lg)] border bg-white/[0.025] p-7 sm:p-9 transition-colors duration-300 will-change-transform"
+                  className="flex shrink-0 flex-col justify-between rounded-[var(--radius-lg)] border bg-white/[0.025] p-5 sm:p-9 transition-colors duration-300 will-change-transform"
                   style={cardStyle}
                 >
                   <div className="min-h-0">
-                    <div className="flex items-center justify-between gap-3 font-mono text-xs">
+                    <div className="flex items-center justify-between gap-3 font-mono text-[11px] sm:text-xs">
                       <span className={isActive ? 'text-[#5B5BF0] font-semibold' : 'opacity-50'}>
                         {String(idx + 1).padStart(2, '0')} · {app.year}
                       </span>
@@ -244,20 +248,20 @@ export function OwnAppsSection({
                       )}
                     </div>
 
-                    <h3 className="display-xl mt-5 text-2xl sm:text-4xl truncate">
+                    <h3 className="display-xl mt-3.5 sm:mt-5 text-xl sm:text-4xl truncate">
                       {app.name}
                     </h3>
 
-                    <p className="mt-3 text-sm sm:text-base font-medium leading-snug line-clamp-2">
+                    <p className="mt-2 sm:mt-3 text-xs sm:text-base font-medium leading-snug line-clamp-2">
                       {app.tagline}
                     </p>
-                    <p className="mt-2.5 text-xs sm:text-sm font-light opacity-72 leading-relaxed line-clamp-3">
+                    <p className="mt-1.5 sm:mt-2.5 text-xs sm:text-sm font-light opacity-72 leading-relaxed line-clamp-3">
                       {app.detail}
                     </p>
                   </div>
 
-                  <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--hairline)] pt-4">
-                    <span className="font-mono text-[11px] opacity-65 truncate max-w-[62%]">
+                  <div className="mt-4 sm:mt-5 flex flex-wrap items-center justify-between gap-2 sm:gap-3 border-t border-[var(--hairline)] pt-3 sm:pt-4">
+                    <span className="font-mono text-[10px] sm:text-[11px] opacity-65 truncate max-w-[58%]">
                       {app.stack.join(' · ')}
                     </span>
 
@@ -329,7 +333,7 @@ function DigitRollYear({ yearFloat }: { yearFloat: number }) {
     <div
       dir="ltr"
       aria-label={roundedStr}
-      className="grid w-full grid-cols-4 items-center font-mono text-[clamp(3.75rem,min(13.2vw,30svh),14.5rem)] font-black leading-[0.88] tracking-[-0.06em] select-none"
+      className="grid w-full grid-cols-4 items-center font-mono text-[clamp(3rem,min(17vw,22svh),14.5rem)] sm:text-[clamp(3.75rem,min(13.2vw,30svh),14.5rem)] font-black leading-[0.88] tracking-[-0.06em] select-none"
     >
       {cols.map((val, cIdx) => (
         <span
@@ -430,10 +434,11 @@ export function ExperienceSection({ locale }: { locale: Locale }) {
       id="experience"
       data-section="experience"
       data-theme="light"
+      data-mobile-height=""
       className={`pin-section ${hasIncomingTransition('experience') ? '' : 'border-t border-[var(--hairline)]'} bg-transparent`}
-      style={getSingularitySectionStyle('experience', '500svh')}
+      style={getSingularitySectionStyle('experience', '500svh', '320svh')}
     >
-      <div className="pin-sticky flex flex-col justify-between px-4 sm:px-8 lg:px-14 pt-16 sm:pt-20 pb-22 sm:pb-24">
+      <div className="pin-sticky flex flex-col justify-between px-4 sm:px-8 lg:px-14 pt-14 sm:pt-20 pb-20 sm:pb-24">
         {/* Top Metadata Strip */}
         <div className="flex flex-wrap items-baseline justify-between gap-3 border-b border-[var(--hairline)] pb-3">
           <div className="flex flex-wrap items-baseline gap-3">

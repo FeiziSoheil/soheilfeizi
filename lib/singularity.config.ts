@@ -167,7 +167,8 @@ export function hasIncomingTransition(sectionId: SectionId): boolean {
  */
 export function getSingularitySectionStyle(
   sectionId: SectionId,
-  baseHeightCss: string
+  baseHeightCss: string,
+  mobileBaseHeightCss?: string
 ): React.CSSProperties {
   const incoming = getIncomingTransition(sectionId);
   const outgoing = getOutgoingTransition(sectionId);
@@ -175,9 +176,20 @@ export function getSingularitySectionStyle(
   const outVh = outgoing ? outgoing.scrollLengthVh * 100 : 0;
   const extraVh = inVh + outVh;
 
-  const style: React.CSSProperties = {
-    height: extraVh > 0 ? `calc(${baseHeightCss} + ${extraVh}svh)` : baseHeightCss,
+  const desktopH =
+    extraVh > 0 ? `calc(${baseHeightCss} + ${extraVh}svh)` : baseHeightCss;
+  const mobileBase = mobileBaseHeightCss ?? baseHeightCss;
+  const mobileH =
+    extraVh > 0 ? `calc(${mobileBase} + ${extraVh}svh)` : mobileBase;
+
+  const style: React.CSSProperties & Record<string, string> = {
+    '--sec-h-desktop': desktopH,
+    '--sec-h-mobile': mobileH,
   };
+
+  if (!mobileBaseHeightCss) {
+    style.height = desktopH;
+  }
 
   if (inVh > 0) {
     style.marginTop = `calc(-100svh - ${inVh}svh)`;

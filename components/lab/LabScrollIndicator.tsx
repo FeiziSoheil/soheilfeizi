@@ -53,7 +53,7 @@ export default function LabScrollIndicator({
         draggingRef.current = false;
         e.currentTarget.releasePointerCapture(e.pointerId);
       }}
-      className="fixed end-4 sm:end-6 top-1/2 -translate-y-1/2 z-40 flex h-[120px] w-7 flex-col items-center justify-between py-1 cursor-ns-resize select-none mix-blend-difference text-white"
+      className="fixed end-4 sm:end-6 top-1/2 -translate-y-1/2 z-40 hidden sm:flex h-[120px] w-7 flex-col items-center justify-between py-1 cursor-ns-resize select-none mix-blend-difference text-white"
     >
       {Array.from({ length: DOT_COUNT }).map((_, i) => {
         const dotNorm = i / (DOT_COUNT - 1);

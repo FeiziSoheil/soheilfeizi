@@ -79,10 +79,13 @@ export function easeInOutSine(t: number): number {
 }
 
 /** Total cumulative scroll span in vh (excluding the 100vh viewport tail) */
-export function getTotalScrollLengthVh(chapters: StoryChapterConfig[]): number {
+export function getTotalScrollLengthVh(
+  chapters: StoryChapterConfig[],
+  lengthScale = 1
+): number {
   let sum = 0;
   for (let i = 0; i < chapters.length; i++) {
-    sum += chapters[i].length;
+    sum += chapters[i].length * lengthScale;
   }
   return Math.max(100, sum);
 }
@@ -91,18 +94,19 @@ export function getTotalScrollLengthVh(chapters: StoryChapterConfig[]): number {
 export function getChapterStartScrollY(
   targetIndex: number,
   viewportHeight: number,
-  chapters: StoryChapterConfig[]
+  chapters: StoryChapterConfig[],
+  lengthScale = 1
 ): number {
   const vhPx = Math.max(1, viewportHeight) / 100;
   let acc = 0;
   const clamped = clamp(targetIndex, 0, chapters.length - 1);
   for (let i = 0; i < clamped; i++) {
-    acc += chapters[i].length * vhPx;
+    acc += chapters[i].length * lengthScale * vhPx;
   }
   // Land gently inside the start of the hold/travel zone so text & shape are immediately settled
   const isTunnel = chapters[clamped]?.shape === 'tunnel';
   const settleOffset = isTunnel ? 0.04 : 0.16;
-  return acc + chapters[clamped].length * vhPx * settleOffset;
+  return acc + chapters[clamped].length * lengthScale * vhPx * settleOffset;
 }
 
 /**
@@ -114,7 +118,8 @@ export function getChapterStartScrollY(
 export function resolveScrollPosition(
   scrollY: number,
   viewportHeight: number,
-  chapters: StoryChapterConfig[]
+  chapters: StoryChapterConfig[],
+  lengthScale = 1
 ): ResolvedScrollPosition {
   const n = chapters.length;
   if (n === 0) {
@@ -122,12 +127,12 @@ export function resolveScrollPosition(
   }
 
   const vhPx = Math.max(1, viewportHeight) / 100;
-  const totalPx = getTotalScrollLengthVh(chapters) * vhPx;
+  const totalPx = getTotalScrollLengthVh(chapters, lengthScale) * vhPx;
   const y = clamp(scrollY, 0, totalPx);
 
   let cursor = 0;
   for (let i = 0; i < n; i++) {
-    const span = Math.max(1, chapters[i].length * vhPx);
+    const span = Math.max(1, chapters[i].length * lengthScale * vhPx);
     const end = cursor + span;
     if (y < end || i === n - 1) {
       const local = clamp01((y - cursor) / span);
@@ -152,13 +157,15 @@ export function evaluateStoryTimeline(
   viewportHeight: number,
   chapters: StoryChapterConfig[],
   scrollSpeedNorm: number,
-  isRtl: boolean
+  isRtl: boolean,
+  lengthScale = 1
 ): TimelineFrame {
   const n = Math.max(1, chapters.length);
   const { index, local, totalProgress } = resolveScrollPosition(
     scrollY,
     viewportHeight,
-    chapters
+    chapters,
+    lengthScale
   );
 
   const nextIdx = Math.min(n - 1, index + 1);

@@ -63,6 +63,7 @@ class ParticleRegistryManager {
       this.refreshAllRects();
     });
     window.addEventListener('resize', this.handleWindowResize);
+    window.addEventListener('orientationchange', this.handleWindowResize);
   }
 
   private handleWindowResize = () => {
@@ -100,6 +101,7 @@ class ParticleRegistryManager {
         if (
           !prev ||
           !next ||
+          prev.isSticky !== next.isSticky ||
           Math.abs(prev.width - next.width) > 4 ||
           Math.abs(prev.height - next.height) > 4
         ) {
@@ -120,7 +122,13 @@ class ParticleRegistryManager {
     const sectionParent = el.closest('.pin-section') as HTMLElement | null;
     const scrollY = window.scrollY;
 
-    if (stickyParent && sectionParent) {
+    const isActuallySticky = Boolean(
+      stickyParent &&
+        sectionParent &&
+        window.getComputedStyle(stickyParent).position === 'sticky'
+    );
+
+    if (isActuallySticky && stickyParent && sectionParent) {
       const stickyRect = stickyParent.getBoundingClientRect();
       const sectionRect = sectionParent.getBoundingClientRect();
 
@@ -225,22 +233,36 @@ class ParticleRegistryManager {
     if (!pts.length) return null;
 
     const isStrip = spec.descriptor.startsWith('strip:');
-    // For infinite marquee strip, make the sampled span 1.85× viewport width (3 full tiles)
+    const isSquareDiagram =
+      spec.descriptor.startsWith('svg:') || spec.descriptor.startsWith('process:');
+    // For infinite marquee strip, make the sampled span 1.95× viewport width (3 full tiles)
     // so modulo wrapping fills edge-to-edge seamlessly with zero gaps!
+    // For 1:1 geometric diagrams (What I Do & Process), scale uniformly by min(boxW, boxH) * 0.88
+    // so shapes stay perfectly circular and strictly contained inside the slot on mobile.
     const vw = typeof window !== 'undefined' ? window.innerWidth : 1440;
-    const effectiveW = isStrip ? Math.max(boxW * 1.65, vw * 1.95) : boxW;
+    const squareFit = Math.min(boxW, boxH) * 0.88;
+    const effectiveW = isStrip
+      ? Math.max(boxW * 1.65, vw * 1.95)
+      : isSquareDiagram
+        ? squareFit
+        : boxW;
+    const effectiveH = isStrip
+      ? boxH * 0.78
+      : isSquareDiagram
+        ? squareFit
+        : boxH;
 
     const positions = new Float32Array(count * 3);
     const accents = new Float32Array(count);
     const dustMask = new Float32Array(count);
     const shades = new Float32Array(count);
-    const depthScale = Math.min(boxW, boxH) * 0.28;
+    const depthScale = Math.min(effectiveW, effectiveH) * (isSquareDiagram ? 0.22 : 0.28);
 
     for (let i = 0; i < count; i++) {
       const p = pts[i % pts.length];
       const i3 = i * 3;
       positions[i3] = (p.u - 0.5) * effectiveW;
-      positions[i3 + 1] = -(p.v - 0.5) * boxH;
+      positions[i3 + 1] = -(p.v - 0.5) * effectiveH;
       positions[i3 + 2] = p.z * depthScale;
       accents[i] = p.accent;
       dustMask[i] = p.dust ?? 0;
