@@ -1632,12 +1632,13 @@ export default function SiteParticleStage({
         });
       }
 
-      // Pause WebGL drawing while completely occluded behind opaque full-screen Selected Work canvas
+      // Pause WebGL drawing while transitioning between tabs or occluded behind opaque Selected Work canvas
       const occludedByWork =
-        st.activeSection === 'work' &&
-        !resolved.spec &&
-        visFrom < 0.02 &&
-        visTo < 0.02;
+        st.tabTransition.active ||
+        (st.activeSection === 'work' &&
+          !resolved.spec &&
+          visFrom < 0.02 &&
+          visTo < 0.02);
 
       if (!occludedByWork) {
         renderer.render(scene, camera);
@@ -1658,6 +1659,7 @@ export default function SiteParticleStage({
       clearTimeout(frameId);
       window.clearTimeout(prewarmTimer);
       unsubRegistry();
+      bufferCache.clear();
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerdown', onPointerDown);
       window.removeEventListener('pointerup', onPointerUp);
@@ -1669,6 +1671,12 @@ export default function SiteParticleStage({
       dustGeo.dispose();
       dustMat.dispose();
       renderer.dispose();
+      renderer.forceContextLoss();
+      renderer.domElement.width = 1;
+      renderer.domElement.height = 1;
+      if (renderer.domElement.parentNode === host) {
+        host.removeChild(renderer.domElement);
+      }
     };
   }, [debugShapes]);
 

@@ -26,9 +26,9 @@ export interface HeroStatItem {
  * 0. CONTINUOUS SITE PARTICLE STAGE CONFIGURATION
  * ───────────────────────────────────────────────────────────── */
 export const SITE_PARTICLE_CONFIG = {
-  desktopCount: 70000,
-  mobileCount: 25000,
-  softwareGlCount: 28000,
+  desktopCount: 52000,
+  mobileCount: 20000,
+  softwareGlCount: 22000,
   dustCountDesktop: 1600,
   dustCountMobile: 650,
   pointSizeDesktop: 1.66,
@@ -92,10 +92,10 @@ export type HeroPortraitTheme = 'light' | 'dark';
 export const HERO_PORTRAIT_CONFIG = {
   /** Default 'light' (#ECEAE6 + dark particles); switch to 'dark' for #0A0A0A + light particles */
   theme: 'light' as HeroPortraitTheme,
-  /** High-density WebGL portrait cloud (120k..160k desktop, 40k mobile) */
-  particleCount: 135000,
-  mobileParticleCount: 40000,
-  softwareGlCount: 36000,
+  /** High-density WebGL portrait cloud (82k desktop, 28k mobile) */
+  particleCount: 82000,
+  mobileParticleCount: 28000,
+  softwareGlCount: 26000,
   /** Soft chin/neck feather band as fraction of portrait height (~15%) */
   faceMaskFeather: 0.15,
   /** Sparse random #5B5BF0 sparks (2..3%); ZERO contour edge-detection accent */

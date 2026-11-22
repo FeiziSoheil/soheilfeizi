@@ -8,7 +8,7 @@ class AmbientSoundEngine {
   private activeNodes: AudioNode[] = [];
   private activeIntervals: number[] = [];
   private isPlaying = false;
-  private currentTrack = 0;
+  private currentTrack = 1;
   private freqBuffer = new Uint8Array(32);
 
   private ensureContext(): AudioContext | null {
@@ -108,6 +108,16 @@ class AmbientSoundEngine {
 
   public getState() {
     return { isPlaying: this.isPlaying, currentTrack: this.currentTrack };
+  }
+
+  public isContextRunning(): boolean {
+    return this.ctx?.state === 'running';
+  }
+
+  public resumeIfNeeded(): void {
+    if (this.ctx && this.ctx.state === 'suspended') {
+      void this.ctx.resume();
+    }
   }
 
   public getLevels(bars = 12): number[] {

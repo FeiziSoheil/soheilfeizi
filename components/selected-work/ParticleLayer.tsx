@@ -422,7 +422,7 @@ export default function ParticleLayer({
       const dt = Math.min(0.05, Math.max(0.001, (now - lastTime) / 1000));
       lastTime = now;
 
-      if (isVisible && !document.hidden && pointCount > 0) {
+      if (isVisible && !document.hidden && pointCount > 0 && !useScrollStore.getState().tabTransition.active) {
         if (transProgressRef.current < 1) {
           transProgressRef.current = Math.min(
             1,
@@ -510,6 +510,10 @@ export default function ParticleLayer({
       if (vboMag) gl.deleteBuffer(vboMag);
       if (vao) gl.deleteVertexArray(vao);
       gl.deleteProgram(prog);
+      const loseCtx = gl.getExtension('WEBGL_lose_context');
+      loseCtx?.loseContext();
+      canvas.width = 1;
+      canvas.height = 1;
     };
   }, [projects, containerRef, reducedMotion]);
 

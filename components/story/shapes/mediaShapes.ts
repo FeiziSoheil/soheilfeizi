@@ -203,15 +203,17 @@ export function buildWordShape(
   const { positions, accents, dustMask, meta } = buf;
   const rand = createSeededRandom(808);
 
-  const cw = 2048;
-  const ch = 640;
+  const cw = 1280;
+  const ch = 400;
   const worldW = 5.6;
   const worldH = (ch / cw) * worldW;
   const halfPxWorldX = (0.5 / cw) * worldW;
   const halfPxWorldY = (0.5 / ch) * worldH;
 
-  const corePoints: Array<[number, number, boolean]> = [];
-  const accentPoints: Array<[number, number]> = [];
+  const coreX: number[] = [];
+  const coreY: number[] = [];
+  const accentX: number[] = [];
+  const accentY: number[] = [];
 
   if (typeof document !== 'undefined') {
     const canvas = document.createElement('canvas');
@@ -227,22 +229,20 @@ export function buildWordShape(
       const fontFamily = isRtl
         ? 'Vazirmatn, sans-serif'
         : '"Inter Tight", system-ui, sans-serif';
-      const fontSize = isRtl ? 310 : 336;
+      const fontSize = isRtl ? 194 : 210;
       ctx.font = `700 ${fontSize}px ${fontFamily}`;
 
-      // Draw crisp outline + clean glyph fill so letterforms stay sharp without bloated stroke
       ctx.fillStyle = '#FFFFFF';
       ctx.fillText(word, cw * 0.5, ch * 0.52);
-      ctx.lineWidth = 2.5;
+      ctx.lineWidth = 2;
       ctx.strokeStyle = '#FFFFFF';
       ctx.strokeText(word, cw * 0.5, ch * 0.52);
 
       const data = ctx.getImageData(0, 0, cw, ch).data;
-      const step = 3;
+      const step = 2;
       for (let y = 0; y < ch; y += step) {
         for (let x = 0; x < cw; x += step) {
           const alpha = data[(y * cw + x) * 4 + 3];
-          // Strict alpha > 0.5 (> 128)
           if (alpha > 128) {
             const leftA = x >= step ? data[(y * cw + (x - step)) * 4 + 3] : 0;
             const rightA = x + step < cw ? data[(y * cw + (x + step)) * 4 + 3] : 0;
@@ -253,34 +253,39 @@ export function buildWordShape(
             const nx = (x / cw - 0.5) * worldW;
             const ny = (0.5 - y / ch) * worldH;
 
-            // Emphasize perimeter contour (2x weight) + period in accent
             const isPeriod = isRtl ? nx < -1.55 : nx > 1.88;
             if (isPeriod) {
-              accentPoints.push([nx, ny]);
+              accentX.push(nx);
+              accentY.push(ny);
             } else {
-              corePoints.push([nx, ny, isEdge]);
+              coreX.push(nx);
+              coreY.push(ny);
               if (isEdge) {
-                corePoints.push([nx, ny, true]);
+                coreX.push(nx);
+                coreY.push(ny);
               }
             }
           }
         }
       }
     }
+    canvas.width = 0;
+    canvas.height = 0;
   }
 
   const structureN = Math.floor(count * 0.75);
   const accentN = Math.floor(count * 0.15);
+  const coreLen = coreX.length;
+  const accentLen = accentX.length;
   let idx = 0;
 
-  // 75% Crisp monochrome typography pixels (jitter <= 0.5px in 2048 canvas space)
   for (let i = 0; i < structureN && idx < count; i++, idx++) {
     let x = (rand() - 0.5) * 4.6;
     let y = (rand() - 0.5) * 1.0;
-    if (corePoints.length > 0) {
-      const pt = corePoints[Math.floor(rand() * corePoints.length)];
-      x = pt[0] + (rand() - 0.5) * halfPxWorldX * 2;
-      y = pt[1] + (rand() - 0.5) * halfPxWorldY * 2;
+    if (coreLen > 0) {
+      const k = Math.floor(rand() * coreLen);
+      x = coreX[k] + (rand() - 0.5) * halfPxWorldX * 2;
+      y = coreY[k] + (rand() - 0.5) * halfPxWorldY * 2;
     }
     const i3 = idx * 3;
     positions[i3] = x;
@@ -291,18 +296,17 @@ export function buildWordShape(
     meta[idx] = -1.0;
   }
 
-  // 15% Accent highlight on period + crisp glyph top rim contour
   for (let i = 0; i < accentN && idx < count; i++, idx++) {
     let x = 0;
     let y = 0;
-    if (accentPoints.length > 0 && rand() < 0.55) {
-      const pt = accentPoints[Math.floor(rand() * accentPoints.length)];
-      x = pt[0] + (rand() - 0.5) * halfPxWorldX * 2;
-      y = pt[1] + (rand() - 0.5) * halfPxWorldY * 2;
-    } else if (corePoints.length > 0) {
-      const pt = corePoints[Math.floor(rand() * corePoints.length)];
-      x = pt[0] + (rand() - 0.5) * halfPxWorldX * 2;
-      y = pt[1] + (rand() - 0.5) * halfPxWorldY * 2;
+    if (accentLen > 0 && rand() < 0.55) {
+      const k = Math.floor(rand() * accentLen);
+      x = accentX[k] + (rand() - 0.5) * halfPxWorldX * 2;
+      y = accentY[k] + (rand() - 0.5) * halfPxWorldY * 2;
+    } else if (coreLen > 0) {
+      const k = Math.floor(rand() * coreLen);
+      x = coreX[k] + (rand() - 0.5) * halfPxWorldX * 2;
+      y = coreY[k] + (rand() - 0.5) * halfPxWorldY * 2;
     }
     const i3 = idx * 3;
     positions[i3] = x;
@@ -406,6 +410,8 @@ export async function buildPortraitShape(
         // fallback handled below
       }
     }
+    canvas.width = 0;
+    canvas.height = 0;
   }
 
   const structureN = Math.floor(count * 0.75);

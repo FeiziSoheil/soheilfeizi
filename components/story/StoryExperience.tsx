@@ -337,8 +337,6 @@ export default function StoryExperience() {
     let paused = false;
 
     const isMobile = window.innerWidth < 768;
-    const count = isMobile ? 30_000 : 85_000;
-    particleCountRef.current = count;
 
     let renderer: THREE.WebGLRenderer;
     try {
@@ -362,10 +360,12 @@ export default function StoryExperience() {
 
     const gl = renderer.getContext();
     const isSoftwareGl = detectSoftwareGl(gl);
+    const count = isSoftwareGl ? 22_000 : isMobile ? 20_000 : 48_000;
+    particleCountRef.current = count;
     const getTargetDpr = () => {
       if (isSoftwareGl) return 1;
       const mobileNow = window.innerWidth < 768;
-      return Math.min(window.devicePixelRatio || 1, mobileNow ? 1.5 : 2);
+      return Math.min(window.devicePixelRatio || 1, mobileNow ? 1.5 : 1.75);
     };
 
     const initialDpr = getTargetDpr();
@@ -476,7 +476,8 @@ export default function StoryExperience() {
 
       const sys = particleSysRef.current;
       const lib = libraryRef.current;
-      if (!sys || !lib) {
+      const tabTrans = useScrollStore.getState().tabTransition;
+      if (!sys || !lib || (tabTrans.active && tabTrans.from === 'story')) {
         scheduleNext();
         return;
       }
@@ -787,13 +788,18 @@ export default function StoryExperience() {
     }
     localeRef.current = initialLocale;
 
-    void buildStoryShapeLibrary(count, initialLocale, (pct) => {
-      if (!disposed) {
-        setLoadProgress(pct);
-        useScrollStore.getState().setTabTransitionProgress(pct);
-      }
-    }).then((lib) => {
-      if (disposed) return;
+    void buildStoryShapeLibrary(
+      count,
+      initialLocale,
+      (pct) => {
+        if (!disposed) {
+          setLoadProgress(pct);
+          useScrollStore.getState().setTabTransitionProgress(pct);
+        }
+      },
+      () => disposed
+    ).then((lib) => {
+      if (disposed || !lib) return;
       libraryRef.current = lib;
       const sys = new StoryParticleSystem(count, lib.introCloud, initialDpr);
       particleSysRef.current = sys;
@@ -816,6 +822,9 @@ export default function StoryExperience() {
       particleSysRef.current = null;
       libraryRef.current = null;
       renderer.dispose();
+      renderer.forceContextLoss();
+      renderer.domElement.width = 1;
+      renderer.domElement.height = 1;
       if (renderer.domElement.parentNode === host) {
         host.removeChild(renderer.domElement);
       }
@@ -854,7 +863,7 @@ export default function StoryExperience() {
     useScrollStore.getState().startTabTransition('story', 'site');
     window.setTimeout(() => {
       router.push('/?v=site');
-    }, 360);
+    }, 260);
   }, [router]);
 
   const handleJumpToChapter = useCallback((index: number) => {

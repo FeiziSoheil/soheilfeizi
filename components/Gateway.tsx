@@ -141,7 +141,7 @@ export default function Gateway({
                 data-cursor="view"
                 onClick={() => {
                   soundEngine.playStippleTick();
-                  onEnter('site', false);
+                  onEnter('site', soundOn);
                 }}
                 onMouseEnter={() => soundEngine.playStippleTick()}
                 className="group flex flex-col justify-between rounded-[var(--radius-lg)] border border-[#141414]/15 bg-white/40 p-7 sm:p-9 text-start transition-colors hover:bg-[#111111] hover:text-[#ECEAE6] cursor-pointer"
@@ -166,6 +166,7 @@ export default function Gateway({
                 data-cursor="view"
                 onClick={() => {
                   soundEngine.playStippleTick();
+                  useScrollStore.getState().setSoundEnabled(soundOn);
                 }}
                 onMouseEnter={() => soundEngine.playStippleTick()}
                 className="group flex flex-col justify-between rounded-[var(--radius-lg)] border border-[#5B5BF0]/25 bg-[#5B5BF0]/[0.06] p-7 sm:p-9 text-start transition-colors hover:bg-[#5B5BF0] hover:text-white cursor-pointer"

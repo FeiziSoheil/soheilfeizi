@@ -216,7 +216,7 @@ const INITIAL_TAB_TRANSITION: TabTransitionState = {
 export const useScrollStore = create<ScrollStoreState>((set) => ({
   locale: 'fa',
   mode: 'story',
-  soundEnabled: false,
+  soundEnabled: true,
   tabTransition: { ...INITIAL_TAB_TRANSITION },
   activeSection: 'intro',
   theme: 'light',

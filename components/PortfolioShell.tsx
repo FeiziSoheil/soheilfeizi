@@ -70,8 +70,10 @@ export default function PortfolioShell() {
   const setAssetsReady = useScrollStore((s) => s.setAssetsReady);
   const toggleGuiVisible = useScrollStore((s) => s.toggleGuiVisible);
 
-  const [gatewayDone, setGatewayDone] = useState(false);
-  const [activeTrack, setActiveTrack] = useState(0);
+  const [gatewayDone, setGatewayDone] = useState(
+    () => tabTransition.active && tabTransition.to === 'site'
+  );
+  const [activeTrack, setActiveTrack] = useState(1);
   const [contactModalOpen, setContactModalOpen] = useState(false);
   const [debugShapes, setDebugShapes] = useState(false);
 
@@ -266,25 +268,54 @@ export default function PortfolioShell() {
     };
   }, []);
 
-  // Audio handoff + particle vortex reveal when arriving on Site from Story
+  // Default Track 2 autoplay + audio handoff + particle vortex reveal when on Site
   useEffect(() => {
     if (!gatewayDone) return;
     const st = useScrollStore.getState();
 
-    // If user had music ON in Story and switched to Site, turn ON Site music automatically
+    // Auto-start Track 2 when soundEnabled is true (initial default or handoff from Story)
     if (!arrivalAudioHandledRef.current && st.soundEnabled && !soundEngine.getState().isPlaying) {
       arrivalAudioHandledRef.current = true;
       soundEngine.start(activeTrack);
     }
 
+    // If browser autoplay policy kept AudioContext suspended, unlock cleanly on first user gesture
+    let unlockCleanup: (() => void) | undefined;
+    if (st.soundEnabled && !soundEngine.isContextRunning()) {
+      const unlockAudio = () => {
+        if (!useScrollStore.getState().soundEnabled) {
+          cleanupListeners();
+          return;
+        }
+        if (!soundEngine.getState().isPlaying) {
+          soundEngine.start(activeTrack);
+        } else {
+          soundEngine.resumeIfNeeded();
+        }
+        cleanupListeners();
+      };
+      const cleanupListeners = () => {
+        window.removeEventListener('pointerdown', unlockAudio);
+        window.removeEventListener('keydown', unlockAudio);
+      };
+      window.addEventListener('pointerdown', unlockAudio, { passive: true });
+      window.addEventListener('keydown', unlockAudio, { passive: true });
+      unlockCleanup = cleanupListeners;
+    }
+
+    let exitTimer: number | undefined;
     if (tabTransition.active && tabTransition.to === 'site' && assetsReady) {
       const elapsed = performance.now() - tabTransition.startedAt;
-      const remaining = Math.max(0, 780 - elapsed);
-      const timer = window.setTimeout(() => {
+      const remaining = Math.max(0, 620 - elapsed);
+      exitTimer = window.setTimeout(() => {
         useScrollStore.getState().beginTabTransitionExit();
       }, remaining);
-      return () => window.clearTimeout(timer);
     }
+
+    return () => {
+      unlockCleanup?.();
+      if (exitTimer !== undefined) window.clearTimeout(exitTimer);
+    };
   }, [gatewayDone, assetsReady, tabTransition.active, tabTransition.to, tabTransition.startedAt, activeTrack]);
 
   const handleToggleLocale = useCallback(() => {
@@ -307,7 +338,8 @@ export default function PortfolioShell() {
         // ignore
       }
 
-      if (enableSound && chosenMode === 'story') {
+      if (enableSound) {
+        arrivalAudioHandledRef.current = true;
         soundEngine.start(activeTrack);
         setSoundPlaying(true);
       } else {
@@ -346,12 +378,13 @@ export default function PortfolioShell() {
   }, []);
 
   const handleSwitchToStory = useCallback(() => {
+    if (useScrollStore.getState().tabTransition.active) return;
     soundEngine.playStippleTick();
     soundEngine.stop();
     useScrollStore.getState().startTabTransition('site', 'story');
     window.setTimeout(() => {
       router.push('/story?from=tab');
-    }, 360);
+    }, 260);
   }, [router]);
 
   const handleNavigateSection = useCallback((id: SectionId) => {

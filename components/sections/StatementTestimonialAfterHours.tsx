@@ -427,18 +427,38 @@ export function AfterHoursSection({
 }) {
   const t = CONTENT[locale];
   const p = useScrollStore((s) => s.sectionProgress.afterhours);
+  const sectionRef = useRef<HTMLElement | null>(null);
   const [liveBars, setLiveBars] = useState<number[]>(IDLE_BARS);
 
   useEffect(() => {
     if (!soundPlaying) return;
+    const el = sectionRef.current;
+    let isVisible = true;
+    const io = el
+      ? new IntersectionObserver(
+          (entries) => {
+            isVisible = Boolean(entries[0]?.isIntersecting);
+          },
+          { rootMargin: '120px' }
+        )
+      : null;
+    if (el && io) io.observe(el);
+
     let raf = 0;
-    const poll = () => {
-      const levels = soundEngine.getLevels(12);
-      setLiveBars(levels.map((v) => Math.max(12, Math.round(v * 100))));
+    let lastUpdate = 0;
+    const poll = (now: number) => {
+      if (isVisible && !document.hidden && now - lastUpdate >= 85) {
+        lastUpdate = now;
+        const levels = soundEngine.getLevels(12);
+        setLiveBars(levels.map((v) => Math.max(12, Math.round(v * 100))));
+      }
       raf = requestAnimationFrame(poll);
     };
     raf = requestAnimationFrame(poll);
-    return () => cancelAnimationFrame(raf);
+    return () => {
+      cancelAnimationFrame(raf);
+      io?.disconnect();
+    };
   }, [soundPlaying]);
 
   const bars = soundPlaying ? liveBars : IDLE_BARS;
@@ -446,6 +466,7 @@ export function AfterHoursSection({
 
   return (
     <section
+      ref={sectionRef}
       id="afterhours"
       data-section="afterhours"
       data-theme="dark"

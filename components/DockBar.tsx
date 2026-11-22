@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'motion/react';
 import {
@@ -72,6 +72,16 @@ export default function DockBar({
 
   const modalBorder = isDark ? 'border-white/12' : 'border-[#111111]/12';
 
+  const switchTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (switchTimerRef.current !== null) {
+        window.clearTimeout(switchTimerRef.current);
+      }
+    };
+  }, []);
+
   const handleSwitchView = (target: 'site' | 'story') => {
     soundEngine.playStippleTick();
     if (target === activeView || isTransitioning) return;
@@ -82,13 +92,17 @@ export default function DockBar({
     // Launch persistent root-level 3D particle vortex transition loader
     useScrollStore.getState().startTabTransition(activeView, target);
 
-    window.setTimeout(() => {
+    if (switchTimerRef.current !== null) {
+      window.clearTimeout(switchTimerRef.current);
+    }
+    switchTimerRef.current = window.setTimeout(() => {
+      switchTimerRef.current = null;
       if (target === 'story') {
         router.push('/story?from=tab');
       } else {
         router.push('/?v=site');
       }
-    }, 360);
+    }, 260);
   };
 
   return (
