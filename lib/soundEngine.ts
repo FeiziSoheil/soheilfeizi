@@ -10,6 +10,8 @@ class AmbientSoundEngine {
   private isPlaying = false;
   private currentTrack = 1;
   private freqBuffer = new Uint8Array(32);
+  private singularityOsc: OscillatorNode | null = null;
+  private singularityGain: GainNode | null = null;
 
   private ensureContext(): AudioContext | null {
     if (typeof window === 'undefined') return null;
@@ -83,6 +85,7 @@ class AmbientSoundEngine {
     this.masterGain.gain.cancelScheduledValues(now);
     this.masterGain.gain.setTargetAtTime(0.0001, now, 0.35);
     this.isPlaying = false;
+    this.silenceSingularityHum();
     window.setTimeout(() => {
       if (!this.isPlaying) {
         this.clearActiveTrack();
@@ -147,6 +150,50 @@ class AmbientSoundEngine {
     gain.connect(this.masterGain);
     osc.start(now);
     osc.stop(now + 0.06);
+  }
+
+  /**
+   * Procedural Singularity Sub-Bass Hum (40Hz..90Hz pure sine).
+   * Active ONLY when user sound is ON; ramps volume 0 -> 0.25 with r/R and fades cleanly to 0 at edges.
+   */
+  public updateSingularityHum(ratio: number, active: boolean, soundEnabled: boolean) {
+    if (!active || !soundEnabled || !this.isPlaying || !this.ctx || this.ctx.state !== 'running') {
+      this.silenceSingularityHum();
+      return;
+    }
+
+    const ctx = this.ctx;
+    const now = ctx.currentTime;
+    const clamped = Math.max(0, Math.min(1, ratio));
+
+    if (!this.singularityOsc || !this.singularityGain) {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(42, now);
+      gain.gain.setValueAtTime(0.0001, now);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      this.singularityOsc = osc;
+      this.singularityGain = gain;
+    }
+
+    // Frequency sweeps smoothly from 40Hz to 90Hz as r/R expands
+    const targetFreq = 40 + clamped * 50;
+    // Envelope rises 0 -> 0.25 across active swallow and fades out smoothly near r/R = 1
+    const fadeOut = clamped > 0.82 ? Math.max(0, (1 - clamped) / 0.18) : 1;
+    const fadeIn = clamped < 0.06 ? clamped / 0.06 : 1;
+    const targetGain = Math.max(0.0001, Math.min(0.25, Math.sin(clamped * Math.PI * 0.88 + 0.12) * 0.25 * fadeIn * fadeOut));
+
+    this.singularityOsc.frequency.setTargetAtTime(targetFreq, now, 0.06);
+    this.singularityGain.gain.setTargetAtTime(targetGain, now, 0.08);
+  }
+
+  public silenceSingularityHum() {
+    if (!this.ctx || !this.singularityGain) return;
+    const now = this.ctx.currentTime;
+    this.singularityGain.gain.setTargetAtTime(0.0001, now, 0.12);
   }
 
   // Track 0: Warm Analog Tape Drift

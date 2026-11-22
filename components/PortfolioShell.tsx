@@ -14,6 +14,7 @@ import Gateway from '@/components/Gateway';
 import Chrome from '@/components/Chrome';
 import DockBar from '@/components/DockBar';
 import CustomCursor from '@/components/CustomCursor';
+import SingularityBackdrop from '@/components/SingularityBackdrop';
 import {
   AboutSection,
   HeroSection,
@@ -45,10 +46,6 @@ const SiteParticleStage = dynamic(
   { ssr: false }
 );
 
-function lerpChannel(a: number, b: number, t: number): number {
-  return Math.round(a + (b - a) * t);
-}
-
 export default function PortfolioShell() {
   const router = useRouter();
   const locale = useScrollStore((s) => s.locale);
@@ -58,9 +55,11 @@ export default function PortfolioShell() {
   const tabTransition = useScrollStore((s) => s.tabTransition);
   const activeSection = useScrollStore((s) => s.activeSection);
   const theme = useScrollStore((s) => s.theme);
-  const themeLerp = useScrollStore((s) => s.themeLerp);
   const totalProgress = useScrollStore((s) => s.totalProgress);
   const guiVisible = useScrollStore((s) => s.guiVisible);
+  const singularityActive = useScrollStore((s) => s.singularity.active);
+  const singularityOuterTheme = useScrollStore((s) => s.singularity.outerTheme);
+  const singularityInnerTheme = useScrollStore((s) => s.singularity.innerTheme);
 
   const setLocale = useScrollStore((s) => s.setLocale);
   const setMode = useScrollStore((s) => s.setMode);
@@ -215,27 +214,21 @@ export default function PortfolioShell() {
     return () => window.removeEventListener('keydown', onKey);
   }, [toggleGuiVisible]);
 
-  // 5. Smooth continuous CSS variable lerp synced with themeLerp (0 light #ECEAE6 -> 1 dark #0A0A0A)
+  // 5. Crisp binary root theme tokens (no smooth fade; spatial split is driven by SingularityBackdrop & scoped [data-theme])
   useEffect(() => {
-    const t = Math.max(0, Math.min(1, themeLerp));
-    const bgR = lerpChannel(236, 10, t);
-    const bgG = lerpChannel(234, 10, t);
-    const bgB = lerpChannel(230, 10, t);
-
-    const inkR = lerpChannel(17, 236, t);
-    const inkG = lerpChannel(17, 234, t);
-    const inkB = lerpChannel(17, 230, t);
-
-    const hairR = lerpChannel(17, 236, t);
-    const hairG = lerpChannel(17, 234, t);
-    const hairB = lerpChannel(17, 230, t);
-
     const root = document.documentElement;
-    root.style.setProperty('--theme-t', t.toFixed(4));
-    root.style.setProperty('--bg', `rgb(${bgR}, ${bgG}, ${bgB})`);
-    root.style.setProperty('--ink', `rgb(${inkR}, ${inkG}, ${inkB})`);
-    root.style.setProperty('--hairline', `rgba(${hairR}, ${hairG}, ${hairB}, 0.15)`);
-  }, [themeLerp]);
+    if (theme === 'dark') {
+      root.style.setProperty('--theme-t', '1');
+      root.style.setProperty('--bg', '#0A0A0A');
+      root.style.setProperty('--ink', '#ECEBE7');
+      root.style.setProperty('--hairline', 'rgba(236, 235, 231, 0.16)');
+    } else {
+      root.style.setProperty('--theme-t', '0');
+      root.style.setProperty('--bg', '#ECEAE6');
+      root.style.setProperty('--ink', '#141414');
+      root.style.setProperty('--hairline', 'rgba(20, 20, 20, 0.14)');
+    }
+  }, [theme]);
 
   // 6. Mount Unified PortfolioDirector (Lenis + GSAP ticker + continuous themeLerp)
   useEffect(() => {
@@ -399,8 +392,11 @@ export default function PortfolioShell() {
   );
 
   return (
-    <div className="relative min-h-screen bg-[var(--bg)] text-[var(--ink)]">
-      {/* L0: Single Fixed Continuous Global WebGL2 Particle Stage (135k Hero / 70k sections desktop) */}
+    <div className="relative min-h-screen bg-transparent text-[var(--ink)]">
+      {/* L-1 (z-0): Singularity Backdrop Portal (splits outer & inner theme strictly at circle edge) */}
+      <SingularityBackdrop />
+
+      {/* L0 (z-10): Single Fixed Continuous Global WebGL2 Particle Stage (135k Hero / 70k sections desktop) */}
       <SiteParticleStage
         debugShapes={debugShapes}
         heroEntered={gatewayDone}
@@ -433,6 +429,9 @@ export default function PortfolioShell() {
             activeSection={activeSection}
             theme={theme}
             totalProgress={totalProgress}
+            singularityActive={singularityActive}
+            outerTheme={singularityOuterTheme}
+            innerTheme={singularityInnerTheme}
             onNavigateSection={handleNavigateSection}
             onSwitchToStory={handleSwitchToStory}
           />
@@ -441,6 +440,9 @@ export default function PortfolioShell() {
             locale={locale}
             theme={theme}
             soundPlaying={soundPlaying}
+            singularityActive={singularityActive}
+            outerTheme={singularityOuterTheme}
+            innerTheme={singularityInnerTheme}
             onToggleLocale={handleToggleLocale}
             onToggleSound={handleToggleSound}
             onBeforeSwitch={handleBeforeTabSwitch}

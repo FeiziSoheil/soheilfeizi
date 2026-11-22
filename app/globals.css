@@ -13,11 +13,33 @@
     --ink-dark: #ECEBE7;
     --theme-t: 0;
 
+    /* Singularity Black/White Hole Transition Variables (updated per-frame without reflow) */
+    --bh-x: 50vw;
+    --bh-y: 50vh;
+    --bh-r: 0px;
+    --bh-r-mask: 0px;
+    --bh-accent: #5B5BF0;
+
     /* Global Border-Radius Tokens */
     --radius-sm: 8px;
     --radius-md: 14px;
     --radius-lg: 22px;
     --radius-full: 9999px;
+  }
+
+  /* Scoped theme tokens so overlapping real sections keep crisp independent palettes mid-transition */
+  [data-theme="light"] {
+    --bg: #ECEAE6;
+    --ink: #141414;
+    --hairline: rgba(20, 20, 20, 0.14);
+    color: var(--ink);
+  }
+
+  [data-theme="dark"] {
+    --bg: #0A0A0A;
+    --ink: #ECEBE7;
+    --hairline: rgba(236, 235, 231, 0.16);
+    color: var(--ink);
   }
 
   html {
@@ -87,6 +109,35 @@
   height: 100svh;
   width: 100%;
   overflow: hidden;
+}
+
+/* Singularity mutually-exclusive circle clipping & inverse radial masking (zero DOM duplication) */
+.bh-layer-inner {
+  clip-path: circle(var(--bh-r) at var(--bh-x) var(--bh-y));
+  will-change: clip-path;
+}
+
+.bh-layer-outer {
+  -webkit-mask-image: radial-gradient(
+    circle at var(--bh-x) var(--bh-y),
+    transparent 0px,
+    transparent var(--bh-r-mask),
+    #000 var(--bh-r)
+  );
+  mask-image: radial-gradient(
+    circle at var(--bh-x) var(--bh-y),
+    transparent 0px,
+    transparent var(--bh-r-mask),
+    #000 var(--bh-r)
+  );
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}
+
+.bh-layer-hidden {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  clip-path: circle(0px at 50% 50%);
 }
 
 /* Vertical 90-degree section label at bottom edge */

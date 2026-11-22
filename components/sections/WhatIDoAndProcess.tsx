@@ -6,6 +6,10 @@ import { CONTENT, Locale } from '@/lib/content';
 import { useScrollStore } from '@/lib/scrollStore';
 import { ParticleSlot } from '@/components/ParticleSlot';
 import { soundEngine } from '@/lib/soundEngine';
+import {
+  getSingularitySectionStyle,
+  hasIncomingTransition,
+} from '@/lib/singularity.config';
 
 const INTEGRATION_NODES = [
   { label: 'ERP', x: '50%', y: '10%' },
@@ -49,8 +53,8 @@ export function WhatIDoSection({
       id="whatido"
       data-section="whatido"
       data-theme="light"
-      className="pin-section border-t border-[var(--hairline)] bg-transparent"
-      style={{ height: '720svh' }}
+      className={`pin-section ${hasIncomingTransition('whatido') ? '' : 'border-t border-[var(--hairline)]'} bg-transparent`}
+      style={getSingularitySectionStyle('whatido', '720svh')}
     >
       <div
         className="pin-sticky flex flex-col justify-between px-6 sm:px-10 lg:px-16 pt-14 pb-32 sm:pb-36"
@@ -211,8 +215,8 @@ export function ProcessSection({
       id="process"
       data-section="process"
       data-theme="dark"
-      className="pin-section border-t border-[var(--hairline)] bg-transparent"
-      style={{ height: '660svh' }}
+      className={`pin-section ${hasIncomingTransition('process') ? '' : 'border-t border-[var(--hairline)]'} bg-transparent`}
+      style={getSingularitySectionStyle('process', '660svh')}
     >
       <div className="pin-sticky flex flex-col justify-between px-6 sm:px-10 lg:px-16 pt-16 pb-32 sm:pb-36">
         {/* Header */}

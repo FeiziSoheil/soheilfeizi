@@ -85,12 +85,23 @@ uniform float uHeroSlotHalfH;  // Half-height of hero portrait slot in px
 uniform float uHeroGather;     // 0..1 initial 2.2s cloud-to-portrait assembly
 uniform float uHeroRevealActive; // 0..1 localized cursor spotlight active over Hero portrait
 
+// Black Hole / White Hole Singularity Transition Uniforms
+uniform float uBhActive;       // 0.0 or 1.0
+uniform vec2 uBhOrigin;        // Singularity center in centered WebGL viewport px
+uniform float uBhRadius;       // Current event horizon radius in px
+uniform float uBhMaxRadius;    // Max cover radius to farthest corner in px
+uniform float uBhProgress;     // 0..1 scrubbed scroll progress
+uniform float uBhOuterTheme;   // 0.0 light / 1.0 dark outside circle
+uniform float uBhInnerTheme;   // 1.0 dark / 0.0 light inside circle
+uniform float uBhVortex;       // Gravitational spiral pull strength (0 in reduced motion)
+
 varying float vAccent;
 varying float vAlpha;
 varying float vDepthNorm;
 varying float vTheme;
 varying float vShade;
 varying float vUseShade;
+varying float vBhEdge;
 
 vec3 curlNoise(vec3 p, float t) {
   float x = sin(p.y * 1.45 + t * 0.55) * cos(p.z * 1.25 - t * 0.40);
@@ -231,24 +242,63 @@ void main() {
     bottomFade = mix(1.0, bf, uHeroBottomFade);
   }
 
+  // Black Hole / White Hole gravitational spiral pull, swallow/rebirth, and razor-sharp circle-edge theme inversion
+  float bhEdgeGlow = 0.0;
+  float bhSwallowScale = 1.0;
+  float effectiveTheme = uTheme;
+  if (uBhActive > 0.5 && uDebugStatic < 0.5) {
+    vec2 fromBh = screenPos - uBhOrigin;
+    float dBh = length(fromBh);
+    float rimDist = dBh - uBhRadius;
+    float envArc = smoothstep(0.0, 0.05, uBhProgress) * (1.0 - smoothstep(0.93, 1.0, uBhProgress));
+
+    if (motionScale > 0.5 && uBhVortex > 0.001) {
+      vec2 radDir = dBh > 0.5
+        ? fromBh / dBh
+        : vec2(cos(aRandom.x * 6.2831853), sin(aRandom.x * 6.2831853));
+      float spinDir = uBhInnerTheme > 0.5 ? 1.0 : -1.0;
+      vec2 tangDir = vec2(-radDir.y, radDir.x) * spinDir;
+
+      // Gravitational spiral well pulling surrounding particles toward the event horizon
+      float outerPull = exp(-max(0.0, rimDist) / 165.0) * step(-16.0, rimDist);
+      float innerEject = exp(-max(0.0, -rimDist) / 95.0) * step(rimDist, 0.0);
+      float swirlFactor = (outerPull * 1.0 + innerEject * 0.55) * envArc * uBhVortex * (0.62 + aRandom.z * 0.72);
+
+      // Pull inward + spiral tangentially as particles approach & cross the event horizon
+      float radialForce = outerPull * -46.0 + innerEject * 22.0;
+      screenPos += (radDir * radialForce + tangDir * 58.0) * swirlFactor;
+
+      // Swallow compression right at the horizon followed by rebirth expansion inside
+      float swallowZone = exp(-(rimDist * rimDist) / (28.0 * 28.0)) * envArc;
+      bhSwallowScale = mix(1.0, 1.38, swallowZone);
+      bhEdgeGlow = swallowZone * (0.65 + 0.35 * aRandom.y);
+    }
+
+    // Recompute exact final distance after gravitational displacement so color swaps strictly ON the circle edge
+    float finalDBh = length(screenPos - uBhOrigin);
+    float insideBh = 1.0 - step(uBhRadius, finalDBh);
+    effectiveTheme = mix(uBhOuterTheme, uBhInnerTheme, insideBh);
+  }
+
   // Dynamic countable point size clamped cleanly to active mode [uPointMin..uPointMax]
-  float rawSize = uSize * (0.78 + aRandom.x * 0.68) * uPixelRatio * persp;
+  float rawSize = uSize * (0.78 + aRandom.x * 0.68) * uPixelRatio * persp * bhSwallowScale;
   float dustSizeMul = mix(1.0, 0.72, dust);
-  gl_PointSize = clamp(rawSize * dustSizeMul, uPointMin * uPixelRatio, uPointMax * uPixelRatio);
+  gl_PointSize = clamp(rawSize * dustSizeMul, uPointMin * uPixelRatio, uPointMax * uPixelRatio * 1.35);
 
   // Clean alpha hierarchy with quiet surround dust
   float depthNorm = clamp((localPos.z + 130.0) / 260.0, 0.0, 1.0);
   float structAlpha = mix(uAlphaMin, uAlphaMax, 0.25 + depthNorm * 0.5 + aRandom.y * 0.25);
-  float accentAlpha = mix(structAlpha, min(0.95, uAlphaMax + 0.06), accent);
+  float accentAlpha = mix(structAlpha, min(0.95, uAlphaMax + 0.06), max(accent, bhEdgeGlow));
   float baseAlpha = mix(accentAlpha, uDustAlpha, dust);
 
   float morphBreath = 1.0 - morphMid * 0.14 - microMid * 0.12;
   vAlpha = baseAlpha * visMix * uSlotOpacity * morphBreath * evapFade * stripEdgeFade * bottomFade * gatherFade * heroLensAlpha;
   vAccent = clamp(accent, 0.0, 1.0);
   vDepthNorm = depthNorm;
-  vTheme = uTheme;
+  vTheme = effectiveTheme;
   vShade = clamp(shade, 0.0, 1.0);
   vUseShade = uUseShade;
+  vBhEdge = clamp(bhEdgeGlow, 0.0, 1.0);
 
   gl_Position = projectionMatrix * modelViewMatrix * vec4(screenPos, clamp(localPos.z * 0.08, -20.0, 20.0), 1.0);
 }
@@ -262,6 +312,7 @@ uniform vec3 uLightDim;
 uniform vec3 uDarkBase;
 uniform vec3 uDarkDim;
 uniform vec3 uAccent;
+uniform vec3 uBhAccent;
 
 varying float vAccent;
 varying float vAlpha;
@@ -269,6 +320,7 @@ varying float vDepthNorm;
 varying float vTheme;
 varying float vShade;
 varying float vUseShade;
+varying float vBhEdge;
 
 void main() {
   if (vAlpha < 0.01) discard;
@@ -292,6 +344,7 @@ void main() {
   vec3 accentCol = mix(uAccent, uAccent * 1.15, vTheme);
   float accentMix = mix(smoothstep(0.25, 0.85, vAccent), step(0.5, vAccent), vUseShade);
   vec3 color = mix(mono, accentCol, accentMix);
+  color = mix(color, uBhAccent * 1.18, vBhEdge * 0.88);
 
   gl_FragColor = vec4(color, disc * vAlpha);
 }
@@ -312,10 +365,18 @@ uniform float uMouseActive;
 uniform float uReducedMotion;
 uniform float uTheme;
 uniform float uDustBoost;
+uniform float uBhActive;
+uniform vec2 uBhOrigin;
+uniform float uBhRadius;
+uniform float uBhProgress;
+uniform float uBhOuterTheme;
+uniform float uBhInnerTheme;
+uniform float uBhVortex;
 
 varying float vAlpha;
 varying float vAccent;
 varying float vTheme;
+varying float vBhEdge;
 
 void main() {
   float parallax = mix(0.08, 0.26, aLayer);
@@ -342,12 +403,38 @@ void main() {
     }
   }
 
-  vTheme = uTheme;
-  vAccent = aRandom.z > 0.88 ? 1.0 : 0.0;
-  float baseA = mix(0.10, 0.22, aLayer) * uDustBoost;
-  vAlpha = baseA * (0.75 + 0.25 * sin(uTime * 0.6 + aRandom.w * 6.2831));
+  float effectiveTheme = uTheme;
+  float bhEdgeGlow = 0.0;
+  float bhAlphaBoost = 1.0;
 
-  gl_PointSize = clamp((1.15 + aLayer * 0.9) * uPixelRatio, 1.1 * uPixelRatio, 2.1 * uPixelRatio);
+  if (uBhActive > 0.5) {
+    vec2 fromBh = pos - uBhOrigin;
+    float dBh = length(fromBh);
+    float rimDist = dBh - uBhRadius;
+    float envArc = smoothstep(0.0, 0.05, uBhProgress) * (1.0 - smoothstep(0.93, 1.0, uBhProgress));
+
+    if (motionScale > 0.5 && uBhVortex > 0.001) {
+      vec2 radDir = dBh > 0.5 ? fromBh / dBh : vec2(1.0, 0.0);
+      float spinDir = uBhInnerTheme > 0.5 ? 1.0 : -1.0;
+      vec2 tangDir = vec2(-radDir.y, radDir.x) * spinDir;
+      float pull = exp(-abs(rimDist) / 140.0) * envArc * uBhVortex * (0.55 + aLayer * 0.75);
+      pos += (-radDir * 36.0 + tangDir * 54.0) * pull;
+      bhEdgeGlow = exp(-(rimDist * rimDist) / (30.0 * 30.0)) * envArc;
+      bhAlphaBoost = 1.0 + bhEdgeGlow * 2.4;
+    }
+
+    float finalDBh = length(pos - uBhOrigin);
+    float insideBh = 1.0 - step(uBhRadius, finalDBh);
+    effectiveTheme = mix(uBhOuterTheme, uBhInnerTheme, insideBh);
+  }
+
+  vTheme = effectiveTheme;
+  vAccent = aRandom.z > 0.88 ? 1.0 : 0.0;
+  vBhEdge = clamp(bhEdgeGlow, 0.0, 1.0);
+  float baseA = mix(0.10, 0.22, aLayer) * uDustBoost * bhAlphaBoost;
+  vAlpha = min(0.92, baseA * (0.75 + 0.25 * sin(uTime * 0.6 + aRandom.w * 6.2831)));
+
+  gl_PointSize = clamp((1.15 + aLayer * 0.9 + bhEdgeGlow * 0.95) * uPixelRatio, 1.1 * uPixelRatio, 2.8 * uPixelRatio);
   gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, -25.0, 1.0);
 }
 `;
@@ -355,9 +442,12 @@ void main() {
 const SITE_DUST_FRAG = /* glsl */ `
 precision highp float;
 
+uniform vec3 uBhAccent;
+
 varying float vAlpha;
 varying float vAccent;
 varying float vTheme;
+varying float vBhEdge;
 
 void main() {
   vec2 uv = gl_PointCoord - vec2(0.5);
@@ -368,8 +458,87 @@ void main() {
   vec3 lightCol = mix(vec3(0.22, 0.22, 0.25), vec3(0.357, 0.357, 0.941), vAccent);
   vec3 darkCol = mix(vec3(0.76, 0.76, 0.82), vec3(0.52, 0.52, 1.0), vAccent);
   vec3 col = mix(lightCol, darkCol, vTheme);
+  col = mix(col, uBhAccent * 1.15, vBhEdge * 0.9);
 
   gl_FragColor = vec4(col, disc * vAlpha);
+}
+`;
+
+/* ─────────────────────────────────────────────────────────────
+ * EVENT-HORIZON ACCRETION PARTICLE RING (#5B5BF0)
+ * Tight orbiting particle halo locked to the exact singularity radius
+ * ───────────────────────────────────────────────────────────── */
+const BH_RING_VERT = /* glsl */ `
+precision highp float;
+
+attribute vec4 aRing; // x: baseAngle, y: radialOffsetNorm (-1..1), z: speed, w: sparkRand
+
+uniform float uTime;
+uniform float uPixelRatio;
+uniform float uBhActive;
+uniform vec2 uBhOrigin;
+uniform float uBhRadius;
+uniform float uBhMaxRadius;
+uniform float uBhProgress;
+uniform float uBhInnerTheme;
+uniform float uReducedMotion;
+
+varying float vAlpha;
+varying float vHot;
+
+void main() {
+  float ringActive = uBhActive * (1.0 - uReducedMotion);
+  if (ringActive < 0.5 || uBhRadius < 1.0 || uBhRadius > uBhMaxRadius - 2.0) {
+    vAlpha = 0.0;
+    vHot = 0.0;
+    gl_PointSize = 0.0;
+    gl_Position = vec4(2.0, 2.0, 0.0, 1.0);
+    return;
+  }
+
+  float spinDir = uBhInnerTheme > 0.5 ? 1.0 : -1.0;
+  float omega = (0.35 + aRing.z * 0.95) * spinDir;
+  float angle = aRing.x + uTime * omega + uBhProgress * 4.2 * spinDir;
+
+  // Concentrate 75% of particles razor-tight on the event horizon, 25% swirling just outside
+  float spreadScale = mix(6.0, 24.0, smoothstep(0.0, 0.35, uBhProgress));
+  float signedOff = aRing.y;
+  float radialJitter = signedOff * abs(signedOff) * spreadScale
+    + sin(angle * 5.0 + uTime * 2.2 + aRing.w * 6.2831) * 2.2;
+  float r = max(0.5, uBhRadius + radialJitter);
+
+  vec2 pos = uBhOrigin + vec2(cos(angle), sin(angle)) * r;
+
+  float edgeFadeIn = smoothstep(1.5, 22.0, uBhRadius);
+  float edgeFadeOut = 1.0 - smoothstep(uBhMaxRadius - 36.0, uBhMaxRadius, uBhRadius);
+  float coreProximity = 1.0 - clamp(abs(signedOff), 0.0, 1.0);
+
+  vHot = smoothstep(0.55, 0.98, coreProximity) * (0.45 + 0.55 * aRing.w);
+  vAlpha = (0.28 + 0.67 * coreProximity) * edgeFadeIn * edgeFadeOut;
+
+  float ptSize = (1.35 + coreProximity * 1.45 + aRing.w * 0.65) * uPixelRatio;
+  gl_PointSize = clamp(ptSize, 1.2 * uPixelRatio, 3.6 * uPixelRatio);
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 22.0, 1.0);
+}
+`;
+
+const BH_RING_FRAG = /* glsl */ `
+precision highp float;
+
+uniform vec3 uBhAccent;
+
+varying float vAlpha;
+varying float vHot;
+
+void main() {
+  if (vAlpha < 0.01) discard;
+  vec2 uv = gl_PointCoord - vec2(0.5);
+  float dist = length(uv);
+  if (dist > 0.5) discard;
+  float disc = smoothstep(0.5, 0.16, dist);
+
+  vec3 hotCore = mix(uBhAccent, vec3(0.76, 0.76, 1.0), vHot * 0.68);
+  gl_FragColor = vec4(hotCore, disc * vAlpha);
 }
 `;
 
@@ -871,6 +1040,15 @@ export default function SiteParticleStage({
         uDarkBase: { value: new THREE.Color('#D9D9D9') },
         uDarkDim: { value: new THREE.Color('#7A7A84') },
         uAccent: { value: new THREE.Color('#5B5BF0') },
+        uBhActive: { value: 0 },
+        uBhOrigin: { value: new THREE.Vector2(0, 0) },
+        uBhRadius: { value: 0 },
+        uBhMaxRadius: { value: 1600 },
+        uBhProgress: { value: 0 },
+        uBhOuterTheme: { value: 0 },
+        uBhInnerTheme: { value: 1 },
+        uBhVortex: { value: 0 },
+        uBhAccent: { value: new THREE.Color('#5B5BF0') },
       },
     });
 
@@ -915,11 +1093,60 @@ export default function SiteParticleStage({
         uReducedMotion: { value: reduced || debugShapes ? 1 : 0 },
         uTheme: { value: 0 },
         uDustBoost: { value: debugShapes ? 0 : 1 },
+        uBhActive: { value: 0 },
+        uBhOrigin: { value: new THREE.Vector2(0, 0) },
+        uBhRadius: { value: 0 },
+        uBhProgress: { value: 0 },
+        uBhOuterTheme: { value: 0 },
+        uBhInnerTheme: { value: 1 },
+        uBhVortex: { value: 0 },
+        uBhAccent: { value: new THREE.Color('#5B5BF0') },
       },
     });
     const dustPoints = new THREE.Points(dustGeo, dustMat);
     dustPoints.frustumCulled = false;
     scene.add(dustPoints);
+
+    // 2B. EVENT-HORIZON ACCRETION PARTICLE RING (#5B5BF0)
+    const ringCount = isSoftwareGl ? 500 : isMobile ? 420 : 1200;
+    const ringPos = new Float32Array(ringCount * 3);
+    const ringAttrArr = new Float32Array(ringCount * 4);
+    for (let i = 0; i < ringCount; i++) {
+      ringPos[i * 3] = 0;
+      ringPos[i * 3 + 1] = 0;
+      ringPos[i * 3 + 2] = 0;
+      ringAttrArr[i * 4] = (i / ringCount) * Math.PI * 2 + (nextRand() - 0.5) * 0.08;
+      ringAttrArr[i * 4 + 1] = (nextRand() * 2 - 1);
+      ringAttrArr[i * 4 + 2] = nextRand();
+      ringAttrArr[i * 4 + 3] = nextRand();
+    }
+    const ringGeo = new THREE.BufferGeometry();
+    ringGeo.setAttribute('position', new THREE.BufferAttribute(ringPos, 3));
+    ringGeo.setAttribute('aRing', new THREE.BufferAttribute(ringAttrArr, 4));
+
+    const ringMat = new THREE.ShaderMaterial({
+      vertexShader: BH_RING_VERT,
+      fragmentShader: BH_RING_FRAG,
+      transparent: true,
+      depthWrite: false,
+      depthTest: false,
+      blending: THREE.NormalBlending,
+      uniforms: {
+        uTime: { value: 0 },
+        uPixelRatio: { value: dpr },
+        uBhActive: { value: 0 },
+        uBhOrigin: { value: new THREE.Vector2(0, 0) },
+        uBhRadius: { value: 0 },
+        uBhMaxRadius: { value: 1600 },
+        uBhProgress: { value: 0 },
+        uBhInnerTheme: { value: 1 },
+        uReducedMotion: { value: reduced || debugShapes ? 1 : 0 },
+        uBhAccent: { value: new THREE.Color('#5B5BF0') },
+      },
+    });
+    const ringPoints = new THREE.Points(ringGeo, ringMat);
+    ringPoints.frustumCulled = false;
+    scene.add(ringPoints);
 
     // 3. CONTINUOUS MORPH CONTROLLER + BUFFER CACHE
     const bufferCache = new Map<string, StoryTargetBuffer>();
@@ -1248,6 +1475,7 @@ export default function SiteParticleStage({
       morphMat.uniforms.uResolution.value.set(width, height);
       dustMat.uniforms.uPixelRatio.value = nextDpr;
       dustMat.uniforms.uResolution.value.set(width, height);
+      ringMat.uniforms.uPixelRatio.value = nextDpr;
       bufferCache.clear();
     };
 
@@ -1359,13 +1587,28 @@ export default function SiteParticleStage({
       }
 
       // Normal continuous Site scroll mode
+      const { singularity } = st;
+      let resolved: ResolvedSlot;
+      if (singularity.active && singularity.fromSection && singularity.toSection) {
+        // Swallow outgoing shape as event horizon opens, then rebirth into incoming section shape
+        const useIncoming = singularity.progress >= 0.22;
+        const targetSec = useIncoming ? singularity.toSection : singularity.fromSection;
+        const targetP = useIncoming ? 0.02 : 0.96;
+        resolved = resolveActiveSiteSlot(targetSec, targetP, st.locale, false);
+        // Never evaporate Statement out before the White Hole swallows it into Quote Marks
+        if (singularity.fromSection === 'statement' && !useIncoming) {
+          resolved = { ...resolved, evaporate: 0 };
+        }
+      } else {
+        const secP = st.sectionProgress[st.activeSection] ?? 0;
+        resolved = resolveActiveSiteSlot(
+          st.activeSection,
+          secP,
+          st.locale,
+          st.heroPortraitHovered
+        );
+      }
       const secP = st.sectionProgress[st.activeSection] ?? 0;
-      const resolved = resolveActiveSiteSlot(
-        st.activeSection,
-        secP,
-        st.locale,
-        st.heroPortraitHovered
-      );
 
       if (resolved.key !== currentKey) {
         requestSlotMorph(resolved, st.locale);
@@ -1519,11 +1762,12 @@ export default function SiteParticleStage({
         ? 1
         : Math.min(1, heroGatherElapsed / Math.max(0.1, HERO_PORTRAIT_CONFIG.enterAssembleSec));
 
-      // Smoothly damp opacity, evaporation, strip mode, continuous uTheme, and per-mode style uniforms
+      // Smoothly damp opacity, evaporation, strip mode, and per-mode style uniforms
+      // Note: theme swaps razor-sharply on the circle edge (zero separate color transition lag!)
       smoothOpacity = THREE.MathUtils.damp(smoothOpacity, desiredOpacity, 8.5, dt);
       smoothEvaporate = THREE.MathUtils.damp(smoothEvaporate, desiredEvaporate, 10, dt);
       smoothStripMode = THREE.MathUtils.damp(smoothStripMode, desiredStripMode, 6.5, dt);
-      smoothTheme = THREE.MathUtils.damp(smoothTheme, st.themeLerp, 8, dt);
+      smoothTheme = st.theme === 'dark' ? 1 : 0;
       smoothUseShade = THREE.MathUtils.damp(smoothUseShade, targetUseShade, 7, dt);
       smoothHeroBottom = THREE.MathUtils.damp(smoothHeroBottom, targetHeroBottom, 7, dt);
       smoothPointMin = THREE.MathUtils.damp(smoothPointMin, targetPointMin, 8, dt);
@@ -1552,6 +1796,11 @@ export default function SiteParticleStage({
 
       mouseCurrent.lerp(mouseTarget, 1 - Math.exp(-12 * dt));
       tiltCurrent.lerp(tiltTarget, 1 - Math.exp(-6 * dt));
+
+      const bhOriginW = toWebgl(singularity.originX, singularity.originY);
+      const bhActiveNum = singularity.active ? 1 : 0;
+      const bhOuterNum = singularity.outerTheme === 'dark' ? 1 : 0;
+      const bhInnerNum = singularity.innerTheme === 'dark' ? 1 : 0;
 
       const mu = morphMat.uniforms;
       mu.uDebugStatic.value = 0;
@@ -1601,6 +1850,15 @@ export default function SiteParticleStage({
       mu.uHeroSlotHalfH.value = heroSlotHalfH;
       mu.uHeroGather.value = heroGatherVal;
       mu.uHeroRevealActive.value = smoothHeroRevealActive;
+      mu.uBhActive.value = bhActiveNum;
+      mu.uBhOrigin.value.set(bhOriginW.x, bhOriginW.y);
+      mu.uBhRadius.value = singularity.radius;
+      mu.uBhMaxRadius.value = singularity.maxRadius;
+      mu.uBhProgress.value = singularity.progress;
+      mu.uBhOuterTheme.value = bhOuterNum;
+      mu.uBhInnerTheme.value = bhInnerNum;
+      mu.uBhVortex.value = singularity.vortexStrength;
+      mu.uBhAccent.value.set(singularity.accentColor);
 
       const du = dustMat.uniforms;
       du.uTime.value = params.freezeSimulation ? 0 : elapsed;
@@ -1608,8 +1866,26 @@ export default function SiteParticleStage({
       du.uMouse.value.copy(mouseCurrent);
       du.uMouseActive.value = mouseActive;
       du.uTheme.value = smoothTheme;
-      // Slightly boost quiet ambient dust on sections without a focal particle shape
       du.uDustBoost.value = resolved.spec ? 0.92 : 1.25;
+      du.uBhActive.value = bhActiveNum;
+      du.uBhOrigin.value.set(bhOriginW.x, bhOriginW.y);
+      du.uBhRadius.value = singularity.radius;
+      du.uBhProgress.value = singularity.progress;
+      du.uBhOuterTheme.value = bhOuterNum;
+      du.uBhInnerTheme.value = bhInnerNum;
+      du.uBhVortex.value = singularity.vortexStrength;
+      du.uBhAccent.value.set(singularity.accentColor);
+
+      const ru = ringMat.uniforms;
+      ru.uTime.value = params.freezeSimulation ? 0 : elapsed;
+      ru.uBhActive.value = bhActiveNum;
+      ru.uBhOrigin.value.set(bhOriginW.x, bhOriginW.y);
+      ru.uBhRadius.value = singularity.radius;
+      ru.uBhMaxRadius.value = singularity.maxRadius;
+      ru.uBhProgress.value = singularity.progress;
+      ru.uBhInnerTheme.value = bhInnerNum;
+      ru.uReducedMotion.value = singularity.reducedMotion ? 1 : 0;
+      ru.uBhAccent.value.set(singularity.accentColor);
 
       telemetryTimer += dt;
       if (telemetryTimer >= 0.14) {
@@ -1670,6 +1946,8 @@ export default function SiteParticleStage({
       morphMat.dispose();
       dustGeo.dispose();
       dustMat.dispose();
+      ringGeo.dispose();
+      ringMat.dispose();
       renderer.dispose();
       renderer.forceContextLoss();
       renderer.domElement.width = 1;

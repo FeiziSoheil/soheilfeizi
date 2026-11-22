@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import type { Locale } from '@/lib/content';
 import { useScrollStore } from '@/lib/scrollStore';
 import { soundEngine } from '@/lib/soundEngine';
+import { getSingularitySectionStyle } from '@/lib/singularity.config';
 import {
   SELECTED_PROJECTS,
   SELECTED_WORK_COPY,
@@ -123,11 +124,11 @@ export default function SelectedWork({
       data-theme="dark"
       aria-label={copy.sectionTitle}
       className="pin-section relative w-full bg-[#0A0A0A] text-[#ECEAE6]"
-      style={{ height: `${projects.length * 100}vh` }}
+      style={getSingularitySectionStyle('work', `${projects.length * 100}svh`)}
     >
       <div
         ref={stickyRef}
-        className="sticky top-0 h-screen w-full overflow-hidden bg-[#0A0A0A]"
+        className="pin-sticky sticky top-0 h-screen w-full overflow-hidden bg-[#0A0A0A]"
       >
         {/* Layer 1: GPU-promoted full-bleed crossfading + smooth parallax project imagery */}
         <ProjectBackground

@@ -3,15 +3,24 @@ import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { SectionId } from '@/lib/content';
 import { useScrollStore } from '@/lib/scrollStore';
+import { particleRegistry } from '@/lib/particleRegistry';
 import { labAudio } from '@/lib/lab/labAudio';
 import {
-  BloomPhase,
   BloomState,
   MagnetPhase,
   MagnetTransitionState,
   ScrollEngineMetrics,
   ThemeKind,
 } from '@/lib/lab/types';
+import {
+  computeMaxCoverRadius,
+  computeSingularityRadiusNorm,
+  getIncomingTransition,
+  getOutgoingTransition,
+  SINGULARITY_TRANSITIONS,
+  SingularityRuntimeState,
+  SingularityTransitionConfig,
+} from '@/lib/singularity.config';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -23,10 +32,6 @@ function easeOutQuint(t: number): number {
   return 1 - Math.pow(1 - t, 5);
 }
 
-function easeInOutQuart(t: number): number {
-  return t < 0.5 ? 8 * t * t * t * t : 1 - Math.pow(-2 * t + 2, 4) / 2;
-}
-
 function easeInOutExpo(t: number): number {
   if (t <= 0) return 0;
   if (t >= 1) return 1;
@@ -35,20 +40,32 @@ function easeInOutExpo(t: number): number {
     : (2 - Math.pow(2, -20 * t + 10)) / 2;
 }
 
+type SectionBhRole = 'none' | 'outer' | 'inner' | 'hidden';
+
 interface MeasuredSection {
   id: SectionId;
   theme: ThemeKind;
+  el: HTMLElement;
+  clipTarget: HTMLElement;
   top: number;
   height: number;
+  stickyHeight: number;
   isSticky: boolean;
   anchorNorm: { x: number; y: number };
+  incoming?: SingularityTransitionConfig;
+  outgoing?: SingularityTransitionConfig;
+  contentStart: number;
+  contentEnd: number;
+  incomingStartY: number | null;
+  outgoingEndY: number | null;
 }
 
-interface ThemeBoundary {
-  boundaryY: number;
-  direction: 'light-to-dark' | 'dark-to-light';
-  fromAnchor: { x: number; y: number };
-  toAnchor: { x: number; y: number };
+interface MeasuredSingularityBoundary {
+  config: SingularityTransitionConfig;
+  from: MeasuredSection;
+  to: MeasuredSection;
+  startY: number;
+  endY: number;
 }
 
 const SECTION_ANCHORS: Record<SectionId, { x: number; y: number }> = {
@@ -68,20 +85,35 @@ const SECTION_ANCHORS: Record<SectionId, { x: number; y: number }> = {
 };
 
 /**
- * PortfolioDirector — Unified ScrollEngine (Lenis + GSAP ticker) + TransitionDirector
- * for the full 13-section bilingual portfolio.
+ * PortfolioDirector — Unified ScrollEngine (Lenis + GSAP ticker) + Singularity Transition Engine.
  * - Zero getBoundingClientRect() inside scroll frames (sections measured strictly on mount/resize/mode change)
- * - Drives Seed -> Bloom -> Settle (Light->Dark) and Implosion (Dark->Light) across EVERY theme boundary
- * - Drives 4-phase Magnet field lines, per-layer springs, impulse decay, and haptic-like audio ticks
+ * - Drives scrubbed, reversible Black Hole (light->dark) and White Hole (dark->light) transitions
+ *   on real single-DOM overlapping sticky sections via CSS custom properties (`--bh-x`, `--bh-y`, `--bh-r`)
+ * - Zero DOM duplication, zero color fade/bleed, zero layout jump, compatible with Lenis & prefers-reduced-motion
  */
 export class PortfolioDirector {
   private lenis: Lenis | null = null;
   private tickerCb: ((time: number) => void) | null = null;
   private reducedMotion = false;
+  private reducedMotionMq: MediaQueryList | null = null;
 
   private sections: MeasuredSection[] = [];
-  private boundaries: ThemeBoundary[] = [];
+  private boundaries: MeasuredSingularityBoundary[] = [];
   private anchorYs: number[] = [];
+  private sectionRoles = new Map<SectionId, SectionBhRole>();
+
+  // Pointer & origin tracking
+  private pointerNorm = { x: 0.5, y: 0.5 };
+  private hasPointer = false;
+  private lockedOrigins = new Map<string, { x: number; y: number }>();
+  private lastActiveBoundaryId: string | null = null;
+
+  // Cached last written CSS custom properties to avoid redundant style mutations
+  private lastCssX = '';
+  private lastCssY = '';
+  private lastCssR = '';
+  private lastCssRMask = '';
+  private lastCssAccent = '';
 
   // Physics scroll state
   private pos = 0;
@@ -98,7 +130,6 @@ export class PortfolioDirector {
   private isSnapping = false;
   private isTunneling = false;
   private lastBoundaryIndex = -1;
-  private lastBloomPhase: BloomPhase = 'none';
   private soundEnabled = false;
 
   // Per-layer exponential springs
@@ -107,15 +138,21 @@ export class PortfolioDirector {
   private pTheme = 0;
   private pChrome = 0;
   private lastFrameTime = 0;
-  private seedRubberBandActive = false;
 
   public setSoundEnabled(on: boolean) {
     this.soundEnabled = on;
+    labAudio.setEnabled(on);
+    if (!on) {
+      labAudio.stopSingularityDrone();
+    }
   }
 
   public mount() {
     if (typeof window === 'undefined') return;
-    this.reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    this.reducedMotionMq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    this.reducedMotion = this.reducedMotionMq.matches;
+    this.reducedMotionMq.addEventListener('change', this.onReducedMotionChange);
+
     this.measureSections();
 
     this.pos = window.scrollY;
@@ -155,11 +192,15 @@ export class PortfolioDirector {
       gsap.ticker.add(this.tickerCb);
     }
 
+    window.addEventListener('pointermove', this.onPointerMove, { passive: true });
     window.addEventListener('wheel', this.onWheel, { passive: true });
     window.addEventListener('touchstart', this.onTouchStart, { passive: true });
     window.addEventListener('touchend', this.onTouchEnd, { passive: true });
     window.addEventListener('keydown', this.onKeyDown);
     window.addEventListener('resize', this.onResize);
+
+    // Run an immediate initial frame so initial clip/hide states are applied before first paint
+    this.stepFrame();
   }
 
   public destroy() {
@@ -170,8 +211,23 @@ export class PortfolioDirector {
     this.lenis?.destroy();
     this.lenis = null;
 
+    labAudio.stopSingularityDrone();
+
+    for (const sec of this.sections) {
+      sec.clipTarget.classList.remove('bh-layer-outer', 'bh-layer-inner', 'bh-layer-hidden');
+    }
+    this.sectionRoles.clear();
+
+    if (typeof document !== 'undefined') {
+      const rootStyle = document.documentElement.style;
+      rootStyle.setProperty('--bh-r', '0px');
+      rootStyle.setProperty('--bh-r-mask', '0px');
+    }
+
     if (typeof window !== 'undefined') {
+      this.reducedMotionMq?.removeEventListener('change', this.onReducedMotionChange);
       window.removeEventListener('scroll', this.onNativeScroll);
+      window.removeEventListener('pointermove', this.onPointerMove);
       window.removeEventListener('wheel', this.onWheel);
       window.removeEventListener('touchstart', this.onTouchStart);
       window.removeEventListener('touchend', this.onTouchEnd);
@@ -179,6 +235,23 @@ export class PortfolioDirector {
       window.removeEventListener('resize', this.onResize);
     }
   }
+
+  private onReducedMotionChange = (e: MediaQueryListEvent) => {
+    this.reducedMotion = e.matches;
+    if (this.reducedMotion) {
+      labAudio.stopSingularityDrone();
+    }
+  };
+
+  private onPointerMove = (e: PointerEvent) => {
+    const vw = Math.max(1, window.innerWidth);
+    const vh = Math.max(1, window.innerHeight);
+    this.pointerNorm = {
+      x: Math.max(0.16, Math.min(0.84, e.clientX / vw)),
+      y: Math.max(0.2, Math.min(0.8, e.clientY / vh)),
+    };
+    this.hasPointer = true;
+  };
 
   public measureSections() {
     if (typeof document === 'undefined') return;
@@ -191,31 +264,86 @@ export class PortfolioDirector {
       const id = el.dataset.section as SectionId;
       const theme = (el.dataset.theme as ThemeKind) || 'light';
       const r = el.getBoundingClientRect();
+      const stickyEl = el.querySelector<HTMLElement>('.pin-sticky');
+      const isSticky = el.classList.contains('pin-section') && Boolean(stickyEl);
+      const stickyHeight = stickyEl ? Math.max(1, stickyEl.getBoundingClientRect().height) : vh;
+      const incoming = getIncomingTransition(id);
+      const outgoing = getOutgoingTransition(id);
+
+      const top = r.top + scrollY;
+      const height = r.height;
+      const inSpan = incoming ? incoming.scrollLengthVh * stickyHeight : 0;
+      const outSpan = outgoing ? outgoing.scrollLengthVh * stickyHeight : 0;
+      const contentStart = top + inSpan;
+      const contentEnd = isSticky
+        ? Math.max(contentStart + 1, top + height - stickyHeight - outSpan)
+        : top + height;
+
       return {
         id,
         theme,
-        top: r.top + scrollY,
-        height: r.height,
-        isSticky: el.classList.contains('pin-section'),
+        el,
+        clipTarget: stickyEl ?? el,
+        top,
+        height,
+        stickyHeight,
+        isSticky,
         anchorNorm: SECTION_ANCHORS[id] ?? { x: 0.5, y: 0.5 },
+        incoming,
+        outgoing,
+        contentStart,
+        contentEnd,
+        incomingStartY: null,
+        outgoingEndY: null,
       };
     });
 
-    this.anchorYs = this.sections.map((s) => Math.max(0, Math.min(this.maxScroll, s.top)));
-
-    this.boundaries = [];
-    for (let i = 1; i < this.sections.length; i++) {
-      const prev = this.sections[i - 1];
-      const curr = this.sections[i];
-      if (prev.theme !== curr.theme) {
-        this.boundaries.push({
-          boundaryY: curr.top,
-          direction: curr.theme === 'dark' ? 'light-to-dark' : 'dark-to-light',
-          fromAnchor: prev.anchorNorm,
-          toAnchor: curr.anchorNorm,
-        });
-      }
+    const byId = new Map<SectionId, MeasuredSection>();
+    for (const s of this.sections) {
+      byId.set(s.id, s);
     }
+
+    // Build exact transition windows directly from measured overlapping real sections
+    this.boundaries = [];
+    for (const cfg of SINGULARITY_TRANSITIONS) {
+      const fromSec = byId.get(cfg.from);
+      const toSec = byId.get(cfg.to);
+      if (!fromSec || !toSec) continue;
+
+      const startY = toSec.top;
+      const rawEndY = fromSec.isSticky
+        ? fromSec.top + fromSec.height - fromSec.stickyHeight
+        : startY + cfg.scrollLengthVh * vh;
+      const endY = Math.max(startY + 40, rawEndY);
+
+      // Keep contentStart/contentEnd strictly synchronized with exact measured boundary edges
+      fromSec.contentEnd = Math.max(fromSec.contentStart + 1, startY);
+      toSec.contentStart = endY;
+      if (toSec.isSticky) {
+        const toOutSpan = toSec.outgoing ? toSec.outgoing.scrollLengthVh * toSec.stickyHeight : 0;
+        toSec.contentEnd = Math.max(
+          toSec.contentStart + 1,
+          toSec.top + toSec.height - toSec.stickyHeight - toOutSpan
+        );
+      }
+
+      fromSec.outgoingEndY = endY;
+      toSec.incomingStartY = startY;
+
+      this.boundaries.push({
+        config: cfg,
+        from: fromSec,
+        to: toSec,
+        startY,
+        endY,
+      });
+    }
+
+    // Section navigation snap anchors land cleanly at contentStart (fully revealed)
+    this.anchorYs = this.sections.map((s) =>
+      Math.max(0, Math.min(this.maxScroll, s.contentStart))
+    );
+
     ScrollTrigger.refresh();
   }
 
@@ -223,6 +351,8 @@ export class PortfolioDirector {
     const clampedY = Math.max(0, Math.min(this.maxScroll, destY));
     if (this.reducedMotion || !this.lenis || opts?.instant) {
       window.scrollTo({ top: clampedY, behavior: 'auto' });
+      this.pos = clampedY;
+      this.target = clampedY;
       return;
     }
     const dist = Math.abs(clampedY - this.pos);
@@ -245,7 +375,7 @@ export class PortfolioDirector {
   public scrollToSection(id: SectionId) {
     const sec = this.sections.find((s) => s.id === id);
     if (sec) {
-      this.scrollToY(sec.top);
+      this.scrollToY(sec.contentStart);
       return;
     }
     const el = document.getElementById(id);
@@ -257,10 +387,9 @@ export class PortfolioDirector {
   public scrollToSectionStep(id: SectionId, stepIdx: number, totalSteps: number) {
     const sec = this.sections.find((s) => s.id === id);
     if (!sec) return;
-    const vh = window.innerHeight;
-    const scrollableSpan = Math.max(0, sec.height - vh);
+    const scrollableSpan = Math.max(0, sec.contentEnd - sec.contentStart);
     const targetP = (stepIdx + 0.12) / Math.max(1, totalSteps);
-    this.scrollToY(sec.top + scrollableSpan * targetP, { duration: 0.95 });
+    this.scrollToY(sec.contentStart + scrollableSpan * targetP, { duration: 0.95 });
   }
 
   private onNativeScroll = () => {
@@ -295,7 +424,9 @@ export class PortfolioDirector {
 
   private onResize = () => {
     this.measureSections();
+    particleRegistry.refreshAllRects();
     ScrollTrigger.refresh();
+    this.stepFrame();
   };
 
   private onKeyDown = (e: KeyboardEvent) => {
@@ -329,6 +460,98 @@ export class PortfolioDirector {
     });
   };
 
+  private resolveBoundaryOrigin(
+    boundary: MeasuredSingularityBoundary,
+    vw: number,
+    vh: number
+  ): { x: number; y: number } {
+    const { config } = boundary;
+
+    if (config.originMode === 'particle-center' && config.particleSlotId) {
+      const liveRect = particleRegistry.getLiveScreenRect(
+        config.particleSlotId,
+        this.pos,
+        vh
+      );
+      if (
+        liveRect &&
+        liveRect.centerX > vw * 0.05 &&
+        liveRect.centerX < vw * 0.95 &&
+        liveRect.centerY > vh * 0.05 &&
+        liveRect.centerY < vh * 0.95
+      ) {
+        return { x: liveRect.centerX, y: liveRect.centerY };
+      }
+    }
+
+    if (config.originMode === 'pointer') {
+      let norm = this.lockedOrigins.get(config.id);
+      if (!norm) {
+        norm = this.hasPointer ? { ...this.pointerNorm } : { ...config.originAnchor };
+        this.lockedOrigins.set(config.id, norm);
+      }
+      return { x: norm.x * vw, y: norm.y * vh };
+    }
+
+    return {
+      x: config.originAnchor.x * vw,
+      y: config.originAnchor.y * vh,
+    };
+  }
+
+  private setRootSingularityVars(
+    originX: number,
+    originY: number,
+    radius: number,
+    accentColor: string
+  ) {
+    if (typeof document === 'undefined') return;
+    const style = document.documentElement.style;
+
+    const sx = `${originX.toFixed(1)}px`;
+    const sy = `${originY.toFixed(1)}px`;
+    const sr = `${radius.toFixed(1)}px`;
+    // 0.75px overlap eliminates any subpixel hairline seam between outer radial-mask and inner clip-path
+    const srMask = `${Math.max(0, radius - 0.75).toFixed(1)}px`;
+
+    if (sx !== this.lastCssX) {
+      style.setProperty('--bh-x', sx);
+      this.lastCssX = sx;
+    }
+    if (sy !== this.lastCssY) {
+      style.setProperty('--bh-y', sy);
+      this.lastCssY = sy;
+    }
+    if (sr !== this.lastCssR) {
+      style.setProperty('--bh-r', sr);
+      this.lastCssR = sr;
+    }
+    if (srMask !== this.lastCssRMask) {
+      style.setProperty('--bh-r-mask', srMask);
+      this.lastCssRMask = srMask;
+    }
+    if (accentColor !== this.lastCssAccent) {
+      style.setProperty('--bh-accent', accentColor);
+      this.lastCssAccent = accentColor;
+    }
+  }
+
+  private applySectionRole(sec: MeasuredSection, nextRole: SectionBhRole) {
+    const prev = this.sectionRoles.get(sec.id);
+    if (prev === nextRole) return;
+    this.sectionRoles.set(sec.id, nextRole);
+
+    const cl = sec.clipTarget.classList;
+    cl.remove('bh-layer-outer', 'bh-layer-inner', 'bh-layer-hidden');
+    if (nextRole === 'outer') {
+      cl.add('bh-layer-outer');
+    } else if (nextRole === 'inner') {
+      cl.add('bh-layer-inner');
+    } else if (nextRole === 'hidden') {
+      cl.add('bh-layer-hidden');
+    }
+  }
+
   private stepFrame() {
     const now = performance.now();
     const dt = Math.min(0.05, Math.max(0.001, (now - this.lastFrameTime) / 1000));
@@ -344,10 +567,8 @@ export class PortfolioDirector {
     this.impulse *= Math.pow(0.5, dt / halfLifeSec);
     if (this.impulse < 0.001) this.impulse = 0;
 
-    // 2. Rubber-band gate lerp during Seed window (never traps strong scroll)
-    const inGate = !this.reducedMotion && this.seedRubberBandActive && this.impulse < 0.72;
-    const activeLerp = inGate ? params.gateLerp : params.lerp;
-
+    // 2. Read Lenis smoothed scroll (zero rubber-band trapping during singularity scrub)
+    const activeLerp = params.lerp;
     if (this.lenis) {
       this.lenis.options.lerp = activeLerp;
       this.pos = this.lenis.scroll;
@@ -356,6 +577,9 @@ export class PortfolioDirector {
       if (Math.abs(this.velocity) > 0.08) {
         this.dir = this.velocity >= 0 ? 1 : -1;
       }
+    } else {
+      this.pos = window.scrollY;
+      this.target = this.pos;
     }
 
     const rawSpeed = Math.min(1, Math.abs(this.velocity) / 42);
@@ -380,7 +604,7 @@ export class PortfolioDirector {
       this.pChrome += (totalProgress - this.pChrome) * (1 - Math.exp(-dt * params.springChrome));
     }
 
-    // 3. Haptic-like subtle scroll ticks when audio is active
+    // 3. Subtle scroll ticks when audio is active
     if (
       this.soundEnabled &&
       st.degradationLevel < 2 &&
@@ -391,7 +615,25 @@ export class PortfolioDirector {
       labAudio.playScrollTick(this.speedNorm);
     }
 
-    // 4. Compute exact progress for every section purely from Lenis smoothed `this.pos`
+    // 4. Evaluate active Black Hole / White Hole singularity STRICTLY from Lenis `this.pos`
+    let activeBoundary: MeasuredSingularityBoundary | null = null;
+    let boundaryProgress = 0;
+
+    for (const b of this.boundaries) {
+      if (this.pos > b.startY && this.pos < b.endY) {
+        activeBoundary = b;
+        boundaryProgress = clamp01((this.pos - b.startY) / Math.max(1, b.endY - b.startY));
+        break;
+      }
+    }
+
+    // Clear pointer origin lock once we fully leave a boundary so next entry locks fresh pointer
+    if (this.lastActiveBoundaryId && this.lastActiveBoundaryId !== (activeBoundary?.config.id ?? null)) {
+      this.lockedOrigins.delete(this.lastActiveBoundaryId);
+    }
+    this.lastActiveBoundaryId = activeBoundary?.config.id ?? null;
+
+    // 5. Compute exact per-section content progress (0..1 across contentStart..contentEnd)
     const sectionProgress: Record<SectionId, number> = { ...st.sectionProgress };
     let activeSection: SectionId = this.sections[0]?.id ?? 'hero';
     let activeSectionTheme: ThemeKind = this.sections[0]?.theme ?? 'light';
@@ -401,185 +643,200 @@ export class PortfolioDirector {
     for (let i = 0; i < this.sections.length; i++) {
       const sec = this.sections[i];
       if (sec.isSticky) {
-        const span = Math.max(1, sec.height - vh);
-        sectionProgress[sec.id] = clamp01((this.pos - sec.top) / span);
+        const span = Math.max(1, sec.contentEnd - sec.contentStart);
+        sectionProgress[sec.id] = clamp01((this.pos - sec.contentStart) / span);
       } else {
         const startY = sec.top - vh * 0.65;
         const endY = sec.top + sec.height - vh * 0.35;
         sectionProgress[sec.id] = clamp01((this.pos - startY) / Math.max(1, endY - startY));
       }
 
-      if (probeY >= sec.top) {
+      const triggerTop = sec.incomingStartY !== null ? sec.contentStart : sec.top;
+      if (probeY >= triggerTop) {
         activeSection = sec.id;
         activeSectionTheme = sec.theme;
         activeSecIdx = i;
       }
     }
 
+    // Build SingularityRuntimeState + apply zero-reflow CSS variables & real section clip/mask roles
+    let singularity: SingularityRuntimeState;
+
+    if (activeBoundary) {
+      const origin = this.resolveBoundaryOrigin(activeBoundary, vw, vh);
+      const maxRadius = computeMaxCoverRadius(origin.x, origin.y, vw, vh);
+      const radiusNorm = computeSingularityRadiusNorm(boundaryProgress, this.reducedMotion);
+      const radius = radiusNorm * maxRadius;
+
+      const outerTheme = activeBoundary.from.theme;
+      const innerTheme = activeBoundary.to.theme;
+
+      // Switch activeSection cleanly at portal midpoint (50% radius)
+      activeSection = radiusNorm >= 0.5 ? activeBoundary.to.id : activeBoundary.from.id;
+      activeSectionTheme = radiusNorm >= 0.5 ? innerTheme : outerTheme;
+      activeSecIdx = this.sections.findIndex((s) => s.id === activeSection);
+
+      singularity = {
+        active: true,
+        id: activeBoundary.config.id,
+        fromSection: activeBoundary.from.id,
+        toSection: activeBoundary.to.id,
+        direction: activeBoundary.config.direction,
+        outerTheme,
+        innerTheme,
+        progress: boundaryProgress,
+        originX: origin.x,
+        originY: origin.y,
+        radius,
+        maxRadius,
+        radiusNorm,
+        accentColor: activeBoundary.config.accentColor,
+        vortexStrength: this.reducedMotion ? 0 : (activeBoundary.config.vortexStrength ?? 1.0),
+        reducedMotion: this.reducedMotion,
+      };
+
+      this.setRootSingularityVars(
+        origin.x,
+        origin.y,
+        radius,
+        activeBoundary.config.accentColor
+      );
+    } else {
+      const fallbackMaxR = computeMaxCoverRadius(vw * 0.5, vh * 0.5, vw, vh);
+      singularity = {
+        active: false,
+        id: null,
+        fromSection: null,
+        toSection: null,
+        direction: 'none',
+        outerTheme: activeSectionTheme,
+        innerTheme: activeSectionTheme,
+        progress: 0,
+        originX: vw * 0.5,
+        originY: vh * 0.5,
+        radius: 0,
+        maxRadius: fallbackMaxR,
+        radiusNorm: 0,
+        accentColor: '#5B5BF0',
+        vortexStrength: 0,
+        reducedMotion: this.reducedMotion,
+      };
+
+      this.setRootSingularityVars(vw * 0.5, vh * 0.5, 0, '#5B5BF0');
+    }
+
+    // Apply mutually-exclusive clip/mask/hidden roles directly to the real single-DOM sections
+    for (const sec of this.sections) {
+      let role: SectionBhRole = 'none';
+      if (activeBoundary && sec.id === activeBoundary.from.id) {
+        role = 'outer';
+      } else if (activeBoundary && sec.id === activeBoundary.to.id) {
+        role = 'inner';
+      } else if (sec.incomingStartY !== null && this.pos <= sec.incomingStartY) {
+        role = 'hidden';
+      } else if (sec.outgoingEndY !== null && this.pos >= sec.outgoingEndY) {
+        role = 'hidden';
+      }
+      this.applySectionRole(sec, role);
+    }
+
+    // 6. Optional subtle audio (only when Sound is ON and not reduced motion)
     if (this.lastBoundaryIndex !== -1 && activeSecIdx !== this.lastBoundaryIndex) {
-      if (this.soundEnabled && st.degradationLevel < 2) {
+      if (this.soundEnabled && st.degradationLevel < 2 && !this.reducedMotion) {
         labAudio.playBoundaryThump(this.speedNorm);
       }
     }
     this.lastBoundaryIndex = activeSecIdx;
 
-    // 5. Evaluate Seed -> Bloom -> Settle (Light->Dark) & Implosion (Dark->Light) across ALL theme boundaries
-    const maxRadius = Math.hypot(vw, vh) * 1.04;
-    const themeScrollY = this.pTheme * this.maxScroll;
-    const halfWinPx = vh * 0.58;
+    if (this.soundEnabled && st.degradationLevel < 2 && !this.reducedMotion) {
+      labAudio.updateSingularityDrone(
+        singularity.active,
+        singularity.radiusNorm,
+        singularity.direction,
+        this.speedNorm
+      );
+    } else {
+      labAudio.updateSingularityDrone(false, 0, 'none', 0);
+    }
 
-    let bloom: BloomState = {
-      active: false,
-      direction: 'none',
-      phase: 'none',
-      progress: 0,
-      originX: vw * 0.5,
-      originY: vh * 0.5,
-      radius: activeSectionTheme === 'dark' ? maxRadius : 0,
-      maxRadius,
+    // Keep BloomState & MagnetTransitionState populated for backwards compatibility with dev telemetry
+    const bloom: BloomState = {
+      active: singularity.active,
+      direction:
+        singularity.direction === 'black-hole'
+          ? 'light-to-dark'
+          : singularity.direction === 'white-hole'
+            ? 'dark-to-light'
+            : 'none',
+      phase: singularity.active
+        ? singularity.direction === 'black-hole'
+          ? singularity.progress < 0.14
+            ? 'seed'
+            : 'bloom'
+          : 'implosion'
+        : 'none',
+      progress: singularity.progress,
+      originX: singularity.originX,
+      originY: singularity.originY,
+      radius: singularity.radius,
+      maxRadius: singularity.maxRadius,
       darkCovered: activeSectionTheme === 'dark',
       grainPulse: 0,
     };
 
-    const activeSecObj = this.sections[activeSecIdx];
+    const activeSecObj = this.sections[Math.max(0, activeSecIdx)];
     const activeAnchorPx = {
       x: vw * (activeSecObj?.anchorNorm.x ?? 0.5),
       y: vh * (activeSecObj?.anchorNorm.y ?? 0.5),
     };
 
-    let magnet: MagnetTransitionState = {
-      active: false,
-      progress: 0,
-      phase: 'idle',
-      reversed: this.dir < 0,
-      anchorFromPx: activeAnchorPx,
-      anchorToPx: activeAnchorPx,
-      G: 0.72,
-      S: 0.52,
-      delaySpread: 0.2,
-      settle: 'assemble',
-      coreAlpha: 0,
-      ringProgress: 0,
-      fieldLineAlpha: 0,
-    };
+    const magnet: MagnetTransitionState = activeBoundary
+      ? this.buildMagnetState(
+          boundaryProgress,
+          this.dir < 0,
+          { x: vw * activeBoundary.from.anchorNorm.x, y: vh * activeBoundary.from.anchorNorm.y },
+          { x: vw * activeBoundary.to.anchorNorm.x, y: vh * activeBoundary.to.anchorNorm.y }
+        )
+      : {
+          active: false,
+          progress: 0,
+          phase: 'idle',
+          reversed: this.dir < 0,
+          anchorFromPx: activeAnchorPx,
+          anchorToPx: activeAnchorPx,
+          G: 0.72,
+          S: 0.52,
+          delaySpread: 0.2,
+          settle: 'assemble',
+          coreAlpha: 0,
+          ringProgress: 0,
+          fieldLineAlpha: 0,
+        };
 
-    let inSeed = false;
-    let themeLerp = activeSectionTheme === 'dark' ? 1 : 0;
-
-    for (const b of this.boundaries) {
-      const startY = b.boundaryY - halfWinPx;
-      const endY = b.boundaryY + halfWinPx * 0.75;
-      if (themeScrollY >= startY && themeScrollY <= endY) {
-        const tp = clamp01((themeScrollY - startY) / Math.max(1, endY - startY));
-        const smoothTp = tp * tp * (3 - 2 * tp);
-        themeLerp = b.direction === 'light-to-dark' ? smoothTp : 1 - smoothTp;
-        const isUp = this.dir < 0;
-        const fromA = isUp ? b.toAnchor : b.fromAnchor;
-        const toA = isUp ? b.fromAnchor : b.toAnchor;
-        const effP = isUp ? 1 - tp : tp;
-
-        magnet = this.buildMagnetState(
-          effP,
-          isUp,
-          { x: vw * fromA.x, y: vh * fromA.y },
-          { x: vw * toA.x, y: vh * toA.y }
-        );
-
-        if (b.direction === 'light-to-dark') {
-          let phase: BloomPhase = 'seed';
-          let radius = 0;
-          let grainPulse = 0;
-          if (tp < 0.24) {
-            phase = 'seed';
-            inSeed = true;
-            radius = (tp / 0.24) * 14;
-          } else if (tp < 0.82) {
-            phase = 'bloom';
-            const bp = clamp01((tp - 0.24) / 0.58);
-            radius = 14 + easeInOutQuart(bp) * (maxRadius - 14);
-          } else {
-            phase = 'settle';
-            const sp = clamp01((tp - 0.82) / 0.18);
-            radius = maxRadius;
-            grainPulse = Math.sin(sp * Math.PI);
-          }
-
-          bloom = {
-            active: true,
-            direction: 'light-to-dark',
-            phase,
-            progress: tp,
-            originX: vw * b.toAnchor.x,
-            originY: vh * b.toAnchor.y,
-            radius,
-            maxRadius,
-            darkCovered: tp >= 0.82,
-            grainPulse,
-          };
-        } else {
-          let phase: BloomPhase = 'implosion';
-          let radius = 0;
-          let grainPulse = 0;
-          if (tp < 0.78) {
-            phase = 'implosion';
-            const ip = clamp01(tp / 0.78);
-            radius = (1 - easeInOutQuart(ip)) * maxRadius;
-            if (ip > 0.65) inSeed = true;
-          } else {
-            phase = 'settle';
-            const sp = clamp01((tp - 0.78) / 0.22);
-            radius = 0;
-            grainPulse = Math.sin(sp * Math.PI);
-          }
-
-          bloom = {
-            active: true,
-            direction: 'dark-to-light',
-            phase,
-            progress: tp,
-            originX: vw * b.toAnchor.x,
-            originY: vh * b.toAnchor.y,
-            radius,
-            maxRadius,
-            darkCovered: false,
-            grainPulse,
-          };
-        }
-        break;
-      }
-    }
-
-    this.seedRubberBandActive = inSeed;
-
-    if (this.soundEnabled && st.degradationLevel < 2) {
-      if (bloom.phase === 'seed' && this.lastBloomPhase !== 'seed') {
-        labAudio.playSeedWhoosh(this.speedNorm);
-      } else if (
-        (bloom.phase === 'bloom' && this.lastBloomPhase !== 'bloom') ||
-        (bloom.phase === 'implosion' && this.lastBloomPhase !== 'implosion')
-      ) {
-        labAudio.playBloomPulse(this.speedNorm);
-      }
-    }
-    this.lastBloomPhase = bloom.phase;
-
-    // Soft-snap gently near section tops when user releases scroll
+    // 7. Gentle soft-snap near section starts ONLY when NOT inside an active singularity transition
+    //    so users can freely pause and inspect any scrub radius (25%, 50%, 75%) without snapping away.
     if (
+      !singularity.active &&
       !this.reducedMotion &&
       this.lenis &&
       !this.isUserTouching &&
       !this.isSnapping &&
       !this.isTunneling &&
-      this.idleMs > 180 &&
-      Math.abs(this.velocity) < 0.9 &&
+      this.idleMs > 220 &&
+      Math.abs(this.velocity) < 0.85 &&
       this.impulse < 0.04 &&
       Math.abs(this.pos - this.lastSnapCheckPos) > 16 &&
       this.anchorYs.length > 0
     ) {
-      const snapRadius = vh * params.snapZone;
+      const snapRadius = vh * Math.min(0.05, params.snapZone);
       for (const ay of this.anchorYs) {
         const delta = Math.abs(this.pos - ay);
         if (delta > 8 && delta <= snapRadius) {
+          // Never snap across a singularity boundary
+          const wouldEnterBoundary = this.boundaries.some(
+            (b) => this.pos > b.startY - 24 && this.pos < b.endY + 24
+          );
+          if (wouldEnterBoundary) break;
           this.isSnapping = true;
           this.lastSnapCheckPos = ay;
           this.lenis.scrollTo(ay, {
@@ -594,7 +851,8 @@ export class PortfolioDirector {
       }
     }
 
-    const resolvedTheme: ThemeKind = themeLerp >= 0.5 ? 'dark' : 'light';
+    // Crisp binary theme (zero fade!) — spatial color split happens strictly on the circle edge
+    const themeLerp = activeSectionTheme === 'dark' ? 1 : 0;
 
     const metrics: ScrollEngineMetrics = {
       pos: this.pos,
@@ -606,7 +864,7 @@ export class PortfolioDirector {
       dir: this.dir,
       impulse: this.impulse,
       activeLerp,
-      inGate,
+      inGate: false,
       inSlowMo: false,
       isScrolling,
       isTunneling: this.isTunneling,
@@ -618,7 +876,7 @@ export class PortfolioDirector {
 
     st.updateEngineFrame({
       activeSection,
-      theme: resolvedTheme,
+      theme: activeSectionTheme,
       themeLerp,
       totalProgress,
       scrollPos: this.pos,
@@ -629,6 +887,7 @@ export class PortfolioDirector {
       scroll: metrics,
       magnet,
       bloom,
+      singularity,
     });
   }
 

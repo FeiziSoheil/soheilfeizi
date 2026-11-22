@@ -6,6 +6,10 @@ import {
   ParticleTelemetry,
   ScrollEngineMetrics,
 } from '@/lib/lab/types';
+import {
+  INITIAL_SINGULARITY_STATE,
+  SingularityRuntimeState,
+} from '@/lib/singularity.config';
 
 export interface PortfolioParams {
   omega: number;
@@ -88,6 +92,7 @@ export interface ScrollStoreState {
   scroll: ScrollEngineMetrics;
   magnet: MagnetTransitionState;
   bloom: BloomState;
+  singularity: SingularityRuntimeState;
   telemetry: ParticleTelemetry;
   params: PortfolioParams;
 
@@ -126,6 +131,7 @@ export interface ScrollStoreState {
     scroll: ScrollEngineMetrics;
     magnet: MagnetTransitionState;
     bloom: BloomState;
+    singularity: SingularityRuntimeState;
   }) => void;
 }
 
@@ -239,6 +245,7 @@ export const useScrollStore = create<ScrollStoreState>((set) => ({
   scroll: INITIAL_SCROLL,
   magnet: INITIAL_MAGNET,
   bloom: INITIAL_BLOOM,
+  singularity: INITIAL_SINGULARITY_STATE,
   telemetry: INITIAL_TELEMETRY,
   params: { ...DEFAULT_PORTFOLIO_PARAMS },
 

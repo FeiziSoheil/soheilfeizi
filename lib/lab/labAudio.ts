@@ -9,6 +9,10 @@ class LabAudioEngine {
   private enabled = false;
   private lastWhooshAt = 0;
   private lastBloomAt = 0;
+  private droneOsc: OscillatorNode | null = null;
+  private droneSubOsc: OscillatorNode | null = null;
+  private droneFilter: BiquadFilterNode | null = null;
+  private droneGain: GainNode | null = null;
 
   private ensureContext(): AudioContext | null {
     if (typeof window === 'undefined') return null;
@@ -30,11 +34,110 @@ class LabAudioEngine {
     this.enabled = on;
     if (on) {
       this.ensureContext();
+    } else {
+      this.stopSingularityDrone();
     }
   }
 
   public isEnabled(): boolean {
     return this.enabled;
+  }
+
+  /**
+   * Subtle deep gravitational resonance that rises smoothly as the black/white hole grows.
+   * Strictly silent unless Sound is ON, AudioContext is running, and user is actively scrubbing.
+   */
+  public updateSingularityDrone(
+    active: boolean,
+    radiusNorm: number,
+    direction: 'black-hole' | 'white-hole' | 'none',
+    speedNorm: number
+  ) {
+    if (!this.enabled || !active || direction === 'none') {
+      this.fadeSingularityDrone();
+      return;
+    }
+
+    const ctx = this.ctx;
+    if (!ctx || ctx.state !== 'running') return;
+
+    if (!this.droneOsc || !this.droneGain || !this.droneFilter || !this.droneSubOsc) {
+      const osc = ctx.createOscillator();
+      const subOsc = ctx.createOscillator();
+      const filter = ctx.createBiquadFilter();
+      const gain = ctx.createGain();
+
+      osc.type = 'sine';
+      subOsc.type = 'triangle';
+      osc.frequency.value = 46;
+      subOsc.frequency.value = 92;
+
+      filter.type = 'lowpass';
+      filter.frequency.value = 140;
+      filter.Q.value = 2.2;
+
+      gain.gain.value = 0.0001;
+
+      const subGain = ctx.createGain();
+      subGain.gain.value = 0.28;
+
+      osc.connect(filter);
+      subOsc.connect(subGain);
+      subGain.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start();
+      subOsc.start();
+
+      this.droneOsc = osc;
+      this.droneSubOsc = subOsc;
+      this.droneFilter = filter;
+      this.droneGain = gain;
+    }
+
+    const now = ctx.currentTime;
+    const r = Math.max(0, Math.min(1, radiusNorm));
+    const isWhite = direction === 'white-hole';
+
+    // Gentle pitch rise as the circle expands (black hole: deeper sub, white hole: slightly brighter)
+    const baseFreq = isWhite ? 56 + r * 54 : 42 + r * 44;
+    const cutoff = isWhite ? 160 + r * 260 : 110 + r * 190;
+    const arc = Math.sin(r * Math.PI);
+    const motionGate = Math.min(1, 0.12 + speedNorm * 1.4);
+    const targetGain = Math.max(0.0001, arc * motionGate * 0.048);
+
+    this.droneOsc.frequency.setTargetAtTime(baseFreq, now, 0.08);
+    this.droneSubOsc.frequency.setTargetAtTime(baseFreq * 1.5, now, 0.08);
+    this.droneFilter.frequency.setTargetAtTime(cutoff, now, 0.09);
+    this.droneGain.gain.setTargetAtTime(targetGain, now, 0.09);
+  }
+
+  private fadeSingularityDrone() {
+    if (!this.ctx || !this.droneGain) return;
+    const now = this.ctx.currentTime;
+    this.droneGain.gain.setTargetAtTime(0.0001, now, 0.08);
+  }
+
+  public stopSingularityDrone() {
+    if (this.droneGain && this.ctx) {
+      const now = this.ctx.currentTime;
+      this.droneGain.gain.setTargetAtTime(0.0001, now, 0.04);
+    }
+    try {
+      this.droneOsc?.stop();
+      this.droneSubOsc?.stop();
+      this.droneOsc?.disconnect();
+      this.droneSubOsc?.disconnect();
+      this.droneFilter?.disconnect();
+      this.droneGain?.disconnect();
+    } catch {
+      // ignore already-stopped nodes
+    }
+    this.droneOsc = null;
+    this.droneSubOsc = null;
+    this.droneFilter = null;
+    this.droneGain = null;
   }
 
   public playScrollTick(speedNorm: number) {

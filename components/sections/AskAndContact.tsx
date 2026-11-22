@@ -8,6 +8,10 @@ import { useScrollStore } from '@/lib/scrollStore';
 import { ParticleSlot } from '@/components/ParticleSlot';
 import { MagneticButton } from '@/components/StipplePrimitives';
 import { soundEngine } from '@/lib/soundEngine';
+import {
+  getSingularitySectionStyle,
+  hasIncomingTransition,
+} from '@/lib/singularity.config';
 
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
 
@@ -292,8 +296,8 @@ export function FinalContactSection({
       id="contact"
       data-section="contact"
       data-theme="dark"
-      className="pin-section border-t border-[var(--hairline)] bg-transparent"
-      style={{ height: '300svh' }}
+      className={`pin-section ${hasIncomingTransition('contact') ? '' : 'border-t border-[var(--hairline)]'} bg-transparent`}
+      style={getSingularitySectionStyle('contact', '300svh')}
     >
       <div className="pin-sticky flex flex-col justify-between px-6 sm:px-10 lg:px-16 pt-20 pb-24 sm:pb-28">
         {/* Top CTA Block with Full Unclipped Typewriter */}

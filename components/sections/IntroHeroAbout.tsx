@@ -10,6 +10,10 @@ import { useScrollStore } from '@/lib/scrollStore';
 import { ParticleSlot } from '@/components/ParticleSlot';
 import { RotatingBadge } from '@/components/StipplePrimitives';
 import { soundEngine } from '@/lib/soundEngine';
+import {
+  getSingularitySectionStyle,
+  hasIncomingTransition,
+} from '@/lib/singularity.config';
 
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
 
@@ -30,7 +34,7 @@ export function IntroSection({ locale }: { locale: Locale }) {
       data-section="intro"
       data-theme="light"
       className="pin-section bg-transparent"
-      style={{ height: '400svh' }}
+      style={getSingularitySectionStyle('intro', '400svh')}
     >
       <div className="pin-sticky flex flex-col items-center justify-center px-6 sm:px-12 md:px-20">
         <div className="relative flex w-full items-center justify-center">
@@ -300,7 +304,7 @@ export function HeroSection({
       data-section="hero"
       data-theme={HERO_PORTRAIT_CONFIG.theme}
       className="pin-section bg-transparent"
-      style={{ height: '200svh' }}
+      style={getSingularitySectionStyle('hero', '200svh')}
     >
       <div
         onPointerMove={handleHeroPointerMove}
@@ -502,8 +506,8 @@ export function AboutSection({ locale }: { locale: Locale }) {
       id="about"
       data-section="about"
       data-theme="light"
-      className="pin-section border-t border-[var(--hairline)] bg-transparent"
-      style={{ height: '300svh' }}
+      className={`pin-section ${hasIncomingTransition('about') ? '' : 'border-t border-[var(--hairline)]'} bg-transparent`}
+      style={getSingularitySectionStyle('about', '300svh')}
     >
       <div className="pin-sticky flex flex-col justify-center px-6 sm:px-10 lg:px-16 py-16">
         <div className="w-full">

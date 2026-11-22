@@ -8,6 +8,10 @@ import { CONTENT, Locale } from '@/lib/content';
 import { OWN_APPS_CONFIG } from '@/lib/site.config';
 import { useScrollStore } from '@/lib/scrollStore';
 import { soundEngine } from '@/lib/soundEngine';
+import {
+  getSingularitySectionStyle,
+  hasIncomingTransition,
+} from '@/lib/singularity.config';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -144,8 +148,8 @@ export function OwnAppsSection({
       id="apps"
       data-section="apps"
       data-theme="dark"
-      className="pin-section border-t border-[var(--hairline)] bg-transparent"
-      style={{ height: `${totalHeightVh}vh` }}
+      className={`pin-section ${hasIncomingTransition('apps') ? '' : 'border-t border-[var(--hairline)]'} bg-transparent`}
+      style={getSingularitySectionStyle('apps', `${totalHeightVh}svh`)}
     >
       <div className="pin-sticky flex flex-col justify-center overflow-hidden pt-16 pb-28 sm:pb-32">
         {/* Section Header + Live Counter (01 / 04) */}
@@ -426,8 +430,8 @@ export function ExperienceSection({ locale }: { locale: Locale }) {
       id="experience"
       data-section="experience"
       data-theme="light"
-      className="pin-section border-t border-[var(--hairline)] bg-transparent"
-      style={{ height: '500svh' }}
+      className={`pin-section ${hasIncomingTransition('experience') ? '' : 'border-t border-[var(--hairline)]'} bg-transparent`}
+      style={getSingularitySectionStyle('experience', '500svh')}
     >
       <div className="pin-sticky flex flex-col justify-between px-4 sm:px-8 lg:px-14 pt-16 sm:pt-20 pb-22 sm:pb-24">
         {/* Top Metadata Strip */}

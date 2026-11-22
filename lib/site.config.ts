@@ -399,3 +399,82 @@ export const CONTACT_CONFIG: Record<
     ctaLabel: 'شروع گفتگو',
   },
 };
+
+/* ─────────────────────────────────────────────────────────────
+ * 6. SINGULARITY & WHITEHOLE THEME TRANSITIONS CONFIG
+ *    Add any light <-> dark transition here; PortfolioShell mounts
+ *    a scrubbed ThemeTransition stage automatically between sections.
+ * ───────────────────────────────────────────────────────────── */
+export type ThemeTransitionOrigin = 'cursor' | 'shape' | { x: number; y: number };
+export type ThemeTransitionDirection = 'darkFromLight' | 'lightFromDark';
+
+export interface ThemeTransitionConfig {
+  id: string;
+  from: import('@/lib/content').SectionId;
+  to: import('@/lib/content').SectionId;
+  direction: ThemeTransitionDirection;
+  origin: ThemeTransitionOrigin;
+  /** Scroll scrub span added on top of 100svh sticky stage (default '160vh') */
+  length: string;
+  accent: string;
+  /** Optional ParticleSlot id used when origin === 'shape' (or mobile fallback) */
+  fromSlotId?: string;
+  toSlotId?: string;
+}
+
+export const themeTransitions: ThemeTransitionConfig[] = [
+  {
+    id: 'whatido-to-process',
+    from: 'whatido',
+    to: 'process',
+    direction: 'darkFromLight',
+    origin: 'cursor',
+    length: '160vh',
+    accent: '#5B5BF0',
+    fromSlotId: 'whatido-diagram',
+    toSlotId: 'process-stage',
+  },
+  {
+    id: 'apps-to-experience',
+    from: 'apps',
+    to: 'experience',
+    direction: 'lightFromDark',
+    origin: 'shape',
+    length: '150vh',
+    accent: '#5B5BF0',
+  },
+  {
+    id: 'experience-to-statement',
+    from: 'experience',
+    to: 'statement',
+    direction: 'darkFromLight',
+    origin: 'cursor',
+    length: '160vh',
+    accent: '#5B5BF0',
+    toSlotId: 'statement-title',
+  },
+  {
+    id: 'statement-to-clientnote',
+    from: 'statement',
+    to: 'testimonial',
+    direction: 'lightFromDark',
+    origin: 'shape',
+    length: '160vh',
+    accent: '#5B5BF0',
+    fromSlotId: 'statement-title',
+    toSlotId: 'testimonial-figure',
+  },
+  {
+    id: 'clientnote-to-afterhours',
+    from: 'testimonial',
+    to: 'afterhours',
+    direction: 'darkFromLight',
+    origin: 'shape',
+    length: '160vh',
+    accent: '#5B5BF0',
+    fromSlotId: 'testimonial-figure',
+  },
+];
+
+export const THEME_TRANSITIONS = themeTransitions;
+

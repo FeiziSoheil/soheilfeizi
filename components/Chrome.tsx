@@ -20,6 +20,9 @@ interface ChromeProps {
   activeSection: SectionId;
   theme: 'light' | 'dark';
   totalProgress: number;
+  singularityActive?: boolean;
+  outerTheme?: 'light' | 'dark';
+  innerTheme?: 'light' | 'dark';
   onNavigateSection: (id: SectionId) => void;
   onSwitchToStory?: () => void;
 }
@@ -35,6 +38,9 @@ export default function Chrome({
   activeSection,
   theme,
   totalProgress,
+  singularityActive = false,
+  outerTheme,
+  innerTheme,
   onNavigateSection,
   onSwitchToStory,
 }: ChromeProps) {
@@ -50,28 +56,123 @@ export default function Chrome({
     visibleSections.find((s) => s.id === activeSection) ?? visibleSections[0];
   const activeLocalP = sectionProgress[activeSection] ?? 0;
 
-  const isDark = theme === 'dark';
+  const primaryTheme = singularityActive ? (outerTheme ?? theme) : theme;
+  const secondaryTheme = innerTheme ?? (primaryTheme === 'dark' ? 'light' : 'dark');
+  const progressPct = `${Math.min(100, Math.max(0, totalProgress * 100))}%`;
   const isRtl = locale === 'fa';
   const menuClipOrigin = isRtl
     ? '3rem calc(100% - 3rem)'
     : 'calc(100% - 3rem) calc(100% - 3rem)';
 
-  return (
-    <>
-      {/* 1. Top hairline progress bar */}
+  const renderProgressBar = (skin: 'light' | 'dark') => {
+    const skinDark = skin === 'dark';
+    return (
       <div
-        aria-hidden="true"
-        className={`fixed top-0 inset-x-0 z-40 h-[2px] ${
-          isDark ? 'bg-[#ECEAE6]/10' : 'bg-[#111111]/10'
+        className={`absolute top-0 inset-x-0 h-[2px] ${
+          skinDark ? 'bg-[#ECEAE6]/10' : 'bg-[#111111]/10'
         }`}
       >
         <div
-          className="h-full rounded-e-full bg-[#5B5BF0] transition-[width] duration-75"
-          style={{ width: `${Math.min(100, Math.max(0, totalProgress * 100))}%` }}
+          className="h-full rounded-e-full bg-[#5B5BF0]"
+          style={{ width: progressPct }}
         />
       </div>
+    );
+  };
 
-      {/* 2. Top minimal identity strip (Site keeps section index & percent at top-end) */}
+  const renderEdgeTicks = (skin: 'light' | 'dark', isMirror: boolean) => {
+    const skinDark = skin === 'dark';
+    const hiddenForWork = activeSection === 'work';
+    const sharedClass = `absolute end-3 sm:end-5 top-1/2 -translate-y-1/2 hidden md:flex flex-col items-center gap-2.5 transition-opacity duration-200 ${
+      hiddenForWork ? 'opacity-0 pointer-events-none' : 'opacity-100'
+    } ${isMirror ? 'pointer-events-none' : 'pointer-events-auto'}`;
+
+    const items = visibleSections.map((sec) => {
+      const active = sec.id === activeSection;
+      const localP = sectionProgress[sec.id] ?? 0;
+      const barClass = `block rounded-full transition-[width,height] duration-200 ${
+        active
+          ? 'h-5 w-1.5 bg-[#5B5BF0]/30 relative overflow-hidden'
+          : skinDark
+            ? 'h-[2px] w-2.5 bg-[#ECEAE6]/30 group-hover:w-4 group-hover:bg-[#ECEAE6]'
+            : 'h-[2px] w-2.5 bg-[#111111]/30 group-hover:w-4 group-hover:bg-[#111111]'
+      }`;
+
+      const barContent = (
+        <span className={barClass}>
+          {active && (
+            <span
+              className="block w-full rounded-full bg-[#5B5BF0]"
+              style={{ height: `${Math.max(22, localP * 100)}%` }}
+            />
+          )}
+        </span>
+      );
+
+      if (isMirror) {
+        return (
+          <span
+            key={sec.id}
+            className="relative flex items-center justify-end rounded-full p-1"
+          >
+            {barContent}
+          </span>
+        );
+      }
+
+      return (
+        <button
+          key={sec.id}
+          type="button"
+          onClick={() => {
+            soundEngine.playStippleTick();
+            onNavigateSection(sec.id);
+          }}
+          title={`${sec.index} · ${sec.label[locale]}`}
+          aria-label={`${sec.index} ${sec.label[locale]}`}
+          className="group relative flex items-center justify-end rounded-full p-1 cursor-pointer"
+        >
+          {barContent}
+        </button>
+      );
+    });
+
+    if (isMirror) {
+      return <div className={sharedClass}>{items}</div>;
+    }
+
+    return (
+      <nav
+        aria-label={locale === 'fa' ? 'ناوبری بخش‌ها' : 'Section index'}
+        className={sharedClass}
+      >
+        {items}
+      </nav>
+    );
+  };
+
+  return (
+    <>
+      {/* 1. Top hairline progress bar (mutually exclusive outer/inner split on circle edge) */}
+      <div
+        aria-hidden="true"
+        className={`fixed inset-0 z-40 pointer-events-none ${
+          singularityActive ? 'bh-layer-outer' : ''
+        }`}
+      >
+        {renderProgressBar(primaryTheme)}
+      </div>
+      {singularityActive && (
+        <div
+          aria-hidden="true"
+          inert={true}
+          className="fixed inset-0 z-40 pointer-events-none bh-layer-inner"
+        >
+          {renderProgressBar(secondaryTheme)}
+        </div>
+      )}
+
+      {/* 2. Top minimal identity strip (mix-blend-difference swaps per-pixel strictly at circle edge) */}
       <header className="fixed top-3 inset-x-0 z-40 flex items-center justify-between px-5 sm:px-10 pointer-events-none text-white mix-blend-difference">
         <a
           href="#hero"
@@ -94,53 +195,29 @@ export default function Chrome({
         </div>
       </header>
 
-      {/* 3. Edge section index ticks (inline-end) */}
-      <nav
-        aria-label={locale === 'fa' ? 'ناوبری بخش‌ها' : 'Section index'}
-        className={`fixed end-3 sm:end-5 top-1/2 -translate-y-1/2 z-30 hidden md:flex flex-col items-center gap-2.5 transition-opacity duration-300 ${
-          activeSection === 'work' ? 'opacity-0 pointer-events-none' : 'opacity-100'
+      {/* 3. Edge section index ticks (inline-end) — exact circle-edge color split */}
+      <div
+        className={`fixed inset-0 z-30 pointer-events-none ${
+          singularityActive ? 'bh-layer-outer' : ''
         }`}
       >
-        {visibleSections.map((sec) => {
-          const active = sec.id === activeSection;
-          const localP = sectionProgress[sec.id] ?? 0;
-          return (
-            <button
-              key={sec.id}
-              type="button"
-              onClick={() => {
-                soundEngine.playStippleTick();
-                onNavigateSection(sec.id);
-              }}
-              title={`${sec.index} · ${sec.label[locale]}`}
-              aria-label={`${sec.index} ${sec.label[locale]}`}
-              className="group relative flex items-center justify-end rounded-full p-1 cursor-pointer"
-            >
-              <span
-                className={`block rounded-full transition-all duration-300 ${
-                  active
-                    ? 'h-5 w-1.5 bg-[#5B5BF0]/30 relative overflow-hidden'
-                    : isDark
-                      ? 'h-[2px] w-2.5 bg-[#ECEAE6]/30 group-hover:w-4 group-hover:bg-[#ECEAE6]'
-                      : 'h-[2px] w-2.5 bg-[#111111]/30 group-hover:w-4 group-hover:bg-[#111111]'
-                }`}
-              >
-                {active && (
-                  <span
-                    className="block w-full rounded-full bg-[#5B5BF0]"
-                    style={{ height: `${Math.max(22, localP * 100)}%` }}
-                  />
-                )}
-              </span>
-            </button>
-          );
-        })}
-      </nav>
+        {renderEdgeTicks(primaryTheme, false)}
+      </div>
+      {singularityActive && (
+        <div
+          aria-hidden="true"
+          inert={true}
+          data-singularity-ui-mirror="ticks"
+          className="fixed inset-0 z-30 pointer-events-none bh-layer-inner"
+        >
+          {renderEdgeTicks(secondaryTheme, true)}
+        </div>
+      )}
 
-      {/* 4. Vertical 90-degree active section label */}
+      {/* 4. Vertical 90-degree active section label (mix-blend-difference swaps per-pixel at circle edge) */}
       <div
         aria-hidden="true"
-        className={`fixed bottom-24 start-4 sm:start-6 z-40 hidden lg:flex flex-col items-center gap-3 pointer-events-none text-white mix-blend-difference transition-opacity duration-300 ${
+        className={`fixed bottom-24 start-4 sm:start-6 z-40 hidden lg:flex flex-col items-center gap-3 pointer-events-none text-white mix-blend-difference transition-opacity duration-200 ${
           activeSection === 'work' ? 'opacity-0' : 'opacity-100'
         }`}
       >

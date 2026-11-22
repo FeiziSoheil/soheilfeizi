@@ -21,6 +21,10 @@ export interface DockBarProps {
   locale: Locale;
   theme: 'light' | 'dark';
   soundPlaying: boolean;
+  /** Singularity transition state (optional — omitted on /story) */
+  singularityActive?: boolean;
+  outerTheme?: 'light' | 'dark';
+  innerTheme?: 'light' | 'dark';
   onToggleLocale: () => void;
   onToggleSound: () => void;
   /** Called immediately before switching tabs (used to fade out outgoing tab audio) */
@@ -37,12 +41,20 @@ export interface DockBarProps {
  * Fixed centered rounded-full pill with translucent backdrop-blur(12px), 1px hairline,
  * active pill highlight, smooth route fade when switching Site <-> Story, and
  * self-contained Code + Settings modals.
+ *
+ * During a Black/White Hole transition, two mutually-exclusive halves (outer mask +
+ * inner clip-path on full-viewport wrappers) split the dock skin strictly on the
+ * singularity edge; the inner visual mirror is `aria-hidden` and `inert` so assistive
+ * technologies always perceive a single navigation bar.
  */
 export default function DockBar({
   activeView,
   locale,
   theme,
   soundPlaying,
+  singularityActive = false,
+  outerTheme,
+  innerTheme,
   onToggleLocale,
   onToggleSound,
   onBeforeSwitch,
@@ -59,12 +71,8 @@ export default function DockBar({
   const [rememberAudio, setRememberAudio] = useState(true);
 
   const isDark = theme === 'dark';
-
-  const pillSurface = isDark
-    ? 'bg-[#0E0E12]/78 text-[#ECEAE6] border-white/14 shadow-[0_14px_40px_rgba(0,0,0,0.5)]'
-    : 'bg-[#F5F3EF]/82 text-[#111111] border-[#111111]/12 shadow-[0_14px_38px_rgba(17,17,17,0.12)]';
-
-  const dividerClass = isDark ? 'bg-white/14' : 'bg-[#111111]/12';
+  const primarySkin = singularityActive ? (outerTheme ?? theme) : theme;
+  const secondarySkin = innerTheme ?? (primarySkin === 'dark' ? 'light' : 'dark');
 
   const modalSurface = isDark
     ? 'bg-[#0E0E12]/96 text-[#ECEAE6] border-white/15'
@@ -105,84 +113,122 @@ export default function DockBar({
     }, 260);
   };
 
-  return (
-    <>
-      {/* Unified Fixed Bottom DockBar (exact same geometry in Site & Story) */}
-      <nav
-        aria-label={locale === 'fa' ? 'نوار کنترل اصلی' : 'Primary dock bar'}
-        dir="ltr"
-        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 max-w-[calc(100vw-24px)]"
+  const renderDockPill = (skin: 'light' | 'dark', isMirror: boolean) => {
+    const skinDark = skin === 'dark';
+    const pillSurface = skinDark
+      ? 'bg-[#0E0E12]/78 text-[#ECEAE6] border-white/14 shadow-[0_14px_40px_rgba(0,0,0,0.5)]'
+      : 'bg-[#F5F3EF]/82 text-[#111111] border-[#111111]/12 shadow-[0_14px_38px_rgba(17,17,17,0.12)]';
+    const dividerClass = skinDark ? 'bg-white/14' : 'bg-[#111111]/12';
+
+    const codeClass =
+      'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 font-mono text-[11px] font-medium opacity-80 hover:bg-current/[0.07] hover:opacity-100 hover:text-[#5B5BF0] cursor-pointer whitespace-nowrap';
+    const siteBtnClass = `rounded-full px-3 py-1 font-mono text-[11px] cursor-pointer whitespace-nowrap ${
+      activeView === 'site'
+        ? 'bg-[#5B5BF0] text-white font-semibold shadow-[0_4px_14px_rgba(91,91,240,0.4)]'
+        : 'opacity-70 hover:opacity-100 hover:bg-current/[0.06]'
+    }`;
+    const storyBtnClass = `rounded-full px-3 py-1 font-mono text-[11px] cursor-pointer whitespace-nowrap ${
+      activeView === 'story'
+        ? 'bg-[#5B5BF0] text-white font-semibold shadow-[0_4px_14px_rgba(91,91,240,0.4)]'
+        : 'opacity-70 hover:opacity-100 hover:bg-current/[0.06]'
+    }`;
+    const localeBtnClass =
+      'rounded-full px-2.5 py-1.5 font-mono text-[11px] font-semibold opacity-85 hover:bg-current/[0.07] hover:text-[#5B5BF0] cursor-pointer whitespace-nowrap';
+    const iconBtnClass =
+      'inline-flex h-7 w-7 items-center justify-center rounded-full hover:bg-current/[0.07] hover:text-[#5B5BF0] cursor-pointer';
+
+    const innerContent = (
+      <div
+        className={`inline-flex items-center gap-0.5 sm:gap-1 rounded-full border px-2 py-1.5 backdrop-blur-md ${pillSurface}`}
       >
-        <div
-          className={`inline-flex items-center gap-0.5 sm:gap-1 rounded-full border px-2 py-1.5 backdrop-blur-md transition-colors duration-300 ${pillSurface}`}
-        >
-          {/* 1. </> Code */}
+        {/* 1. </> Code */}
+        {isMirror ? (
+          <span className={codeClass}>
+            <Code2 className="h-3.5 w-3.5 shrink-0" />
+            <span className="hidden sm:inline">{t.chrome.codeBtn}</span>
+          </span>
+        ) : (
           <button
             type="button"
             onClick={() => {
               soundEngine.playStippleTick();
               setCodeModalOpen(true);
             }}
-            className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 font-mono text-[11px] font-medium opacity-80 hover:bg-current/[0.07] hover:opacity-100 hover:text-[#5B5BF0] transition-colors cursor-pointer whitespace-nowrap"
+            className={codeClass}
           >
             <Code2 className="h-3.5 w-3.5 shrink-0" />
             <span className="hidden sm:inline">{t.chrome.codeBtn}</span>
           </button>
+        )}
 
-          <span className={`h-4 w-[1px] shrink-0 ${dividerClass}`} />
+        <span className={`h-4 w-[1px] shrink-0 ${dividerClass}`} />
 
-          {/* 2. Site | Story segmented pills */}
-          <div className="inline-flex items-center gap-0.5 rounded-full p-0.5">
-            <button
-              type="button"
-              onClick={() => handleSwitchView('site')}
-              aria-current={activeView === 'site' ? 'page' : undefined}
-              className={`rounded-full px-3 py-1 font-mono text-[11px] transition-all duration-200 cursor-pointer whitespace-nowrap ${
-                activeView === 'site'
-                  ? 'bg-[#5B5BF0] text-white font-semibold shadow-[0_4px_14px_rgba(91,91,240,0.4)]'
-                  : 'opacity-70 hover:opacity-100 hover:bg-current/[0.06]'
-              }`}
-            >
-              {t.chrome.siteBtn}
-            </button>
+        {/* 2. Site | Story segmented pills */}
+        <div className="inline-flex items-center gap-0.5 rounded-full p-0.5">
+          {isMirror ? (
+            <>
+              <span className={siteBtnClass}>{t.chrome.siteBtn}</span>
+              <span className={storyBtnClass}>{t.chrome.storyBtn}</span>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => handleSwitchView('site')}
+                aria-current={activeView === 'site' ? 'page' : undefined}
+                className={siteBtnClass}
+              >
+                {t.chrome.siteBtn}
+              </button>
 
-            <button
-              type="button"
-              onClick={() => handleSwitchView('story')}
-              aria-current={activeView === 'story' ? 'page' : undefined}
-              className={`rounded-full px-3 py-1 font-mono text-[11px] transition-all duration-200 cursor-pointer whitespace-nowrap ${
-                activeView === 'story'
-                  ? 'bg-[#5B5BF0] text-white font-semibold shadow-[0_4px_14px_rgba(91,91,240,0.4)]'
-                  : 'opacity-70 hover:opacity-100 hover:bg-current/[0.06]'
-              }`}
-            >
-              {t.chrome.storyBtn}
-            </button>
-          </div>
+              <button
+                type="button"
+                onClick={() => handleSwitchView('story')}
+                aria-current={activeView === 'story' ? 'page' : undefined}
+                className={storyBtnClass}
+              >
+                {t.chrome.storyBtn}
+              </button>
+            </>
+          )}
+        </div>
 
-          <span className={`h-4 w-[1px] shrink-0 ${dividerClass}`} />
+        <span className={`h-4 w-[1px] shrink-0 ${dividerClass}`} />
 
-          {/* 3. FA / EN */}
+        {/* 3. FA / EN */}
+        {isMirror ? (
+          <span className={localeBtnClass}>{locale === 'fa' ? 'EN' : 'FA'}</span>
+        ) : (
           <button
             type="button"
             onClick={() => {
               soundEngine.playStippleTick();
               onToggleLocale();
             }}
-            className="rounded-full px-2.5 py-1.5 font-mono text-[11px] font-semibold opacity-85 hover:bg-current/[0.07] hover:text-[#5B5BF0] transition-colors cursor-pointer whitespace-nowrap"
+            className={localeBtnClass}
             aria-label="Toggle language FA / EN"
           >
             {locale === 'fa' ? 'EN' : 'FA'}
           </button>
+        )}
 
-          {/* 4. Sound toggle */}
+        {/* 4. Sound toggle */}
+        {isMirror ? (
+          <span className={iconBtnClass}>
+            {soundPlaying ? (
+              <Volume2 className="h-3.5 w-3.5 text-[#5B5BF0]" />
+            ) : (
+              <VolumeX className="h-3.5 w-3.5 opacity-65" />
+            )}
+          </span>
+        ) : (
           <button
             type="button"
             onClick={() => {
               soundEngine.playStippleTick();
               onToggleSound();
             }}
-            className="inline-flex h-7 w-7 items-center justify-center rounded-full hover:bg-current/[0.07] hover:text-[#5B5BF0] transition-colors cursor-pointer"
+            className={iconBtnClass}
             aria-pressed={soundPlaying}
             aria-label={soundPlaying ? t.chrome.soundOn : t.chrome.soundOff}
             title={soundPlaying ? t.chrome.soundOn : t.chrome.soundOff}
@@ -193,22 +239,72 @@ export default function DockBar({
               <VolumeX className="h-3.5 w-3.5 opacity-65" />
             )}
           </button>
+        )}
 
-          {/* 5. Settings */}
+        {/* 5. Settings */}
+        {isMirror ? (
+          <span className={iconBtnClass}>
+            <SlidersHorizontal className="h-3.5 w-3.5 opacity-75" />
+          </span>
+        ) : (
           <button
             type="button"
             onClick={() => {
               soundEngine.playStippleTick();
               setSettingsModalOpen(true);
             }}
-            className="inline-flex h-7 w-7 items-center justify-center rounded-full hover:bg-current/[0.07] hover:text-[#5B5BF0] transition-colors cursor-pointer"
+            className={iconBtnClass}
             aria-label={t.chrome.cookieBtn}
             title={t.chrome.cookieBtn}
           >
             <SlidersHorizontal className="h-3.5 w-3.5 opacity-75" />
           </button>
+        )}
+      </div>
+    );
+
+    if (isMirror) {
+      return (
+        <div
+          dir="ltr"
+          className="absolute bottom-6 left-1/2 -translate-x-1/2 max-w-[calc(100vw-24px)] pointer-events-none"
+        >
+          {innerContent}
         </div>
+      );
+    }
+
+    return (
+      <nav
+        aria-label={locale === 'fa' ? 'نوار کنترل اصلی' : 'Primary dock bar'}
+        dir="ltr"
+        className="absolute bottom-6 left-1/2 -translate-x-1/2 max-w-[calc(100vw-24px)] pointer-events-auto"
+      >
+        {innerContent}
       </nav>
+    );
+  };
+
+  return (
+    <>
+      {/* Unified Fixed Bottom DockBar (exact same geometry in Site & Story) */}
+      <div
+        className={`fixed inset-0 z-50 pointer-events-none ${
+          singularityActive ? 'bh-layer-outer' : ''
+        }`}
+      >
+        {renderDockPill(primarySkin, false)}
+      </div>
+      {singularityActive && (
+        <div
+          aria-hidden="true"
+          inert={true}
+          data-singularity-ui-mirror="dock"
+          className="fixed inset-0 z-50 pointer-events-none bh-layer-inner"
+        >
+          {renderDockPill(secondarySkin, true)}
+        </div>
+      )}
 
       {/* Code & Architecture Modal */}
       <AnimatePresence>

@@ -8,6 +8,10 @@ import { CLIENT_NOTES_CONFIG, STATEMENT_COPY } from '@/lib/site.config';
 import { useScrollStore } from '@/lib/scrollStore';
 import { ParticleSlot } from '@/components/ParticleSlot';
 import { soundEngine } from '@/lib/soundEngine';
+import {
+  getSingularitySectionStyle,
+  hasIncomingTransition,
+} from '@/lib/singularity.config';
 
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
 
@@ -34,8 +38,8 @@ export function StatementSection({ locale }: { locale: Locale }) {
       id="statement"
       data-section="statement"
       data-theme="dark"
-      className="pin-section border-t border-[var(--hairline)] bg-transparent"
-      style={{ height: '300svh' }}
+      className={`pin-section ${hasIncomingTransition('statement') ? '' : 'border-t border-[var(--hairline)]'} bg-transparent`}
+      style={getSingularitySectionStyle('statement', '300svh')}
     >
       <div className="pin-sticky flex flex-col items-center justify-center px-6 sm:px-10 lg:px-16 text-center">
         <div className="w-full max-w-6xl mx-auto flex flex-col items-center">
@@ -217,8 +221,8 @@ export function ClientNotesSection({ locale }: { locale: Locale }) {
       id="testimonial"
       data-section="testimonial"
       data-theme="light"
-      className="pin-section border-t border-[var(--hairline)] bg-transparent"
-      style={{ height: '200svh' }}
+      className={`pin-section ${hasIncomingTransition('testimonial') ? '' : 'border-t border-[var(--hairline)]'} bg-transparent`}
+      style={getSingularitySectionStyle('testimonial', '200svh')}
     >
       <div
         className="pin-sticky flex flex-col justify-between px-6 sm:px-10 lg:px-16 pt-20 pb-24 sm:pb-28"
@@ -470,8 +474,8 @@ export function AfterHoursSection({
       id="afterhours"
       data-section="afterhours"
       data-theme="dark"
-      className="pin-section border-t border-[var(--hairline)] bg-transparent"
-      style={{ height: '200svh' }}
+      className={`pin-section ${hasIncomingTransition('afterhours') ? '' : 'border-t border-[var(--hairline)]'} bg-transparent`}
+      style={getSingularitySectionStyle('afterhours', '200svh')}
     >
       <div className="pin-sticky flex items-center px-6 sm:px-10 lg:px-16 py-16">
         <div className="grid w-full grid-cols-1 gap-10 lg:grid-cols-12">
