@@ -123,56 +123,34 @@ export default function StoryGate({
             <div className="mb-3.5 sm:mb-4 flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.18em] text-[#ECEBE7]/50">
               <span>100</span>
               <span className="h-[1px] w-6 sm:w-8 bg-[#5B5BF0]" />
-              <span className="truncate">{ui.gateEyebrow}</span>
+              <span className="truncate">{ui.badgeVertical}</span>
             </div>
 
             <h1 className="text-3xl sm:text-6xl md:text-7xl font-bold tracking-[-0.03em] text-balance text-[#ECEBE7]">
-              {ui.gateHeading}
+              {locale === 'fa' ? 'روایت ذرات سه‌بعدی' : '3D Particle Narrative'}
             </h1>
+            <p className="mt-3 sm:mt-4 text-xs sm:text-base text-[#ECEBE7]/70 max-w-xl font-light leading-relaxed">
+              {ui.gateOptionStoryDesc}
+            </p>
 
-            <div className="mt-6 sm:mt-10 grid grid-cols-1 gap-3.5 sm:gap-4 sm:grid-cols-2">
-              {/* 01 The site */}
-              <Link
-                href="/?v=site"
-                className="group flex flex-col justify-between rounded-[var(--radius-lg)] border border-[#ECEBE7]/14 bg-white/[0.02] p-5 sm:p-10 text-start transition-colors hover:bg-[#ECEBE7] hover:text-[#0A0A0A]"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-xs text-[#ECEBE7]/45 group-hover:text-[#0A0A0A]/55">
-                    {ui.gateOptionSiteNum}
-                  </span>
-                  <ArrowUpRight className="h-4 w-4 text-[#5B5BF0] transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-                </div>
-                <div className="mt-6 sm:mt-12">
-                  <span className="block text-xl sm:text-3xl font-bold tracking-tight">
-                    {ui.gateOptionSiteTitle}
-                  </span>
-                  <span className="mt-1.5 sm:mt-2.5 block text-xs sm:text-sm font-light opacity-70 leading-relaxed">
-                    {ui.gateOptionSiteDesc}
-                  </span>
-                </div>
-              </Link>
-
-              {/* 02 The story */}
+            <div className="mt-6 sm:mt-10 flex flex-wrap items-center gap-3 sm:gap-4">
+              {/* Primary Enter Story button */}
               <button
                 type="button"
                 onClick={() => onEnterStory(soundChoice)}
-                className="group flex flex-col justify-between rounded-[var(--radius-lg)] border border-[#5B5BF0]/35 bg-[#5B5BF0]/10 p-5 sm:p-10 text-start transition-colors hover:bg-[#5B5BF0] hover:text-[#ECEBE7] cursor-pointer"
+                className="group inline-flex items-center justify-center gap-2.5 rounded-full bg-[#5B5BF0] px-6 sm:px-8 py-3 sm:py-3.5 text-xs sm:text-sm font-semibold text-white transition-all hover:bg-[#4949DE] cursor-pointer shadow-lg shadow-[#5B5BF0]/25"
               >
-                <div className="flex items-center justify-between w-full">
-                  <span className="font-mono text-xs text-[#5B5BF0] group-hover:text-[#ECEBE7]/85">
-                    {ui.gateOptionStoryNum}
-                  </span>
-                  <ArrowUpRight className="h-4 w-4 text-[#5B5BF0] group-hover:text-[#ECEBE7] transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-                </div>
-                <div className="mt-6 sm:mt-12">
-                  <span className="block text-xl sm:text-3xl font-bold tracking-tight">
-                    {ui.gateOptionStoryTitle}
-                  </span>
-                  <span className="mt-1.5 sm:mt-2.5 block text-xs sm:text-sm font-light opacity-78 leading-relaxed">
-                    {ui.gateOptionStoryDesc}
-                  </span>
-                </div>
+                <span>{locale === 'fa' ? 'ورود به داستان' : 'Enter 3D Story'}</span>
+                <ArrowUpRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
               </button>
+
+              {/* Secondary link to main site */}
+              <Link
+                href="/?v=site"
+                className="inline-flex items-center justify-center gap-2 rounded-full border border-[#ECEBE7]/18 bg-white/[0.03] px-5 sm:px-6 py-3 sm:py-3.5 text-xs sm:text-sm font-medium text-[#ECEBE7]/75 transition-colors hover:border-[#ECEBE7]/40 hover:text-[#ECEBE7] hover:bg-white/[0.06]"
+              >
+                <span>{ui.skipToSite}</span>
+              </Link>
             </div>
           </motion.div>
         )}

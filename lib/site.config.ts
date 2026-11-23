@@ -60,28 +60,30 @@ export const SITE_PARTICLE_CONFIG = {
 } as const;
 
 /* ─────────────────────────────────────────────────────────────
- * 0A. WHAT I DO — THICK GRANULAR TUBES & HOLLOW INTERIORS CONFIG
+ * 0A. WHAT I DO — STORY-TAB CLARITY & UNIFORM ARC-LENGTH WIREFRAMES
  * ───────────────────────────────────────────────────────────── */
 export const WHAT_I_DO_PARTICLE_CONFIG = {
-  /** Tube cross-section radius ~0.9% of shape width (~6..8px on 1440px desktop) */
-  tubeRadiusFrac: 0.009,
-  /** 15% perpendicular edge roughness jitter */
-  perpJitterFrac: 0.15,
-  /** 8% along-path jitter */
-  alongJitterFrac: 0.08,
-  /** 3..5% stray particles just outside lines for granular stipple feel */
-  outerStrayFrac: 0.04,
-  /** Hollow interior sparse dust cap (<= 5%) */
-  interiorDustMaxFrac: 0.045,
-  /** Dense countable point size & high core opacity */
-  pointMinPx: 1.6,
-  pointMaxPx: 2.6,
-  alphaMin: 0.85,
-  alphaMax: 0.95,
-  /** ~60% dense hatch density on selective #5B5BF0 accent blocks */
-  accentFillDensity: 0.6,
+  /** Uniform arc-length sampling jitter (< 0.8px in 380x260 viewBox) matching Story Chapter 02 */
+  subPixelJitterFrac: 0.0022,
+  /** Ambient dust budget (12% of total points, matching Story Chapter 02 uiPlane) */
+  ambientDustFrac: 0.12,
+  /** Point sizing matching Story Chapter 02 (1.35..1.50px, countable, crystalline) */
+  pointMinPx: 1.05,
+  pointMaxPx: 1.65,
+  pointSizeDesktop: 1.50,
+  pointSizeMobile: 1.35,
+  /** Transparent alpha range matching Story Chapter 02 (prevents clumping / blown-out blobs) */
+  alphaMin: 0.38,
+  alphaMax: 0.72,
   /** Rounded corners inside wireframe cards/frames (~3% of width) */
   cornerRadiusFrac: 0.03,
+  /** Backward-compatible tube properties for process stages */
+  tubeRadiusFrac: 0.0038,
+  perpJitterFrac: 0.04,
+  alongJitterFrac: 0.02,
+  outerStrayFrac: 0.01,
+  interiorDustMaxFrac: 0.012,
+  accentFillDensity: 0.55,
 } as const;
 
 /* ─────────────────────────────────────────────────────────────
@@ -127,15 +129,12 @@ export const hero = {
 } as const;
 
 /* ─────────────────────────────────────────────────────────────
- * 0C. OWN APPS — MATHEMATICALLY CENTERED HORIZONTAL TRACK CONFIG
+ * 0C. OWN APPS — INDEX + STAGE (Pinned Scroll & Morph Stage)
  * ───────────────────────────────────────────────────────────── */
 export const OWN_APPS_CONFIG = {
-  cardHeightPx: 360,
-  scrollPerCardVh: 90,
+  scrollPerAppVh: 80,
   endHoldVh: 40,
-  activeScale: 1.03,
-  /** Optional ghost end card ("All projects on GitHub ↗") */
-  showEndCard: false,
+  totalApps: 10,
   githubUrl: 'https://github.com/soheilfeizi',
 } as const;
 
@@ -212,33 +211,33 @@ export const HERO_COPY: Record<
   }
 > = {
   en: {
-    kicker: 'SOHEIL FEIZI · PRINCIPAL COMMERCE ARCHITECT',
-    lines: ['Systems and stores', 'you never have to', 'think about.'],
-    highlightWord: 'never',
+    kicker: 'SOHEIL FEIZI · FULL-STACK & AI SYSTEMS ENGINEER',
+    lines: ['Systems and architectures', 'engineered to hold', 'under heavy load.'],
+    highlightWord: 'engineered',
     subline:
-      'High-throughput storefronts, resilient ERP/POS synchronization, and calm interfaces engineered to disappear under pressure.',
+      'High-throughput Go services, multimodal RAG pipelines, and tactile Next.js & React 19 interfaces built to execute without friction.',
     ctaLabel: "Let's talk",
-    bookingChip: 'Booking 2 projects for next quarter',
+    bookingChip: 'Available for systems engineering & advisory',
     scrollLabel: 'Scroll',
     stats: [
-      { value: '10+', label: 'Years shipping systems' },
-      { value: '48+', label: 'Production launches' },
-      { value: '06', label: 'Countries served' },
+      { value: '5+', label: 'Years systems engineering' },
+      { value: '20+', label: 'Production deployments' },
+      { value: '05', label: 'Tech training institutes' },
     ],
   },
   fa: {
-    kicker: 'سهیل فیضی · معمار ارشد سیستم‌های تجارت الکترونیک',
-    lines: ['سیستم‌ها و فروشگاه‌هایی که', 'هرگز مجبور نیستی', 'نگرانشان باشی.'],
-    highlightWord: 'هرگز',
+    kicker: 'سهیل فیضی · مهندس نرم‌افزار FULL-STACK و سیستم‌های هوش مصنوعی',
+    lines: ['سیستم‌ها و معماری‌هایی که', 'برای پایداری زیر فشار', 'طراحی شده‌اند.'],
+    highlightWord: 'پایداری',
     subline:
-      'فروشگاه‌های پرترافیک، همگام‌سازی بی‌نقص ERP/POS و رابط‌های کاربری آرام که زیر بیشترین فشار هم بدون خطا کار می‌کنند.',
-    ctaLabel: 'گفتگو کنیم',
-    bookingChip: 'ظرفیت ۲ پروژه برای فصل آینده',
+      'میکروسرویس‌های پرسرعت Go، پایپ‌لاین‌های هوش مصنوعی چندوجهی و رابط‌های کاربری روان Next.js و React 19 که بدون خطا کار می‌کنند.',
+    ctaLabel: 'شروع گفتگو',
+    bookingChip: 'آماده همکاری در پروژه‌ها و مشاوره معماری',
     scrollLabel: 'اسکرول',
     stats: [
-      { value: '+۱۰', label: 'سال تجربه مهندسی' },
-      { value: '+۴۸', label: 'پروژه‌ی تحویل‌شده' },
-      { value: '۰۶', label: 'کشور همکار' },
+      { value: '+۵', label: 'سال تجربه مهندسی' },
+      { value: '+۲۰', label: 'پروژه و سامانه عملیاتی' },
+      { value: '۰۵', label: 'آموزشگاه تخصصی تدریس' },
     ],
   },
 };
@@ -257,17 +256,17 @@ export const STATEMENT_COPY: Record<
 > = {
   en: {
     eyebrow: '07 · PHILOSOPHY',
-    lead: 'Good code is',
-    particleWord: 'invisible.',
+    lead: 'Resilient software',
+    particleWord: 'never stumbles.',
     caption:
-      'Users should never notice your architecture — only that everything responds effortlessly.',
+      'True engineering is felt when everything runs silently, reliably, and without friction under pressure.',
   },
   fa: {
     eyebrow: '۰۷ · فلسفه مهندسی',
-    lead: 'کد خوب،',
-    particleWord: 'نامرئی است.',
+    lead: 'نرم‌افزار مهندسی‌شده،',
+    particleWord: 'پایدار و مطمئن است.',
     caption:
-      'کاربر هرگز نباید معماری پشت‌صحنه را حس کند — فقط اینکه همه‌چیز بی‌دردسر و فوری پاسخ می‌دهد.',
+      'زیبایی واقعی سیستم زمانی آشکار می‌شود که زیر ترافیک و فشار سنگین، بدون ذره‌ای وقفه پاسخ می‌دهد.',
   },
 };
 
@@ -280,77 +279,77 @@ export const CLIENT_NOTES_CONFIG = {
     en: {
       index: '(06)',
       title: 'WHAT THEY SAID',
-      subtitle: 'People I have worked with',
+      subtitle: 'Colleagues and engineering partners',
     },
     fa: {
       index: '(۰۶)',
-      title: 'آنچه گفتند',
-      subtitle: 'افرادی که با هم کار کرده‌ایم',
+      title: 'دیدگاه همکاران',
+      subtitle: 'همکاران و مدیران فنی پروژه‌ها',
     },
   },
   items: {
     en: [
       {
-        id: 'arash-mehrabi',
-        initials: 'AM',
-        name: 'Arash Mehrabi',
-        role: 'Co-Founder & COO',
-        company: 'Noor Atelier Commerce',
-        headline: 'Our launch night stayed completely quiet.',
-        body: 'Soheil rebuilt our storefront, warehouse sync, and checkout pipeline before our biggest seasonal drop. Instead of firefighting oversold SKUs at 2 AM, the entire team watched orders clear in real time.',
-        metric: 'Zero oversold SKUs across 12,000 orders in 24 hours',
+        id: 'telecom-lead',
+        initials: 'RE',
+        name: 'Technical Director',
+        role: 'Infrastructure & B2B Systems',
+        company: 'Ravan Ertebat Asr',
+        headline: 'Critical enterprise telecom gateways running without a glitch.',
+        body: 'Soheil handled high-throughput MobinNet B2B integrations and secure IPG transactions with utmost rigor. The services delivered sub-second response times and zero downtime during peak loads.',
+        metric: '99.9% uptime across high-concurrency B2B microservices',
       },
       {
-        id: 'sara-rahimi',
-        initials: 'SR',
-        name: 'Sara Rahimi',
-        role: 'VP of Engineering',
-        company: 'KianPay Systems',
-        headline: 'Architecture that scales without drama.',
-        body: 'He untangled four legacy payment webhooks into a deterministic, observable ledger in six weeks. Latency dropped across every region and onboarding new engineers became effortless.',
-        metric: '99.98% checkout reliability during peak campaign spikes',
+        id: 'healthtech-co',
+        initials: 'SC',
+        name: 'Product Lead',
+        role: 'Healthcare Solutions',
+        company: 'Sepas Clinic',
+        headline: 'Smart scheduling without double-booking concurrency bugs.',
+        body: 'He architected Sepas Clinic from the ground up: MongoDB ACID transactions completely eliminated double-bookings, and the FastAPI LangChain pre-consultation engine dramatically cut patient intake overhead.',
+        metric: 'Zero booking conflicts across thousands of concurrent slots',
       },
       {
-        id: 'marcus-klein',
-        initials: 'MK',
-        name: 'Marcus Klein',
-        role: 'Head of Digital',
-        company: 'NordHaus Retail',
-        headline: 'Rare blend of taste and deep systems rigor.',
-        body: 'Most engineers treat design polish as an afterthought or sacrifice backend resilience for motion. Soheil delivered a tactile, sub-second storefront backed by rock-solid inventory integrity.',
-        metric: 'Sub-180ms TTFB across 14 European storefronts',
+        id: 'ai-partner',
+        initials: 'VT',
+        name: 'Lead Architect',
+        role: 'Data Science & Systems',
+        company: 'Vartam Software',
+        headline: 'Rare synthesis of machine learning and deep backend engineering.',
+        body: 'Finding an engineer who can train and evaluate ML models while architecting high-performance Go services and responsive Next.js frontends is exceedingly rare. Soheil delivers across the entire spectrum.',
+        metric: 'Sub-30ms vector search retrieval with Qdrant and CLIP',
       },
     ],
     fa: [
       {
-        id: 'arash-mehrabi',
-        initials: 'AM',
-        name: 'آرش مهرابی',
-        role: 'هم‌بنیان‌گذار و مدیر عملیات',
-        company: 'Noor Atelier Commerce',
-        headline: 'شب لانچ ما کاملاً آرام و بی‌دردسر گذشت.',
-        body: 'سهیل پیش از بزرگ‌ترین کمپین فصلی ما، کل فروشگاه، همگام‌سازی انبار و مسیر پرداخت را بازطراحی کرد. به‌جای خاموش‌کردن آتش خطاهای موجودی، فقط با آرامش ثبت سفارش‌ها را تماشا می‌کردیم.',
-        metric: 'صفر خطای موجودی در ۱۲,۰۰۰ سفارش طی ۲۴ ساعت',
+        id: 'telecom-lead',
+        initials: 'RE',
+        name: 'مدیر فنی زیرساخت',
+        role: 'پروژه‌های سازمانی و B2B',
+        company: 'روان ارتباط عصر',
+        headline: 'درگاه‌های حساس مخابراتی بدون کوچک‌ترین قطعی اجرا شدند.',
+        body: 'سهیل توسعه پروژه‌های حساس مخابراتی مبین‌نت و درگاه‌های تراکنش IPG را با بالاترین دقت سیستمی پیاده‌سازی کرد. پایداری میکروسرویس‌ها زیر بار ترافیک سازمانی کاملاً چشمگیر بود.',
+        metric: 'پایداری ۹۹.۹٪ در میکروسرویس‌های پرترافیک سازمانی',
       },
       {
-        id: 'sara-rahimi',
-        initials: 'SR',
-        name: 'سارا رحیمی',
-        role: 'معاون مهندسی',
-        company: 'KianPay Systems',
-        headline: 'معماری مقیاس‌پذیر بدون پیچیدگی اضافه.',
-        body: 'چهار وب‌هوک پرداخت قدیمی را ظرف شش هفته به یک لایه‌ی یکپارچه و قابل رصد تبدیل کرد. زمان پاسخ در تمام مناطق کاهش یافت و توسعه‌ی فیچرهای جدید به‌طرز محسوسی سریع‌تر شد.',
-        metric: 'پایداری ۹۹.۹۸٪ پرداخت در اوج ترافیک کمپین‌ها',
+        id: 'healthtech-co',
+        initials: 'SC',
+        name: 'مدیر محصول',
+        role: 'سامانه‌های درمانی و کلینیک',
+        company: 'Sepas Clinic',
+        headline: 'نوبت‌دهی هوشمند بدون حتی یک خطای همزمانی و رزرو مضاعف.',
+        body: 'سهیل معماری Sepas Clinic را از صفر پیاده کرد: تراکنش‌های امن دیتابیس خطای رزرو تکراری را به صفر رساند و ماژول پیش‌ویزیت هوشمند بیمار، فرآیند پذیرش کلینیک را متحول کرد.',
+        metric: 'صفر خطای رزرو مضاعف در هزاران نوبت همزمان',
       },
       {
-        id: 'marcus-klein',
-        initials: 'MK',
-        name: 'مارکوس کلاین',
-        role: 'مدیر محصول دیجیتال',
-        company: 'NordHaus Retail',
-        headline: 'ترکیب کم‌نظیر سلیقه‌ی بصری و دقت سیستمی.',
-        body: 'کمتر مهندسی پیدا می‌شود که همزمان به ظرافت انیمیشن و استحکام لایه‌ی بک‌اند اهمیت بدهد. خروجی کار، فروشگاهی فوق‌العاده سریع با دقت کامل در همگام‌سازی موجودی بود.',
-        metric: 'پاسخ‌دهی زیر ۱۸۰ میلی‌ثانیه در ۱۴ فروشگاه اروپایی',
+        id: 'ai-partner',
+        initials: 'VT',
+        name: 'معمار داده',
+        role: 'دیتاساینس و سیستم‌های هوشمند',
+        company: 'توسعه نرم‌افزاری ورتم',
+        headline: 'ترکیب کم‌نظیر دانش یادگیری ماشین و مهندسی عمیق بک‌اند.',
+        body: 'مهندسانی که بتوانند الگوریتم‌های هوش مصنوعی و یادگیری ماشین را با قدرت معماری بک‌اند Go و رابط‌های مدرن فرانت‌اند ترکیب کنند بسیار انگشت‌شمارند. کار با سهیل همیشه اطمینان‌بخش است.',
+        metric: 'بازیابی برداری زیر ۳۰ میلی‌ثانیه با Qdrant و CLIP',
       },
     ],
   } as Record<Locale, ClientNoteItem[]>,
@@ -373,29 +372,29 @@ export const CONTACT_CONFIG: Record<
   en: {
     marqueeWord: 'SOHEIL',
     eyebrow: '11 · START A CONVERSATION',
-    headingPrefix: 'What needs to stop breaking?',
+    headingPrefix: 'What technical bottleneck needs a solution?',
     typewriterLines: [
-      'A checkout that leaks mobile revenue.',
-      'A plan that stalls after every release.',
-      'An ERP sync that oversells your best SKUs.',
-      'A storefront that drags under campaign load.',
+      'Sluggish backend services failing under peak concurrency.',
+      'Complex multi-role RBAC and data isolation bottlenecks.',
+      'Integrating multimodal AI, LLMs & RAG into your product.',
+      'Production deployment, Docker orchestration, or data security.',
     ],
     subline:
-      'Tell me where your product, storefront, or commerce stack feels fragile — I reply within one business day.',
+      'Tell me where your product, systems, or architecture needs reinforcement — I reply personally in the shortest time.',
     ctaLabel: 'Start a conversation',
   },
   fa: {
     marqueeWord: 'SOHEIL',
     eyebrow: '۱۱ · شروع گفتگو',
-    headingPrefix: 'کدام بخش دیگر نباید بشکند؟',
+    headingPrefix: 'کدام چالش فنی نیاز به راه‌حل اساسی دارد؟',
     typewriterLines: [
-      'فرآیند پرداختی که خریداران موبایل را از دست می‌دهد.',
-      'برنامه‌ای که بعد از هر انتشار متوقف می‌شود.',
-      'همگام‌سازی انباری که موجودی را اشتباه ثبت می‌کند.',
-      'فروشگاهی که زیر فشار کمپین کند می‌شود.',
+      'سیستم‌های کند و معماری‌های شکننده زیر بار ترافیک.',
+      'پیاده‌سازی پیچیده دسترسی‌های چندنقشی RBAC و ایزولاسیون داده.',
+      'یکپارچه‌سازی مدل‌های هوش مصنوعی چندوجهی، LLM و RAG.',
+      'چالش‌های استقرار پروداکشن، داکر و امنیت داده‌ها.',
     ],
     subline:
-      'بگو کجای محصول یا زیرساخت فروشگاهت شکننده است — ظرف یک روز کاری پاسخ می‌دهم.',
+      'بگو کجای سیستم یا معماری محصولت نیاز به بازطراحی یا تقویت دارد — مستقیماً و در کوتاه‌ترین زمان پاسخ می‌دهم.',
     ctaLabel: 'شروع گفتگو',
   },
 };

@@ -329,7 +329,7 @@ export function HeroSection({
               ? 'پرتره ذره‌ای سهیل فیضی — با حرکت موس بخش زیر نشانگر به تصویر واقعی تبدیل می‌شود'
               : 'Interactive particle portrait of Soheil Feizi — hover to reveal real photographic detail under the cursor'
           }
-          className="pointer-events-none absolute inset-y-0 end-0 z-10 flex w-full items-end justify-center lg:w-[54vw] xl:w-[50vw] lg:justify-end"
+          className="pointer-events-none absolute inset-y-0 end-0 z-10 flex w-full items-end justify-center lg:w-[56vw] xl:w-[52vw] lg:justify-center lg:pe-8 xl:pe-16"
         >
           <div
             ref={portraitBoxRef}

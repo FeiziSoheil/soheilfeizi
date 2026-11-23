@@ -144,8 +144,13 @@ export default function TabTransitionOverlay() {
     const enterDur = 0.34;
     const exitDur = 0.48;
 
+    // Pre-allocated scratch arrays for batched streak lines (zero GC)
+    const accentLines: number[] = [];
+    const standardLines: number[] = [];
+
     const frame = (now: number) => {
-      const dt = Math.min(0.05, Math.max(0.001, (now - lastTime) / 1000));
+      // Clamp dt to max 33ms so even under heavy route mount/unmount the loader never skips/jumps
+      const dt = Math.min(0.033, Math.max(0.001, (now - lastTime) / 1000));
       lastTime = now;
       elapsed += dt;
 
@@ -207,6 +212,9 @@ export default function TabTransitionOverlay() {
       const yaw = elapsed * 0.55;
       const cosY = Math.cos(yaw);
       const sinY = Math.sin(yaw);
+
+      accentLines.length = 0;
+      standardLines.length = 0;
 
       for (let i = 0; i < particles.length; i++) {
         const pt = particles[i];
@@ -288,13 +296,11 @@ export default function TabTransitionOverlay() {
           if (pt.hasPrev && (eIn < 0.96 || exitEase > 0.04)) {
             const dMove = Math.hypot(px - pt.prevX, py - pt.prevY);
             if (dMove > 1.5 && dMove < 120) {
-              ctx.globalAlpha = dotAlpha * (isAccent ? 0.48 : 0.34);
-              ctx.strokeStyle = isAccent ? '#5B5BF0' : '#ECEAE6';
-              ctx.lineWidth = Math.max(0.75, r * 0.7);
-              ctx.beginPath();
-              ctx.moveTo(pt.prevX, pt.prevY);
-              ctx.lineTo(px, py);
-              ctx.stroke();
+              if (isAccent) {
+                accentLines.push(pt.prevX, pt.prevY, px, py);
+              } else {
+                standardLines.push(pt.prevX, pt.prevY, px, py);
+              }
             }
           }
 
@@ -306,6 +312,30 @@ export default function TabTransitionOverlay() {
         pt.prevX = px;
         pt.prevY = py;
         pt.hasPrev = true;
+      }
+
+      // Draw batched streaks in just 2 draw calls (saves up to 400 stroke() calls per frame)
+      if (accentLines.length > 0) {
+        ctx.globalAlpha = 0.44 * veilAlpha;
+        ctx.strokeStyle = '#5B5BF0';
+        ctx.lineWidth = 1.1;
+        ctx.beginPath();
+        for (let l = 0; l < accentLines.length; l += 4) {
+          ctx.moveTo(accentLines[l], accentLines[l + 1]);
+          ctx.lineTo(accentLines[l + 2], accentLines[l + 3]);
+        }
+        ctx.stroke();
+      }
+      if (standardLines.length > 0) {
+        ctx.globalAlpha = 0.30 * veilAlpha;
+        ctx.strokeStyle = '#ECEAE6';
+        ctx.lineWidth = 0.9;
+        ctx.beginPath();
+        for (let l = 0; l < standardLines.length; l += 4) {
+          ctx.moveTo(standardLines[l], standardLines[l + 1]);
+          ctx.lineTo(standardLines[l + 2], standardLines[l + 3]);
+        }
+        ctx.stroke();
       }
 
       if (curPhase === 'exiting' && exitT >= 1 && !completed) {

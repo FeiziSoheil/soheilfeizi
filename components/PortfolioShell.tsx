@@ -9,6 +9,7 @@ import { useScrollStore } from '@/lib/scrollStore';
 import { particleRegistry } from '@/lib/particleRegistry';
 import { PortfolioDirector } from '@/lib/portfolioDirector';
 import { soundEngine } from '@/lib/soundEngine';
+import { prewarmStoryShapeLibrary } from '@/components/story/shapes';
 import Gateway from '@/components/Gateway';
 import Chrome from '@/components/Chrome';
 import DockBar from '@/components/DockBar';
@@ -64,10 +65,16 @@ export default function PortfolioShell() {
   const setAssetsReady = useScrollStore((s) => s.setAssetsReady);
   const toggleGuiVisible = useScrollStore((s) => s.toggleGuiVisible);
 
-  const [gatewayDone, setGatewayDone] = useState(
-    () => tabTransition.active && tabTransition.to === 'site'
-  );
-  const [activeTrack, setActiveTrack] = useState(1);
+  const [gatewayDone, setGatewayDone] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('v') === 'site' || params.get('debug') === 'shapes') {
+        return true;
+      }
+    }
+    return tabTransition.active && tabTransition.to === 'site';
+  });
+  const [activeTrack, setActiveTrack] = useState(0);
   const [contactModalOpen, setContactModalOpen] = useState(false);
   const [debugShapes, setDebugShapes] = useState(false);
 
@@ -130,6 +137,14 @@ export default function PortfolioShell() {
     };
   }, [setLoadProgress, setAssetsReady]);
 
+  // Prewarm Story 3D shape library in background idle time so tab switch to Story is 100% instant
+  useEffect(() => {
+    if (!assetsReady) return;
+    const isMobile = window.innerWidth < 768;
+    const count = isMobile ? 20_000 : 48_000;
+    prewarmStoryShapeLibrary(count, locale);
+  }, [assetsReady, locale]);
+
   // 2. Restore URL query (?v=site | ?debug=shapes) & localStorage preferences
   useEffect(() => {
     try {
@@ -148,22 +163,21 @@ export default function PortfolioShell() {
           setGatewayDone(true);
         });
       }
-      if (vParam === 'site' || vParam === 'story') {
-        setMode(vParam);
-        setActiveSection(
-          vParam === 'story' ? 'intro' : 'hero',
-          vParam === 'story' ? 'light' : HERO_PORTRAIT_CONFIG.theme
-        );
-        if (vParam === 'site') {
-          queueMicrotask(() => setGatewayDone(true));
-        }
-      } else if (savedMode === 'site' || savedMode === 'story') {
-        setMode(savedMode);
+      if (vParam === 'story') {
+        router.replace('/story?from=tab');
+        return;
+      }
+      if (vParam === 'site') {
+        setMode('site');
+        setActiveSection('hero', HERO_PORTRAIT_CONFIG.theme);
+        queueMicrotask(() => setGatewayDone(true));
+      } else if (savedMode === 'site') {
+        setMode('site');
       }
     } catch {
       // ignore storage access issues
     }
-  }, [setLocale, setMode, setActiveSection]);
+  }, [router, setLocale, setMode, setActiveSection]);
 
   const handleToggleDebugShapes = useCallback((enable: boolean) => {
     try {
@@ -256,12 +270,12 @@ export default function PortfolioShell() {
     };
   }, []);
 
-  // Default Track 2 autoplay + audio handoff + particle vortex reveal when on Site
+  // Default Track 0 (Interstellar) autoplay + audio handoff + particle vortex reveal when on Site
   useEffect(() => {
     if (!gatewayDone) return;
     const st = useScrollStore.getState();
 
-    // Auto-start Track 2 when soundEnabled is true (initial default or handoff from Story)
+    // Auto-start Track 0 when soundEnabled is true (initial default or handoff from Story)
     if (!arrivalAudioHandledRef.current && st.soundEnabled && !soundEngine.getState().isPlaying) {
       arrivalAudioHandledRef.current = true;
       soundEngine.start(activeTrack);
@@ -312,15 +326,23 @@ export default function PortfolioShell() {
 
   const handleEnterGateway = useCallback(
     (chosenMode: ViewMode, enableSound: boolean) => {
-      setMode(chosenMode);
-      setActiveSection(
-        chosenMode === 'story' ? 'intro' : 'hero',
-        chosenMode === 'story' ? 'light' : HERO_PORTRAIT_CONFIG.theme
-      );
+      if (chosenMode === 'story') {
+        soundEngine.stop();
+        useScrollStore.getState().setSoundEnabled(enableSound);
+        useScrollStore.getState().startTabTransition('site', 'story');
+        setGatewayDone(true);
+        window.setTimeout(() => {
+          router.push('/story?from=tab');
+        }, 260);
+        return;
+      }
+
+      setMode('site');
+      setActiveSection('hero', HERO_PORTRAIT_CONFIG.theme);
       try {
-        localStorage.setItem('sf_mode', chosenMode);
+        localStorage.setItem('sf_mode', 'site');
         const url = new URL(window.location.href);
-        url.searchParams.set('v', chosenMode);
+        url.searchParams.set('v', 'site');
         window.history.replaceState({}, '', url.toString());
       } catch {
         // ignore
@@ -338,7 +360,7 @@ export default function PortfolioShell() {
       setGatewayDone(true);
       window.scrollTo({ top: 0 });
     },
-    [activeTrack, setMode, setActiveSection, setSoundPlaying]
+    [activeTrack, router, setMode, setActiveSection, setSoundPlaying]
   );
 
   const handleToggleSound = useCallback(() => {
@@ -479,13 +501,17 @@ export default function PortfolioShell() {
 
         <OwnAppsSection
           locale={locale}
+          onJumpToApp={(idx) => handleJumpToSectionStep('apps', idx, 10)}
           onPlaySynth={() => {
-            handleSelectTrack(2);
+            handleSelectTrack(0);
             handleNavigateSection('afterhours');
           }}
         />
 
-        <ExperienceSection locale={locale} />
+        <ExperienceSection
+          locale={locale}
+          onJumpToRole={(idx) => handleJumpToSectionStep('experience', idx, 4)}
+        />
 
         <StatementSection locale={locale} />
 

@@ -75,6 +75,8 @@ export interface ScrollStoreState {
   themeLerp: number;
   /** Incremented whenever Client Notes switches quotes to trigger a particle micro-morph */
   quoteMorphTrigger: number;
+  /** Active app project index in section 05 Own Apps (0..totalApps-1) */
+  appsActiveIndex: number;
   totalProgress: number;
   scrollPos: number;
   scrollVelocity: number;
@@ -104,6 +106,7 @@ export interface ScrollStoreState {
   beginTabTransitionExit: () => void;
   clearTabTransition: () => void;
   setActiveSection: (id: SectionId, theme: 'light' | 'dark') => void;
+  setAppsActiveIndex: (idx: number) => void;
   triggerQuoteMorph: () => void;
   setTotalProgress: (p: number) => void;
   setScrollVelocity: (v: number) => void;
@@ -220,14 +223,15 @@ const INITIAL_TAB_TRANSITION: TabTransitionState = {
 };
 
 export const useScrollStore = create<ScrollStoreState>((set) => ({
-  locale: 'fa',
-  mode: 'story',
+  locale: 'en',
+  mode: 'site',
   soundEnabled: true,
   tabTransition: { ...INITIAL_TAB_TRANSITION },
-  activeSection: 'intro',
+  activeSection: 'hero',
   theme: 'light',
   themeLerp: 0,
   quoteMorphTrigger: 0,
+  appsActiveIndex: 0,
   totalProgress: 0,
   scrollPos: 0,
   scrollVelocity: 0,
@@ -305,6 +309,12 @@ export const useScrollStore = create<ScrollStoreState>((set) => ({
     }),
   setActiveSection: (activeSection, theme) =>
     set({ activeSection, theme, themeLerp: theme === 'dark' ? 1 : 0 }),
+  setAppsActiveIndex: (appsActiveIndex) => {
+    set((state) => {
+      if (state.appsActiveIndex === appsActiveIndex) return state;
+      return { appsActiveIndex };
+    });
+  },
   triggerQuoteMorph: () => set((s) => ({ quoteMorphTrigger: s.quoteMorphTrigger + 1 })),
   setTotalProgress: (totalProgress) => set({ totalProgress }),
   setScrollVelocity: (scrollVelocity) => set({ scrollVelocity }),

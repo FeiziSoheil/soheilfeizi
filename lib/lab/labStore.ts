@@ -140,7 +140,7 @@ const INITIAL_TELEMETRY: ParticleTelemetry = {
 };
 
 export const useLabStore = create<LabStoreState>((set) => ({
-  locale: 'fa',
+  locale: 'en',
   mode: 'story',
   soundEnabled: false,
   activeSceneId: 'lab-light-a',

@@ -11,19 +11,78 @@ import {
   hasIncomingTransition,
 } from '@/lib/singularity.config';
 
-const INTEGRATION_NODES = [
-  { label: 'ERP', x: '50%', y: '10%' },
-  { label: 'POS', x: '84%', y: '29%' },
-  { label: 'STRIPE', x: '84%', y: '71%' },
-  { label: 'WMS', x: '50%', y: '90%' },
-  { label: 'CRM', x: '16%', y: '71%' },
-  { label: 'EDGE', x: '16%', y: '29%' },
+const AI_RAG_NODES = [
+  { label: 'LLM TOKENS', x: '50%', y: '10%' },
+  { label: 'QDRANT (VECTOR)', x: '84%', y: '29%' },
+  { label: 'CLIP (VISION)', x: '84%', y: '71%' },
+  { label: 'LANGGRAPH', x: '50%', y: '90%' },
+  { label: 'RAG CHUNKS', x: '16%', y: '71%' },
+  { label: 'WHISPER (VOICE)', x: '16%', y: '29%' },
 ];
+
+function getWhatIDoTabMotion(idx: number, scaled: number, count: number) {
+  const isFirst = idx === 0;
+  const isLast = idx === count - 1;
+
+  // Transition window centered around step boundary (idx + 1)
+  // Transition window is 0.36 total (runs from boundary - 0.18 to boundary + 0.18)
+  // Exactly synchronized with the 3D WebGL particle morph trigger
+  const halfWindow = 0.18;
+  const exitStart = idx + 1 - halfWindow; // e.g. 0.82 for idx=0
+  const exitEnd = idx + 1 + halfWindow;   // e.g. 1.18 for idx=0
+  const enterStart = idx - halfWindow;    // e.g. 0.82 for idx=1
+  const enterEnd = idx + halfWindow;      // e.g. 1.18 for idx=1
+
+  if (scaled < enterStart) {
+    if (isFirst) {
+      return { y: 0, opacity: 1, pointerEvents: 'auto' as const, visible: true };
+    }
+    return { y: 44, opacity: 0, pointerEvents: 'none' as const, visible: false };
+  }
+
+  if (scaled < enterEnd) {
+    if (isFirst) {
+      return { y: 0, opacity: 1, pointerEvents: 'auto' as const, visible: true };
+    }
+    const t = (scaled - enterStart) / (halfWindow * 2);
+    const ease = t * t * (3 - 2 * t);
+    return {
+      y: (1 - ease) * 44,
+      opacity: ease,
+      pointerEvents: (ease > 0.5 ? 'auto' : 'none') as 'auto' | 'none',
+      visible: ease > 0.005,
+    };
+  }
+
+  if (scaled <= exitStart) {
+    return { y: 0, opacity: 1, pointerEvents: 'auto' as const, visible: true };
+  }
+
+  if (scaled < exitEnd) {
+    if (isLast) {
+      return { y: 0, opacity: 1, pointerEvents: 'auto' as const, visible: true };
+    }
+    const t = (scaled - exitStart) / (halfWindow * 2);
+    const ease = t * t * (3 - 2 * t);
+    return {
+      y: -ease * 44,
+      opacity: 1 - ease,
+      pointerEvents: (ease < 0.5 ? 'auto' : 'none') as 'auto' | 'none',
+      visible: 1 - ease > 0.005,
+    };
+  }
+
+  // scaled >= exitEnd
+  if (isLast) {
+    return { y: 0, opacity: 1, pointerEvents: 'auto' as const, visible: true };
+  }
+  return { y: -44, opacity: 0, pointerEvents: 'none' as const, visible: false };
+}
 
 /* ─────────────────────────────────────────────────────────────
  * 02 WHAT I DO (steps = 6 -> 600svh sticky)
  * - Sticky L0 SVG->particle diagram morphing across all 6 disciplines
- * - Clip-path vertical title transitions synced to p
+ * - Smooth vertical ticker transitions on scroll (current text moves up, next rises in)
  * - 6 bottom progress bars filled by p, clickable to scrollTo exact step
  * - Integrations tab draws rays center->outer progressively
  * ───────────────────────────────────────────────────────────── */
@@ -41,12 +100,11 @@ export function WhatIDoSection({
 
   const count = t.whatido.tabs.length;
   const scaled = p * count;
-  const activeIdx = Math.min(count - 1, Math.max(0, Math.floor(scaled)));
-  const localP = Math.max(0, Math.min(1, scaled - activeIdx));
+  // Shift by 0.18 so active tab and particles switch in perfect lockstep at scaled = idx - 0.18
+  const activeIdx = Math.min(count - 1, Math.max(0, Math.floor(scaled + 0.18)));
+  const baseStep = Math.min(count - 1, Math.max(0, Math.floor(scaled)));
+  const localP = Math.max(0, Math.min(1, scaled - baseStep));
   const activeTab = t.whatido.tabs[activeIdx];
-
-  // Vertical clip-path reveal on entry of each step
-  const clipTop = Math.max(0, (1 - Math.min(1, localP * 5.5)) * 100);
 
   return (
     <section
@@ -85,36 +143,51 @@ export function WhatIDoSection({
           </button>
         </div>
 
-        {/* Center Split: Left Info with clip-path title | Right Sticky Particle Diagram */}
+        {/* Center Split: Left Info with vertical ticker scroll transition | Right Sticky Particle Diagram */}
         <div className="flex w-full flex-1 min-h-0 flex-col lg:grid lg:grid-cols-12 lg:items-center gap-2 sm:gap-6 py-1.5 sm:py-4">
-          <div className="shrink-0 lg:col-span-5 flex min-h-0 sm:min-h-[270px] flex-col justify-center">
-            <span className="font-mono text-[11px] sm:text-xs text-[#5B5BF0]">
-              0{activeIdx + 1} / 0{count}
-            </span>
+          <div className="shrink-0 lg:col-span-5 flex min-h-0 sm:min-h-[280px] lg:min-h-[320px] flex-col justify-center">
+            <div className="relative grid grid-cols-1 grid-rows-1 w-full overflow-hidden py-1">
+              {t.whatido.tabs.map((tab, idx) => {
+                const motion = getWhatIDoTabMotion(idx, scaled, count);
+                const isActive = idx === activeIdx;
+                return (
+                  <div
+                    key={tab.id}
+                    className="col-start-1 row-start-1 flex flex-col justify-center will-change-[transform,opacity]"
+                    style={{
+                      transform: `translate3d(0, ${motion.y.toFixed(2)}px, 0)`,
+                      opacity: motion.opacity.toFixed(3),
+                      pointerEvents: motion.pointerEvents,
+                      visibility: motion.visible ? 'visible' : 'hidden',
+                    }}
+                    aria-hidden={!isActive}
+                  >
+                    <span className="font-mono text-[11px] sm:text-xs text-[#5B5BF0]">
+                      0{idx + 1} / 0{count}
+                    </span>
 
-            <div className="mt-1 sm:mt-3 overflow-hidden">
-              <h3
-                className="display-xl text-xl sm:text-5xl lg:text-6xl will-change-[clip-path]"
-                style={{
-                  clipPath: `inset(${clipTop}% 0% 0% 0%)`,
-                }}
-              >
-                {activeTab.title}
-              </h3>
-            </div>
+                    <div className="mt-1 sm:mt-3">
+                      <h3 className="display-xl text-xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-tight">
+                        {tab.title}
+                      </h3>
+                    </div>
 
-            <p className="mt-1.5 sm:mt-5 text-xs sm:text-lg font-light leading-snug sm:leading-relaxed opacity-85 line-clamp-2 sm:line-clamp-none">
-              {activeTab.desc}
-            </p>
+                    <p className="mt-1.5 sm:mt-5 text-xs sm:text-lg font-light leading-snug sm:leading-relaxed opacity-85 line-clamp-2 sm:line-clamp-none">
+                      {tab.desc}
+                    </p>
 
-            <div className="mt-2 sm:mt-6 border-t border-[var(--hairline)] pt-2 sm:pt-4 font-mono text-[10px] sm:text-xs text-[#5B5BF0] truncate">
-              {activeTab.metrics}
+                    <div className="mt-2 sm:mt-6 border-t border-[var(--hairline)] pt-2 sm:pt-4 font-mono text-[10px] sm:text-xs text-[#5B5BF0] truncate">
+                      {tab.metrics}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
           {/* Sticky Diagram Slot rendered on L0 */}
-          <div className="flex flex-1 min-h-[120px] lg:col-span-7 lg:h-full items-center justify-center py-1">
-            <div className="relative h-full w-full max-w-[230px] max-h-[25svh] sm:max-w-none sm:h-[400px] lg:h-[520px] sm:max-h-[55svh] mx-auto">
+          <div className="flex flex-1 min-h-[200px] xs:min-h-[240px] lg:col-span-7 lg:h-full items-center justify-center py-1">
+            <div className="relative h-full w-full max-w-[360px] xs:max-w-[400px] max-h-[44svh] sm:max-w-none sm:h-[400px] lg:h-[520px] sm:max-h-[55svh] mx-auto">
               <ParticleSlot
                 slotId="whatido-diagram"
                 descriptor={`svg:${activeTab.id}`}
@@ -122,22 +195,22 @@ export function WhatIDoSection({
                 className="h-full w-full"
               />
 
-              {/* Crisp radial node captions specifically for Integrations */}
+              {/* Crisp radial node captions specifically for Multimodal AI & RAG */}
               {activeTab.id === 'integrations' && (
                 <div className="pointer-events-none absolute inset-0">
-                  <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 font-mono text-[9px] sm:text-[10px] font-bold text-[#5B5BF0]">
-                    CORE
+                  <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 font-mono text-[9px] sm:text-[10px] font-bold text-[#5B5BF0] tracking-wider whitespace-nowrap">
+                    AI · RAG CORE
                   </span>
-                  {INTEGRATION_NODES.map((node, nIdx) => {
+                  {AI_RAG_NODES.map((node, nIdx) => {
                     const visible = localP > 0.15 + nIdx * 0.1;
                     return (
                       <span
                         key={node.label}
-                        className="absolute -translate-x-1/2 -translate-y-1/2 font-mono text-[9px] sm:text-[10px] transition-opacity duration-300"
+                        className="absolute -translate-x-1/2 -translate-y-1/2 font-mono text-[9px] sm:text-[10px] font-medium transition-opacity duration-300 whitespace-nowrap"
                         style={{
                           left: node.x,
                           top: node.y,
-                          opacity: visible ? 0.85 : 0.15,
+                          opacity: visible ? 0.9 : 0.2,
                         }}
                       >
                         {node.label}
@@ -154,7 +227,7 @@ export function WhatIDoSection({
         <div className="relative z-20 grid w-full shrink-0 grid-cols-3 lg:grid-cols-6 gap-1.5 sm:gap-3 pt-1 sm:pt-2">
           {t.whatido.tabs.map((tab, idx) => {
             const fill =
-              idx < activeIdx ? 100 : idx === activeIdx ? localP * 100 : 0;
+              idx < baseStep ? 100 : idx === baseStep ? localP * 100 : 0;
             const isActive = idx === activeIdx;
             return (
               <button
@@ -237,7 +310,7 @@ export function ProcessSection({
             slotId="process-stage"
             descriptor={`process:${activeIdx}`}
             aria-label={activeStage.title}
-            className="h-[140px] w-[140px] sm:h-[340px] sm:w-[340px] lg:h-[420px] lg:w-[420px] max-h-[24svh] sm:max-h-[46svh]"
+            className="h-[220px] w-[220px] xs:h-[260px] xs:w-[260px] sm:h-[340px] sm:w-[340px] lg:h-[420px] lg:w-[420px] max-h-[32svh] sm:max-h-[46svh]"
           />
 
           <div className="mt-2.5 sm:mt-4 max-w-2xl text-center">

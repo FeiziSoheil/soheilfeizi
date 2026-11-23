@@ -107,6 +107,8 @@ export default function ProjectBackground({
                   alt={project.title}
                   fill
                   priority
+                  unoptimized
+                  quality={100}
                   sizes="100vw"
                   referrerPolicy="no-referrer"
                   onError={() =>

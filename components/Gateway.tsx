@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { motion } from 'motion/react';
 import { ArrowUpRight, Volume2, VolumeX } from 'lucide-react';
 import { CONTENT, Locale, ViewMode } from '@/lib/content';
@@ -161,12 +160,12 @@ export default function Gateway({
               </button>
 
               {/* Story Mode -> dedicated 3D Particle Story (/story) */}
-              <Link
-                href="/story"
+              <button
+                type="button"
                 data-cursor="view"
                 onClick={() => {
                   soundEngine.playStippleTick();
-                  useScrollStore.getState().setSoundEnabled(soundOn);
+                  onEnter('story', soundOn);
                 }}
                 onMouseEnter={() => soundEngine.playStippleTick()}
                 className="group flex flex-col justify-between rounded-[var(--radius-lg)] border border-[#5B5BF0]/25 bg-[#5B5BF0]/[0.06] p-5 sm:p-9 text-start transition-colors hover:bg-[#5B5BF0] hover:text-white cursor-pointer"
@@ -185,7 +184,7 @@ export default function Gateway({
                     {t.gateway.storyDesc}
                   </span>
                 </div>
-              </Link>
+              </button>
             </div>
           </motion.div>
         )}

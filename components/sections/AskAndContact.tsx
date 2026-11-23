@@ -251,7 +251,7 @@ function PainPointTypewriter({ painPoints }: { painPoints: string[] }) {
   }, [typed, deleting, wordIdx, painPoints]);
 
   return (
-    <span className="mt-2 block min-h-[2.4em] sm:min-h-[1.35em] text-[#5B5BF0] whitespace-normal break-words">
+    <span className="mt-1.5 sm:mt-2 block min-h-[2.2em] sm:min-h-[1.3em] text-[#5B5BF0] whitespace-normal break-words">
       {typed}
       <span
         aria-hidden="true"
@@ -299,23 +299,23 @@ export function FinalContactSection({
       className={`pin-section pin-section-mobile-flow ${hasIncomingTransition('contact') ? '' : 'border-t border-[var(--hairline)]'} bg-transparent`}
       style={getSingularitySectionStyle('contact', '300svh')}
     >
-      <div className="pin-sticky pin-sticky-mobile-flow flex flex-col justify-between gap-6 lg:gap-0 px-4 sm:px-10 lg:px-16 pt-16 sm:pt-20 pb-32 sm:pb-28">
+      <div className="pin-sticky pin-sticky-mobile-flow flex flex-col justify-between gap-4 sm:gap-6 lg:gap-8 px-4 sm:px-10 lg:px-16 pt-10 sm:pt-14 lg:pt-16 pb-24 sm:pb-24 lg:pb-28 min-h-0">
         {/* Top CTA Block with Full Unclipped Typewriter */}
-        <div className="w-full max-w-5xl">
+        <div className="w-full max-w-5xl shrink-0">
           <span className="font-mono text-[11px] sm:text-xs font-medium text-[#5B5BF0]">
             11 · {locale === 'fa' ? 'شروع همکاری' : 'START A PROJECT'}
           </span>
 
-          <h2 className="display-xl mt-3 text-2xl sm:text-4xl md:text-[3.25rem] leading-[1.15] sm:leading-[1.12]">
+          <h2 className="display-xl mt-2 sm:mt-3 text-xl sm:text-3xl md:text-4xl lg:text-[2.65rem] leading-[1.18] sm:leading-[1.12]">
             <span className="block">{t.contact.prefix}</span>
             <PainPointTypewriter key={locale} painPoints={phrases} />
           </h2>
 
-          <p className="mt-3 max-w-xl text-sm sm:text-base font-light opacity-75">
+          <p className="mt-2.5 sm:mt-3 max-w-xl text-xs sm:text-sm lg:text-base font-light opacity-75 leading-relaxed">
             {t.contact.subline}
           </p>
 
-          <div className="mt-5 sm:mt-6 flex flex-wrap items-center gap-3 sm:gap-5">
+          <div className="mt-4 sm:mt-5 flex flex-wrap items-center gap-3 sm:gap-4">
             <MagneticButton variant="accent" onClick={onOpenContact}>
               <span>{t.contact.cta}</span>
               <ArrowUpRight className="h-4 w-4" />
@@ -333,18 +333,18 @@ export function FinalContactSection({
         </div>
 
         {/* Full-Width GPU Infinite Particle Strip Slot (SOHEIL — SOHEIL — SOHEIL ...) */}
-        <div className="w-[calc(100%+2rem)] -mx-4 sm:w-[calc(100%+5rem)] sm:-mx-10 lg:w-[calc(100%+8rem)] lg:-mx-16 my-4 sm:my-2 flex items-center justify-center overflow-hidden">
+        <div className="w-[calc(100%+2rem)] -mx-4 sm:w-[calc(100%+5rem)] sm:-mx-10 lg:w-[calc(100%+8rem)] lg:-mx-16 my-auto py-1 sm:py-2 flex items-center justify-center overflow-hidden shrink-0">
           <ParticleSlot
             slotId="cta-logo"
             descriptor={`strip:${stripWord}`}
             aria-label={t.person.fullName}
-            className="h-[72px] sm:h-[145px] lg:h-[180px] w-full"
+            className="h-[70px] sm:h-[100px] md:h-[120px] lg:h-[145px] w-full"
           />
         </div>
 
         {/* 3-Column Footer revealing cleanly with scroll */}
         <div
-          className="w-full border-t border-[var(--hairline)] pt-5"
+          className="w-full border-t border-[var(--hairline)] pt-4 sm:pt-5 shrink-0"
           style={{
             opacity: Math.max(0.55, footerReveal),
             transform: `translate3d(0, ${(1 - footerReveal) * 14}px, 0)`,

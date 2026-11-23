@@ -17,10 +17,10 @@ const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
 
 /* ─────────────────────────────────────────────────────────────
  * 07 STATEMENT (Dark #0A0A0A, pinned 300svh)
- * - Fixes double-rendered "invisible.": DOM word is strictly sr-only;
- *   only SiteParticleStage renders "invisible." with indigo accent on "."
- * - 3 phases: enter (0..0.20), crisp hold (0.20..0.76 >= 55%),
- *   edge-outward evaporation (0.76..1.0) synced with caption fade-out
+ * - Fixes double-rendered word: DOM word is strictly sr-only;
+ *   only SiteParticleStage renders particle word with indigo accent
+ * - Enter (0..0.20), crisp hold (0.20..0.75), caption fade-out (0.75..0.95),
+ *   particle word holds until White Hole singularity swallows/morphs it into Quote Marks
  * ───────────────────────────────────────────────────────────── */
 export function StatementSection({ locale }: { locale: Locale }) {
   const copy = STATEMENT_COPY[locale];
@@ -70,7 +70,7 @@ export function StatementSection({ locale }: { locale: Locale }) {
             className="relative mx-auto mt-2 w-full max-w-[1160px] h-[clamp(4.5rem,20vw,17.5rem)]"
           />
 
-          {/* Caption holds cleanly then fades out synchronously with evaporation */}
+          {/* Caption holds cleanly then fades out before singularity transition */}
           <p
             className="mx-auto mt-4 sm:mt-6 max-w-2xl text-xs sm:text-lg font-light leading-relaxed text-[#D9D9D9] will-change-transform"
             style={{
@@ -227,32 +227,34 @@ export function ClientNotesSection({ locale }: { locale: Locale }) {
       style={getSingularitySectionStyle('testimonial', '200svh', '165svh')}
     >
       <div
-        className="pin-sticky flex flex-col justify-between px-4 sm:px-10 lg:px-16 pt-16 sm:pt-20 pb-20 sm:pb-28"
+        className="pin-sticky flex flex-col justify-between px-4 sm:px-8 md:px-10 lg:px-16 pt-12 sm:pt-16 lg:pt-20 pb-16 sm:pb-20 lg:pb-24 overflow-y-auto lg:overflow-hidden select-none"
         onMouseEnter={() => setIsPaused(true)}
         onMouseLeave={() => setIsPaused(false)}
+        onTouchStart={() => setIsPaused(true)}
+        onTouchEnd={() => setIsPaused(false)}
       >
         {/* Top Header Row: (06) WHAT THEY SAID + People I have worked with + Hairline */}
-        <div className="flex flex-wrap items-baseline justify-between gap-2 sm:gap-4 border-b border-[#111111]/15 pb-3 sm:pb-4">
-          <div className="flex items-baseline gap-2.5 sm:gap-3">
+        <div className="flex flex-wrap items-baseline justify-between gap-2 sm:gap-4 border-b border-[#111111]/15 pb-2.5 sm:pb-3.5 shrink-0">
+          <div className="flex items-baseline gap-2 sm:gap-3">
             <span className="font-mono text-xs sm:text-sm font-medium text-[#5B5BF0] tabular-nums">
               {copy.index}
             </span>
-            <h2 className="text-xs sm:text-sm md:text-[15px] font-extrabold uppercase tracking-[0.18em] sm:tracking-[0.22em] text-[#111111]">
+            <h2 className="text-xs sm:text-sm md:text-[15px] font-extrabold uppercase tracking-[0.16em] sm:tracking-[0.22em] text-[#111111]">
               {copy.title}
             </h2>
           </div>
-          <span className="text-[11px] sm:text-sm font-normal text-[#111111]/60">
+          <span className="text-[11px] sm:text-xs md:text-sm font-normal text-[#111111]/60">
             {copy.subtitle}
           </span>
         </div>
 
         {/* Main 3-Zone Editorial Grid: Avatar Rail | Dual-DOM Quote Stack | Particle Quote Marks */}
-        <div className="my-auto grid w-full grid-cols-1 items-center gap-5 sm:gap-8 lg:grid-cols-12 lg:gap-10 py-3 sm:py-6">
+        <div className="my-auto grid w-full grid-cols-1 items-center gap-3 sm:gap-5 lg:grid-cols-12 lg:gap-8 py-2 sm:py-4 lg:py-6">
           {/* Narrow Left Column: Circular Initials Avatars */}
           <div
             role="tablist"
             aria-label={copy.title}
-            className="lg:col-span-1 flex lg:flex-col items-center gap-3 sm:gap-3.5"
+            className="lg:col-span-1 flex lg:flex-col items-center gap-2.5 sm:gap-3 shrink-0"
           >
             {quotes.map((item, idx) => {
               const isActive = idx === activeIdx;
@@ -265,12 +267,12 @@ export function ClientNotesSection({ locale }: { locale: Locale }) {
                   aria-label={`${item.name} — ${item.role}`}
                   data-cursor="view"
                   onClick={() => switchTo(idx)}
-                  className="group relative flex items-center gap-2 cursor-pointer rounded-full"
+                  className="group relative flex items-center gap-2 cursor-pointer rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-[#5B5BF0]"
                 >
                   <span
-                    className={`flex h-11 w-11 sm:h-12 sm:w-12 items-center justify-center rounded-full font-mono text-xs font-bold tracking-wider transition-all duration-300 ${
+                    className={`flex h-9.5 w-9.5 sm:h-11 sm:w-11 lg:h-12 lg:w-12 items-center justify-center rounded-full font-mono text-[11px] sm:text-xs font-bold tracking-wider transition-all duration-300 ${
                       isActive
-                        ? 'bg-[#5B5BF0] text-white shadow-[0_10px_24px_rgba(91,91,240,0.36)] scale-105'
+                        ? 'bg-[#5B5BF0] text-white shadow-[0_8px_20px_rgba(91,91,240,0.36)] scale-105'
                         : 'bg-[#111111]/8 text-[#111111]/55 hover:bg-[#111111]/14 hover:text-[#111111]'
                     }`}
                   >
@@ -278,7 +280,7 @@ export function ClientNotesSection({ locale }: { locale: Locale }) {
                   </span>
                   <span
                     aria-hidden="true"
-                    className={`hidden sm:inline-block h-1.5 w-1.5 rounded-full transition-all duration-300 ${
+                    className={`hidden lg:inline-block h-1.5 w-1.5 rounded-full transition-all duration-300 ${
                       isActive
                         ? 'bg-[#5B5BF0] scale-100 opacity-100'
                         : 'bg-transparent scale-0 opacity-0'
@@ -290,37 +292,51 @@ export function ClientNotesSection({ locale }: { locale: Locale }) {
           </div>
 
           {/* Center-Left Column: Dual-DOM Masked Quote Stack */}
-          <div className="lg:col-span-7 relative min-h-[230px] sm:min-h-[340px] flex flex-col justify-center">
+          <div className="lg:col-span-7 relative min-h-[190px] sm:min-h-[250px] lg:min-h-[320px] flex flex-col justify-center">
             {/* Outgoing Quote Layer */}
             {prevQuote && (
               <div
                 ref={outgoingRef}
                 aria-hidden="true"
-                className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 z-10 space-y-3.5 sm:space-y-5"
+                className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 z-10 space-y-2.5 sm:space-y-4 lg:space-y-5"
               >
-                <div className="overflow-hidden">
+                <div className="overflow-hidden py-0.5">
                   <div
                     data-q-item
-                    className="font-extrabold tracking-[-0.035em] leading-[1.1] sm:leading-[1.06] text-[#111111] text-[clamp(1.45rem,5.8vw,4.5rem)] text-balance"
+                    className="font-extrabold tracking-[-0.03em] leading-[1.15] sm:leading-[1.1] lg:leading-[1.06] text-[#111111] text-[clamp(1.15rem,4.2vw,1.85rem)] sm:text-[clamp(1.5rem,3.8vw,2.75rem)] lg:text-[clamp(2.1rem,3.4vw,3.75rem)] text-balance"
                   >
-                    <span className="text-[#5B5BF0] me-2">“</span>
+                    <span className="text-[#5B5BF0] me-1.5 sm:me-2" aria-hidden="true">
+                      {locale === 'fa' ? '«' : '“'}
+                    </span>
                     {prevQuote.headline}
-                    <span className="text-[#5B5BF0] ms-1">”</span>
+                    <span className="text-[#5B5BF0] ms-1" aria-hidden="true">
+                      {locale === 'fa' ? '»' : '”'}
+                    </span>
                   </div>
                 </div>
                 <div className="overflow-hidden">
                   <p
                     data-q-item
-                    className="max-w-2xl text-xs sm:text-base lg:text-lg font-normal leading-relaxed text-[#111111]/75"
+                    className="max-w-2xl text-[12px] sm:text-[14px] lg:text-[16px] font-normal leading-relaxed text-[#111111]/75"
                   >
                     {prevQuote.body}
                   </p>
                 </div>
-                <div className="overflow-hidden pt-2">
-                  <div data-q-item className="flex flex-wrap items-center gap-3">
-                    <span className="text-sm font-extrabold text-[#111111]">{prevQuote.name}</span>
-                    <span className="font-mono text-xs text-[#111111]/55">
-                      {prevQuote.role} · {prevQuote.company}
+                <div className="overflow-hidden pt-1 sm:pt-2">
+                  <div
+                    data-q-item
+                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4 border-t border-[#111111]/12 pt-2 sm:pt-3"
+                  >
+                    <div className="min-w-0">
+                      <div className="text-xs sm:text-sm lg:text-base font-extrabold text-[#111111]">
+                        {prevQuote.name}
+                      </div>
+                      <div className="mt-0.5 font-mono text-[10px] sm:text-xs text-[#111111]/60 truncate">
+                        {prevQuote.role} · {prevQuote.company}
+                      </div>
+                    </div>
+                    <span className="inline-flex self-start sm:self-auto items-center rounded-lg sm:rounded-full border border-[#5B5BF0]/25 bg-[#5B5BF0]/10 px-2.5 sm:px-3.5 py-0.5 sm:py-1 font-mono text-[9.5px] sm:text-[11px] font-medium text-[#3B3BC8] max-w-full">
+                      {prevQuote.metric}
                     </span>
                   </div>
                 </div>
@@ -328,13 +344,13 @@ export function ClientNotesSection({ locale }: { locale: Locale }) {
             )}
 
             {/* Incoming / Active Quote Layer */}
-            <div ref={incomingRef} className="relative z-20 space-y-3.5 sm:space-y-5">
-              <div className="overflow-hidden py-1">
+            <div ref={incomingRef} className="relative z-20 space-y-2.5 sm:space-y-4 lg:space-y-5">
+              <div className="overflow-hidden py-0.5">
                 <blockquote
                   data-q-item
-                  className="font-extrabold tracking-[-0.035em] leading-[1.1] sm:leading-[1.06] text-[#111111] text-[clamp(1.45rem,5.8vw,4.5rem)] text-balance will-change-transform"
+                  className="font-extrabold tracking-[-0.03em] leading-[1.15] sm:leading-[1.1] lg:leading-[1.06] text-[#111111] text-[clamp(1.15rem,4.2vw,1.85rem)] sm:text-[clamp(1.5rem,3.8vw,2.75rem)] lg:text-[clamp(2.1rem,3.4vw,3.75rem)] text-balance will-change-transform"
                 >
-                  <span className="text-[#5B5BF0] me-2" aria-hidden="true">
+                  <span className="text-[#5B5BF0] me-1.5 sm:me-2" aria-hidden="true">
                     {locale === 'fa' ? '«' : '“'}
                   </span>
                   {activeQuote.headline}
@@ -347,7 +363,7 @@ export function ClientNotesSection({ locale }: { locale: Locale }) {
               <div className="overflow-hidden">
                 <p
                   data-q-item
-                  className="max-w-2xl text-xs sm:text-base lg:text-lg font-normal leading-relaxed text-[#111111]/76"
+                  className="max-w-2xl text-[12px] sm:text-[14px] lg:text-[16px] font-normal leading-relaxed text-[#111111]/76"
                 >
                   {activeQuote.body}
                 </p>
@@ -356,19 +372,19 @@ export function ClientNotesSection({ locale }: { locale: Locale }) {
               <div className="overflow-hidden pt-1 sm:pt-2">
                 <div
                   data-q-item
-                  className="flex flex-wrap items-center justify-between gap-3 sm:gap-4 border-t border-[#111111]/12 pt-3 sm:pt-4"
+                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4 border-t border-[#111111]/12 pt-2 sm:pt-3"
                 >
-                  <div>
-                    <div className="text-sm sm:text-base font-extrabold text-[#111111]">
+                  <div className="min-w-0">
+                    <div className="text-xs sm:text-sm lg:text-base font-extrabold text-[#111111]">
                       {activeQuote.name}
                     </div>
-                    <div className="mt-0.5 font-mono text-[11px] sm:text-xs text-[#111111]/60">
+                    <div className="mt-0.5 font-mono text-[10px] sm:text-xs text-[#111111]/60 truncate">
                       {activeQuote.role} · {activeQuote.company}
                     </div>
                   </div>
 
                   {/* Rounded metric chip */}
-                  <span className="inline-flex items-center rounded-full border border-[#5B5BF0]/25 bg-[#5B5BF0]/10 px-3 sm:px-4 py-1 sm:py-1.5 font-mono text-[10px] sm:text-[11px] font-medium text-[#3B3BC8]">
+                  <span className="inline-flex self-start sm:self-auto items-center rounded-lg sm:rounded-full border border-[#5B5BF0]/25 bg-[#5B5BF0]/10 px-2.5 sm:px-3.5 py-0.5 sm:py-1 font-mono text-[9.5px] sm:text-[11px] font-medium text-[#3B3BC8] max-w-full">
                     {activeQuote.metric}
                   </span>
                 </div>
@@ -376,19 +392,19 @@ export function ClientNotesSection({ locale }: { locale: Locale }) {
             </div>
           </div>
 
-          {/* Right/End Column: Giant Borderless Particle Quotation Marks « » (hidden on < sm so quotes never clip) */}
-          <div className="hidden sm:flex lg:col-span-4 items-center justify-center">
+          {/* Right/End Column: Giant Borderless Particle Quotation Marks « » (hidden on < lg so quotes never clip or cause vertical overflow) */}
+          <div className="hidden lg:flex lg:col-span-4 items-center justify-center">
             <ParticleSlot
               slotId="testimonial-figure"
               descriptor="quotes:marks"
               aria-hidden="true"
-              className="h-[200px] w-full max-w-[380px] md:h-[280px] lg:h-[380px]"
+              className="h-[280px] w-full max-w-[380px] lg:h-[380px]"
             />
           </div>
         </div>
 
-        {/* Bottom 7-Second Thin Rounded-Full Progress Bar (Pauses on Hover) */}
-        <div className="flex items-center justify-between gap-4">
+        {/* Bottom 7-Second Thin Rounded-Full Progress Bar (Pauses on Hover / Touch) */}
+        <div className="flex items-center justify-between gap-3 sm:gap-4 shrink-0 pt-2">
           <div
             role="progressbar"
             aria-valuemin={0}
@@ -401,7 +417,7 @@ export function ClientNotesSection({ locale }: { locale: Locale }) {
               style={{ width: `${(progress * 100).toFixed(2)}%` }}
             />
           </div>
-          <span className="font-mono text-[11px] text-[#111111]/55 tabular-nums shrink-0">
+          <span className="font-mono text-[10.5px] sm:text-[11px] text-[#111111]/55 tabular-nums shrink-0">
             {String(activeIdx + 1).padStart(2, '0')} / {String(quotes.length).padStart(2, '0')}
           </span>
         </div>
@@ -436,8 +452,15 @@ export function AfterHoursSection({
   const sectionRef = useRef<HTMLElement | null>(null);
   const stickyRef = useRef<HTMLDivElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
+  const scIframeRef = useRef<HTMLIFrameElement | null>(null);
   const [liveBars, setLiveBars] = useState<number[]>(IDLE_BARS);
   const [overflowPx, setOverflowPx] = useState(0);
+
+  useEffect(() => {
+    if (scIframeRef.current) {
+      soundEngine.registerSoundCloudWidget(scIframeRef.current);
+    }
+  }, [activeTrack]);
 
   useEffect(() => {
     const stickyEl = stickyRef.current;
@@ -552,7 +575,7 @@ export function AfterHoursSection({
                 ))}
               </div>
 
-              {/* 3 Drift Tracks */}
+              {/* Drift Tracks */}
               <div className="mt-5 space-y-1.5">
                 {t.afterhours.tracks.map((track) => {
                   const isCurrent = activeTrack === track.id;
@@ -587,9 +610,14 @@ export function AfterHoursSection({
                             <Play className="h-3.5 w-3.5" />
                           )}
                         </span>
-                        <div>
-                          <div className="text-sm font-bold">{track.title}</div>
-                          <div className="text-xs font-light opacity-60">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-bold truncate">{track.title}</span>
+                            <span className="font-mono text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-full border border-[var(--hairline)] opacity-60 shrink-0">
+                              {track.type === 'soundcloud' ? 'SoundCloud' : 'Web Audio'}
+                            </span>
+                          </div>
+                          <div className="text-xs font-light opacity-60 truncate">
                             {track.mood}
                           </div>
                         </div>
@@ -601,6 +629,33 @@ export function AfterHoursSection({
                   );
                 })}
               </div>
+
+              {/* Embedded SoundCloud Player Frame (Active for SoundCloud Tracks) */}
+              {(() => {
+                const activeTrackData = t.afterhours.tracks.find((tr) => tr.id === activeTrack);
+                const isSoundCloud = activeTrackData?.type === 'soundcloud';
+                const scUrl = activeTrackData?.soundcloudUrl ?? t.afterhours.tracks[0]?.soundcloudUrl ?? '';
+                return (
+                  <div
+                    className={`mt-4 overflow-hidden rounded-[var(--radius-md)] border border-[var(--hairline)] bg-black/40 transition-all duration-300 ${
+                      isSoundCloud ? 'block' : 'hidden'
+                    }`}
+                  >
+                    <iframe
+                      key={scUrl}
+                      id="sc-player-iframe"
+                      ref={scIframeRef}
+                      width="100%"
+                      height="166"
+                      scrolling="no"
+                      frameBorder="no"
+                      allow="autoplay; encrypted-media"
+                      src={scUrl}
+                      className="block w-full opacity-90 transition-opacity hover:opacity-100"
+                    />
+                  </div>
+                );
+              })()}
             </div>
           </div>
 

@@ -33,7 +33,7 @@ function resolveSafeAppUrl(): string {
       // Fallback if APP_URL is a placeholder string
     }
   }
-  return 'https://soheil.studio';
+  return 'https://code1sprint.vercel.app';
 }
 
 const appUrl = resolveSafeAppUrl();
@@ -47,25 +47,25 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   metadataBase: new URL(appUrl),
-  title: 'Soheil Feizi — Creative Systems & Full-Stack Engineer',
+  title: 'Soheil Feizi — Full-Stack & AI Systems Engineer',
   description:
-    'Everything is made of particles. Full-stack & creative frontend engineer building invisible, resilient commerce and enterprise web systems for clients worldwide.',
+    'Personal portfolio of Soheil Feizi. Full-Stack & AI Systems Engineer specializing in Go microservices, multimodal RAG, and reactive Next.js & React 19 platforms.',
   alternates: {
     canonical: '/',
   },
   openGraph: {
-    title: 'Soheil Feizi — Creative Systems & Full-Stack Engineer',
+    title: 'Soheil Feizi — Full-Stack & AI Systems Engineer',
     description:
-      'Systems and stores you never have to think about. Interactive WebGL GPGPU particle portfolio by Soheil Feizi.',
+      'Resilient systems and intelligent architectures that hold under pressure. Interactive particle portfolio by Soheil Feizi.',
     type: 'website',
     siteName: 'Soheil Feizi',
     url: appUrl,
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Soheil Feizi — Creative Systems & Full-Stack Engineer',
+    title: 'Soheil Feizi — Full-Stack & AI Systems Engineer',
     description:
-      'Everything is made of particles. Full-stack & creative frontend engineer working with clients worldwide.',
+      'Full-Stack & AI Systems Engineer building scalable Go services, multimodal AI workflows, and tactile frontends.',
   },
 };
 
@@ -74,27 +74,31 @@ const personJsonLd = {
   '@type': 'Person',
   name: 'Soheil Feizi',
   alternateName: 'سهیل فیضی',
-  jobTitle: 'Senior Full-Stack & Creative Frontend Engineer',
+  jobTitle: 'Full-Stack & AI Systems Engineer',
   url: appUrl,
-  email: 'mailto:soheil@feizi.studio',
+  email: 'mailto:soheil.feizi@hotmail.com',
   sameAs: [
     'https://linkedin.com/in/soheilfeizi',
-    'https://github.com/soheilfeizi',
+    'https://github.com/FeiziSoheil',
+    'https://t.me/feizisoheil',
   ],
   knowsAbout: [
-    'Next.js',
+    'Go (Golang)',
+    'Next.js 16',
+    'React 19',
     'TypeScript',
-    'WebGL2',
-    'Three.js',
-    'GPGPU Shaders',
-    'GLSL',
-    'GSAP ScrollTrigger',
-    'ERP & CRM Integrations',
-    'Web Performance',
+    'FastAPI',
+    'Python',
+    'LangChain & LangGraph',
+    'Multimodal RAG',
+    'Qdrant Vector Database',
+    'MongoDB & PostgreSQL',
+    'Docker & Linux',
+    'Three.js & WebGL',
   ],
   worksFor: {
     '@type': 'Organization',
-    name: 'Kaveh Engineering Studio',
+    name: 'Ravan Ertebat Asr',
   },
 };
 
@@ -105,8 +109,8 @@ export default function RootLayout({
 }) {
   return (
     <html
-      lang="fa"
-      dir="rtl"
+      lang="en"
+      dir="ltr"
       className={`${interTight.variable} ${vazirmatn.variable} ${jetbrainsMono.variable}`}
       suppressHydrationWarning
     >

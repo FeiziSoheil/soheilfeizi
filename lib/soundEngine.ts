@@ -1,5 +1,5 @@
-// 100% Procedural Web Audio Ambient Synthesizer (Zero external audio files / Zero 404s)
-// Supports 3 distinct Drift ambient soundscapes, real-time analyser levels, and tactile UI micro-ticks.
+// Hybrid Procedural Web Audio Ambient Synthesizer & SoundCloud Controller
+// Supports SoundCloud external streams + Procedural DSP with real-time level analytics.
 
 class AmbientSoundEngine {
   private ctx: AudioContext | null = null;
@@ -8,10 +8,116 @@ class AmbientSoundEngine {
   private activeNodes: AudioNode[] = [];
   private activeIntervals: number[] = [];
   private isPlaying = false;
-  private currentTrack = 1;
+  private currentTrack = 0;
   private freqBuffer = new Uint8Array(32);
   private singularityOsc: OscillatorNode | null = null;
   private singularityGain: GainNode | null = null;
+  private scWidget: any = null;
+  private scIframe: HTMLIFrameElement | null = null;
+  private pendingSeekMs: number = 95000;
+
+  public registerSoundCloudWidget(iframe: HTMLIFrameElement | null) {
+    this.scIframe = iframe;
+    if (!iframe || typeof window === 'undefined') return;
+
+    const attach = () => {
+      const SC = (window as unknown as { SC?: { Widget?: (el: HTMLElement) => any } }).SC;
+      if (SC && SC.Widget) {
+        try {
+          this.scWidget = SC.Widget(iframe);
+          this.scWidget.bind('ready', () => {
+            if (this.pendingSeekMs > 0) {
+              try {
+                this.scWidget.seekTo(this.pendingSeekMs);
+              } catch {
+                // ignore
+              }
+            }
+            if (this.isPlaying && (this.currentTrack === 0 || this.currentTrack === 1)) {
+              this.scWidget.play();
+            }
+          });
+          this.scWidget.bind('play', () => {
+            if (this.pendingSeekMs > 0) {
+              const target = this.pendingSeekMs;
+              this.pendingSeekMs = 0;
+              try {
+                this.scWidget.seekTo(target);
+              } catch {
+                // ignore
+              }
+            }
+          });
+        } catch {
+          // ignore widget init error
+        }
+      }
+    };
+
+    if ((window as unknown as { SC?: { Widget?: unknown } }).SC?.Widget) {
+      attach();
+    } else {
+      const existing = document.getElementById('sc-widget-api');
+      if (!existing) {
+        const script = document.createElement('script');
+        script.id = 'sc-widget-api';
+        script.src = 'https://w.soundcloud.com/player/api.js';
+        script.async = true;
+        script.onload = attach;
+        document.body.appendChild(script);
+      } else {
+        existing.addEventListener('load', attach);
+      }
+    }
+  }
+
+  public playSoundCloud(seekMs?: number) {
+    if (seekMs !== undefined) {
+      this.pendingSeekMs = seekMs;
+    }
+    if (this.scWidget) {
+      try {
+        if (this.pendingSeekMs > 0) {
+          this.scWidget.seekTo(this.pendingSeekMs);
+          this.pendingSeekMs = 0;
+        }
+        this.scWidget.play();
+      } catch {
+        // ignore
+      }
+    }
+  }
+
+  public loadSoundCloudTrack(url: string, seekMs?: number) {
+    if (seekMs !== undefined) {
+      this.pendingSeekMs = seekMs;
+    }
+    if (this.scWidget) {
+      try {
+        this.scWidget.load(url, {
+          auto_play: this.isPlaying,
+          callback: () => {
+            if (this.pendingSeekMs > 0) {
+              this.scWidget.seekTo(this.pendingSeekMs);
+              this.pendingSeekMs = 0;
+            }
+          },
+        });
+      } catch {
+        // ignore
+      }
+    }
+  }
+
+  public pauseSoundCloud() {
+    if (this.scWidget) {
+      try {
+        this.scWidget.pause();
+      } catch {
+        // ignore
+      }
+    }
+  }
 
   private ensureContext(): AudioContext | null {
     if (typeof window === 'undefined') return null;
@@ -50,26 +156,48 @@ class AmbientSoundEngine {
     this.activeNodes = [];
   }
 
-  public start(trackIndex = this.currentTrack) {
+  public start(trackIndex = this.currentTrack, seekMs?: number) {
+    this.currentTrack = trackIndex;
+    this.isPlaying = true;
+
+    if (trackIndex === 0) {
+      // Track 0: SoundCloud (Hans Zimmer — Tick-Tock, starts at 1:35 = 95,000ms)
+      this.clearActiveTrack();
+      if (this.masterGain && this.ctx) {
+        const now = this.ctx.currentTime;
+        this.masterGain.gain.cancelScheduledValues(now);
+        this.masterGain.gain.setTargetAtTime(0.0001, now, 0.05);
+      }
+      this.playSoundCloud(seekMs ?? 95000);
+      return;
+    }
+
+    if (trackIndex === 1) {
+      // Track 1: SoundCloud (Hans Zimmer — Day One, starts at 0ms)
+      this.clearActiveTrack();
+      if (this.masterGain && this.ctx) {
+        const now = this.ctx.currentTime;
+        this.masterGain.gain.cancelScheduledValues(now);
+        this.masterGain.gain.setTargetAtTime(0.0001, now, 0.05);
+      }
+      this.playSoundCloud(seekMs ?? 0);
+      return;
+    }
+
+    // Track 2: Procedural Web Audio (Interstellar)
+    this.pauseSoundCloud();
+
     const ctx = this.ensureContext();
     if (!ctx || !this.masterGain) return;
 
     this.clearActiveTrack();
-    this.currentTrack = trackIndex;
-    this.isPlaying = true;
 
     const trackBus = ctx.createGain();
     trackBus.gain.value = 0.45;
     trackBus.connect(this.masterGain);
     this.activeNodes.push(trackBus);
 
-    if (trackIndex === 0) {
-      this.buildWarmAnalogDrift(ctx, trackBus);
-    } else if (trackIndex === 1) {
-      this.buildMidnightRainRhodes(ctx, trackBus);
-    } else {
-      this.buildSubZeroGlass(ctx, trackBus);
-    }
+    this.buildInterstellarCosmic(ctx, trackBus);
 
     const now = ctx.currentTime;
     this.masterGain.gain.cancelScheduledValues(now);
@@ -77,14 +205,14 @@ class AmbientSoundEngine {
   }
 
   public stop() {
+    this.isPlaying = false;
+    this.pauseSoundCloud();
     if (!this.ctx || !this.masterGain) {
-      this.isPlaying = false;
       return;
     }
     const now = this.ctx.currentTime;
     this.masterGain.gain.cancelScheduledValues(now);
     this.masterGain.gain.setTargetAtTime(0.0001, now, 0.35);
-    this.isPlaying = false;
     this.silenceSingularityHum();
     window.setTimeout(() => {
       if (!this.isPlaying) {
@@ -124,7 +252,22 @@ class AmbientSoundEngine {
   }
 
   public getLevels(bars = 12): number[] {
-    if (!this.isPlaying || !this.analyser) {
+    if (!this.isPlaying) {
+      return Array.from({ length: bars }, () => 0.08);
+    }
+
+    if (this.currentTrack === 0 || this.currentTrack === 1) {
+      // Procedural animated equalizer levels for SoundCloud playback
+      const t = typeof performance !== 'undefined' ? performance.now() * 0.0035 : 0;
+      const out: number[] = [];
+      for (let i = 0; i < bars; i++) {
+        const wave = 0.22 + 0.65 * Math.abs(Math.sin(t * (1.2 + i * 0.18) + i * 0.45));
+        out.push(Math.max(0.12, Math.min(0.95, wave)));
+      }
+      return out;
+    }
+
+    if (!this.analyser) {
       return Array.from({ length: bars }, () => 0.08);
     }
     this.analyser.getByteFrequencyData(this.freqBuffer);
@@ -196,130 +339,267 @@ class AmbientSoundEngine {
     this.singularityGain.gain.setTargetAtTime(0.0001, now, 0.12);
   }
 
-  // Track 0: Warm Analog Tape Drift
-  private buildWarmAnalogDrift(ctx: AudioContext, dest: AudioNode) {
-    const filter = ctx.createBiquadFilter();
-    filter.type = 'lowpass';
-    filter.frequency.value = 520;
-    filter.Q.value = 1.4;
-    filter.connect(dest);
-    this.activeNodes.push(filter);
+  // Track 1: Procedural Web Audio — Interstellar Cosmos (Cathedral Pipe Organ, Time Ostinato & Void Resonance)
+  private buildInterstellarCosmic(ctx: AudioContext, dest: AudioNode) {
+    // 1. Cathedral Acoustic Space & Delay Network
+    const reverbBus = ctx.createGain();
+    reverbBus.gain.value = 0.38;
+    reverbBus.connect(dest);
+    this.activeNodes.push(reverbBus);
 
-    // Slow breathing filter LFO
-    const lfo = ctx.createOscillator();
-    const lfoGain = ctx.createGain();
-    lfo.frequency.value = 0.07;
-    lfoGain.gain.value = 260;
-    lfo.connect(lfoGain);
-    lfoGain.connect(filter.frequency);
-    lfo.start();
-    this.activeNodes.push(lfo, lfoGain);
+    const delayL = ctx.createDelay();
+    delayL.delayTime.value = 0.375;
+    const delayR = ctx.createDelay();
+    delayR.delayTime.value = 0.500;
 
-    // Warm detuned open fifth chord (D2, A2, D3, F#3, A3)
-    const freqs = [73.42, 110.0, 146.83, 185.0, 220.0];
-    freqs.forEach((f, idx) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = idx % 2 === 0 ? 'triangle' : 'sine';
-      osc.frequency.value = f;
-      osc.detune.value = (idx - 2) * 5.5;
-      gain.gain.value = idx === 0 ? 0.22 : 0.11;
-      osc.connect(gain);
-      gain.connect(filter);
-      osc.start();
-      this.activeNodes.push(osc, gain);
-    });
-  }
+    const filterL = ctx.createBiquadFilter();
+    filterL.type = 'lowpass';
+    filterL.frequency.value = 2200;
+    const filterR = ctx.createBiquadFilter();
+    filterR.type = 'lowpass';
+    filterR.frequency.value = 1800;
 
-  // Track 1: Midnight Rain & Generative Rhodes
-  private buildMidnightRainRhodes(ctx: AudioContext, dest: AudioNode) {
-    // Filtered pink-ish rain bed
-    const bufferSize = ctx.sampleRate * 2;
-    const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-    const data = noiseBuffer.getChannelData(0);
-    let b0 = 0, b1 = 0, b2 = 0;
-    for (let i = 0; i < bufferSize; i++) {
-      const white = Math.random() * 2 - 1;
-      b0 = 0.997 * b0 + white * 0.029;
-      b1 = 0.985 * b1 + white * 0.032;
-      b2 = 0.95 * b2 + white * 0.048;
-      data[i] = (b0 + b1 + b2) * 0.35;
+    const feedL = ctx.createGain();
+    feedL.gain.value = 0.36;
+    const feedR = ctx.createGain();
+    feedR.gain.value = 0.34;
+
+    // Cross-feed delay lines for vast, spatial cathedral diffusion
+    delayL.connect(filterL);
+    filterL.connect(feedL);
+    feedL.connect(delayR);
+    filterL.connect(reverbBus);
+
+    delayR.connect(filterR);
+    filterR.connect(feedR);
+    feedR.connect(delayL);
+    filterR.connect(reverbBus);
+
+    this.activeNodes.push(delayL, delayR, filterL, filterR, feedL, feedR);
+
+    // 2. Majestic Church Pipe Organ Engine
+    // Chords: Am -> Fmaj7 -> Dm9 -> Em7 (The signature Zimmer emotional progression)
+    const organBus = ctx.createGain();
+    organBus.gain.value = 0.28;
+    organBus.connect(dest);
+    organBus.connect(delayL);
+    this.activeNodes.push(organBus);
+
+    const organFilter = ctx.createBiquadFilter();
+    organFilter.type = 'lowpass';
+    organFilter.frequency.value = 1600;
+    organFilter.Q.value = 1.1;
+    organFilter.connect(organBus);
+    this.activeNodes.push(organFilter);
+
+    // Organ Swell LFO (simulating cathedral swell shutters / air bellows breathing)
+    const swellLfo = ctx.createOscillator();
+    const swellGain = ctx.createGain();
+    swellLfo.frequency.value = 0.08;
+    swellGain.gain.value = 420;
+    swellLfo.connect(swellGain);
+    swellGain.connect(organFilter.frequency);
+    swellLfo.start();
+    this.activeNodes.push(swellLfo, swellGain);
+
+    // 4 Chords: [Pedal Sub-bass, Tenor, Alto, Soprano, Lead]
+    const chords = [
+      // Am: A1, E3, A3, C4, E4
+      [55.00, 164.81, 220.00, 261.63, 329.63],
+      // Fmaj7: F1, C3, F3, A3, E4
+      [43.65, 130.81, 174.61, 220.00, 329.63],
+      // Dm9: D1, A2, F3, C4, E4
+      [36.71, 110.00, 174.61, 261.63, 329.63],
+      // Em7: E1, B2, E3, G3, D4
+      [41.20, 123.47, 164.81, 196.00, 293.66],
+    ];
+
+    let chordIdx = 0;
+    const initialChord = chords[0];
+
+    interface OrganVoice {
+      fundOsc: OscillatorNode;
+      octaveOsc: OscillatorNode;
+      quintOsc: OscillatorNode;
     }
 
-    const noise = ctx.createBufferSource();
-    noise.buffer = noiseBuffer;
-    noise.loop = true;
+    const organVoices: OrganVoice[] = [];
 
-    const rainFilter = ctx.createBiquadFilter();
-    rainFilter.type = 'bandpass';
-    rainFilter.frequency.value = 820;
-    rainFilter.Q.value = 0.55;
+    initialChord.forEach((freq, vIdx) => {
+      // 8' fundamental stop (warm triangle)
+      const fundOsc = ctx.createOscillator();
+      fundOsc.type = vIdx === 0 ? 'sine' : 'triangle';
+      fundOsc.frequency.value = freq;
 
-    const rainGain = ctx.createGain();
-    rainGain.gain.value = 0.18;
+      // 4' octave stop (+3.5 cents for cathedral chorusing)
+      const octaveOsc = ctx.createOscillator();
+      octaveOsc.type = 'triangle';
+      octaveOsc.frequency.value = freq * 2;
+      octaveOsc.detune.value = 3.5;
 
-    noise.connect(rainFilter);
-    rainFilter.connect(rainGain);
-    rainGain.connect(dest);
-    noise.start();
-    this.activeNodes.push(noise, rainFilter, rainGain);
+      // 2 2/3' quint / twelfth stop (gives the pipe organ its sacred, liturgical timbre)
+      const quintOsc = ctx.createOscillator();
+      quintOsc.type = 'sine';
+      quintOsc.frequency.value = freq * 3;
+      quintOsc.detune.value = -4.0;
 
-    // Generative soft Rhodes minor-9th notes
-    const scale = [220, 261.63, 293.66, 329.63, 392.0, 440.0, 493.88];
-    const playPluck = () => {
+      const voiceGain = ctx.createGain();
+      voiceGain.gain.value = vIdx === 0 ? 0.30 : 0.11;
+
+      const octGain = ctx.createGain();
+      octGain.gain.value = 0.35;
+      const quintGain = ctx.createGain();
+      quintGain.gain.value = 0.16;
+
+      fundOsc.connect(voiceGain);
+      octaveOsc.connect(octGain);
+      octGain.connect(voiceGain);
+      quintOsc.connect(quintGain);
+      quintGain.connect(voiceGain);
+
+      voiceGain.connect(organFilter);
+
+      fundOsc.start();
+      octaveOsc.start();
+      quintOsc.start();
+
+      this.activeNodes.push(fundOsc, octaveOsc, quintOsc, voiceGain, octGain, quintGain);
+      organVoices.push({ fundOsc, octaveOsc, quintOsc });
+    });
+
+    // Chord transition interval (every 7 seconds, smoothly gliding like air through organ pipes)
+    const chordInterval = window.setInterval(() => {
       if (!this.isPlaying || !this.ctx) return;
-      const now = ctx.currentTime;
-      const freq = scale[Math.floor(Math.random() * scale.length)];
-      const osc = ctx.createOscillator();
-      const overtone = ctx.createOscillator();
-      const env = ctx.createGain();
-      osc.type = 'sine';
+      chordIdx = (chordIdx + 1) % chords.length;
+      const chord = chords[chordIdx];
+      const now = this.ctx.currentTime;
+      organVoices.forEach((voice, vIdx) => {
+        const targetFreq = chord[vIdx];
+        voice.fundOsc.frequency.setTargetAtTime(targetFreq, now, 0.95);
+        voice.octaveOsc.frequency.setTargetAtTime(targetFreq * 2, now, 0.95);
+        voice.quintOsc.frequency.setTargetAtTime(targetFreq * 3, now, 0.95);
+      });
+    }, 7000);
+    this.activeIntervals.push(chordInterval);
+
+    // 3. Hypnotic "Cornfield Chase" Arpeggiator / Celestial Ostinato
+    // Rapid, cycling cosmic arpeggio notes reflecting the current chord
+    const arpeggioChords = [
+      // Am
+      [220.00, 329.63, 440.00, 523.25, 659.25, 523.25, 440.00, 329.63],
+      // Fmaj7
+      [174.61, 261.63, 349.23, 440.00, 523.25, 440.00, 349.23, 261.63],
+      // Dm9
+      [146.83, 220.00, 293.66, 349.23, 440.00, 523.25, 440.00, 293.66],
+      // Em7
+      [164.81, 246.94, 329.63, 392.00, 493.88, 392.00, 329.63, 246.94],
+    ];
+
+    let arpStep = 0;
+    const playArpNote = () => {
+      if (!this.isPlaying || !this.ctx) return;
+      const now = this.ctx.currentTime;
+      const currentArp = arpeggioChords[chordIdx];
+      const freq = currentArp[arpStep % currentArp.length];
+      arpStep++;
+
+      const osc = this.ctx.createOscillator();
+      const overtone = this.ctx.createOscillator();
+      const noteEnv = this.ctx.createGain();
+      const noteFilter = this.ctx.createBiquadFilter();
+
+      osc.type = 'triangle';
       osc.frequency.value = freq;
-      overtone.type = 'triangle';
+      overtone.type = 'sine';
       overtone.frequency.value = freq * 2;
-      const otGain = ctx.createGain();
-      otGain.gain.value = 0.15;
+      overtone.detune.value = 4.5;
 
-      env.gain.setValueAtTime(0.0001, now);
-      env.gain.linearRampToValueAtTime(0.16, now + 0.06);
-      env.gain.exponentialRampToValueAtTime(0.0001, now + 2.8);
+      noteFilter.type = 'lowpass';
+      noteFilter.frequency.value = 2400;
 
-      osc.connect(env);
-      overtone.connect(otGain);
-      otGain.connect(env);
-      env.connect(dest);
+      // Pipe organ key touch: swift attack, ringing cathedral tail
+      noteEnv.gain.setValueAtTime(0.0001, now);
+      noteEnv.gain.linearRampToValueAtTime(0.07, now + 0.02);
+      noteEnv.gain.exponentialRampToValueAtTime(0.0001, now + 0.45);
+
+      osc.connect(noteEnv);
+      overtone.connect(noteEnv);
+      noteEnv.connect(noteFilter);
+      noteFilter.connect(dest);
+      noteFilter.connect(delayL);
+
       osc.start(now);
       overtone.start(now);
-      osc.stop(now + 2.9);
-      overtone.stop(now + 2.9);
+      osc.stop(now + 0.48);
+      overtone.stop(now + 0.48);
     };
 
-    playPluck();
-    const interval = window.setInterval(playPluck, 2400);
-    this.activeIntervals.push(interval);
-  }
+    const arpInterval = window.setInterval(playArpNote, 220);
+    this.activeIntervals.push(arpInterval);
 
-  // Track 2: Sub-Zero Glass
-  private buildSubZeroGlass(ctx: AudioContext, dest: AudioNode) {
-    const filter = ctx.createBiquadFilter();
-    filter.type = 'lowpass';
-    filter.frequency.value = 1100;
-    filter.connect(dest);
-    this.activeNodes.push(filter);
+    // 4. "Miller's Planet" Cosmic Time Tick (Relativity clock pulse)
+    // Subtle, muted high-pass click every 1.25s
+    const playTimeTick = () => {
+      if (!this.isPlaying || !this.ctx) return;
+      const now = this.ctx.currentTime;
 
-    const freqs = [65.41, 130.81, 196.0, 293.66, 392.0, 587.33];
-    freqs.forEach((f, idx) => {
-      const osc = ctx.createOscillator();
-      const g = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.value = f;
-      osc.detune.value = idx * 3 - 7;
-      g.gain.value = idx < 2 ? 0.16 : 0.05;
-      osc.connect(g);
-      g.connect(filter);
-      osc.start();
-      this.activeNodes.push(osc, g);
-    });
+      const clickOsc = this.ctx.createOscillator();
+      const clickGain = this.ctx.createGain();
+      const clickFilter = this.ctx.createBiquadFilter();
+
+      clickOsc.type = 'square';
+      clickOsc.frequency.setValueAtTime(1400, now);
+      clickOsc.frequency.exponentialRampToValueAtTime(180, now + 0.022);
+
+      clickFilter.type = 'bandpass';
+      clickFilter.frequency.value = 2800;
+      clickFilter.Q.value = 2.0;
+
+      clickGain.gain.setValueAtTime(0.035, now);
+      clickGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.035);
+
+      clickOsc.connect(clickFilter);
+      clickFilter.connect(clickGain);
+      clickGain.connect(dest);
+      clickGain.connect(delayR);
+
+      clickOsc.start(now);
+      clickOsc.stop(now + 0.04);
+    };
+
+    const tickInterval = window.setInterval(playTimeTick, 1250);
+    this.activeIntervals.push(tickInterval);
+
+    // 5. Celestial High Shimmer (Otherworldly Starlight Horizon)
+    const shimmerOsc1 = ctx.createOscillator();
+    const shimmerOsc2 = ctx.createOscillator();
+    const shimmerGain = ctx.createGain();
+    const shimmerFilter = ctx.createBiquadFilter();
+
+    shimmerOsc1.type = 'sine';
+    shimmerOsc1.frequency.value = 1046.5; // C6
+    shimmerOsc1.detune.value = -3;
+
+    shimmerOsc2.type = 'sine';
+    shimmerOsc2.frequency.value = 1318.5; // E6
+    shimmerOsc2.detune.value = 4;
+
+    shimmerFilter.type = 'bandpass';
+    shimmerFilter.frequency.value = 1180;
+    shimmerFilter.Q.value = 3.0;
+
+    shimmerGain.gain.value = 0.025;
+
+    shimmerOsc1.connect(shimmerFilter);
+    shimmerOsc2.connect(shimmerFilter);
+    shimmerFilter.connect(shimmerGain);
+    shimmerGain.connect(dest);
+    shimmerGain.connect(delayR);
+
+    shimmerOsc1.start();
+    shimmerOsc2.start();
+
+    this.activeNodes.push(shimmerOsc1, shimmerOsc2, shimmerGain, shimmerFilter);
   }
 }
 

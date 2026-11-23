@@ -41,9 +41,18 @@ function hashKey(str: string): number {
   return h >>> 0;
 }
 
-const MAX_SAMPLE_CACHE = 8;
+const MAX_SAMPLE_CACHE = 48;
 const sampleCache = new Map<string, NormalizedPoint[]>();
 const svgPolylineCache = new Map<string, { lut: Float32Array; segs: number; totalLen: number }>();
+let _reusablePathEl: SVGPathElement | null = null;
+
+function getReusablePath(): SVGPathElement | null {
+  if (typeof document === 'undefined') return null;
+  if (!_reusablePathEl) {
+    _reusablePathEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  }
+  return _reusablePathEl;
+}
 
 function cacheSample(key: string, pts: NormalizedPoint[]) {
   if (!key) return;
@@ -58,17 +67,22 @@ function cacheSample(key: string, pts: NormalizedPoint[]) {
 
 /**
  * Pre-samples an SVG path ONCE into a compact polyline lookup table (x, y, tx, ty)
- * using ~96..220 DOM calls instead of 210,000 calls per diagram switch (~500x faster).
+ * using ~48..160 DOM calls instead of 210,000 calls per diagram switch (~500x faster).
+ * Reuses a single shared SVGPathElement to avoid DOM node thrashing.
  */
 function getSvgPathPolyline(d: string): { lut: Float32Array; segs: number; totalLen: number } {
   const cached = svgPolylineCache.get(d);
   if (cached) return cached;
 
-  const svgNS = 'http://www.w3.org/2000/svg';
-  const pathEl = document.createElementNS(svgNS, 'path');
+  const pathEl = getReusablePath();
+  if (!pathEl) {
+    return { lut: new Float32Array(0), segs: 0, totalLen: 0 };
+  }
+
   pathEl.setAttribute('d', d);
   const totalLen = Math.max(1, pathEl.getTotalLength());
-  const segs = Math.max(48, Math.min(220, Math.ceil(totalLen * 0.65)));
+  // 48..160 segments is sub-pixel resolution (< 0.5px) for 380px frame without CPU stalling
+  const segs = Math.max(48, Math.min(160, Math.ceil(totalLen * 0.75)));
   const lut = new Float32Array((segs + 1) * 4);
 
   for (let i = 0; i <= segs; i++) {
@@ -518,6 +532,8 @@ interface GranularPathSpec {
   weight?: number;
   zLayer?: number;
   radiusScale?: number;
+  isRay?: boolean;
+  rayIndex?: number;
 }
 
 interface GranularFillRectSpec {
@@ -563,355 +579,281 @@ function roundedRectD(x: number, y: number, w: number, h: number, r: number): st
   ].join(' ');
 }
 
-/** Isometric 3D segment specification for CRM & ERP */
-interface Segment3D {
-  x0: number;
-  y0: number;
-  z0: number;
-  x1: number;
-  y1: number;
-  z1: number;
-  accent: boolean;
-  radiusScale: number;
-  weight: number;
-}
-
-function buildIsometricCrmSegments(): {
-  segments: Segment3D[];
-  middleRing: { cx: number; cy: number; cz: number; r: number };
-} {
-  // 3 vertically well-spaced diamond plates in true 3D isometric space (zero overlap / z-fighting!)
-  const yLevels = [-0.34, 0.0, 0.34]; // generous vertical separation
-  const plateHalf = 0.27;
-  const rotY = Math.PI / 4; // 45° diamond orientation
-  const rotX = 0.58; // classic architectural isometric pitch (~33°)
-
-  const proj = (x: number, y: number, z: number) => {
-    const x1 = x * Math.cos(rotY) - z * Math.sin(rotY);
-    const z1 = x * Math.sin(rotY) + z * Math.cos(rotY);
-    const y2 = y * Math.cos(rotX) - z1 * Math.sin(rotX);
-    const z2 = y * Math.sin(rotX) + z1 * Math.cos(rotX);
-    return { u: 0.5 + x1 * 0.92, v: 0.5 + y2 * 0.92, z: z2 * 1.6 };
-  };
-
-  const segments: Segment3D[] = [];
-  const corners = [
-    [-plateHalf, -plateHalf],
-    [plateHalf, -plateHalf],
-    [plateHalf, plateHalf],
-    [-plateHalf, plateHalf],
-  ];
-
-  yLevels.forEach((yLvl, idx) => {
-    const isMid = idx === 1;
-    const pts = corners.map(([cx, cz]) => proj(cx, yLvl, cz));
-    for (let e = 0; e < 4; e++) {
-      const a = pts[e];
-      const b = pts[(e + 1) % 4];
-      segments.push({
-        x0: a.u,
-        y0: a.v,
-        z0: a.z,
-        x1: b.u,
-        y1: b.v,
-        z1: b.z,
-        accent: false,
-        radiusScale: isMid ? 1.18 : 1.05,
-        weight: isMid ? 2.4 : 2.0,
-      });
-    }
-
-    // Subtle inner corner tick marks on top & bottom plates (hollow interior!)
-    if (!isMid) {
-      const s = plateHalf * 0.62;
-      const inPts = [
-        proj(-s, yLvl, -s),
-        proj(s, yLvl, -s),
-        proj(s, yLvl, s),
-        proj(-s, yLvl, s),
-      ];
-      for (let e = 0; e < 4; e++) {
-        const a = inPts[e];
-        const b = inPts[(e + 1) % 4];
-        segments.push({
-          x0: a.u,
-          y0: a.v,
-          z0: a.z,
-          x1: b.u,
-          y1: b.v,
-          z1: b.z,
-          accent: false,
-          radiusScale: 0.65,
-          weight: 0.55,
-        });
-      }
-    }
-  });
-
-  // Thicker central vertical spine in #5B5BF0 connecting all 3 plates cleanly
-  const topCenter = proj(0, yLevels[0] - 0.04, 0);
-  const botCenter = proj(0, yLevels[2] + 0.04, 0);
-  segments.push({
-    x0: topCenter.u,
-    y0: topCenter.v,
-    z0: topCenter.z,
-    x1: botCenter.u,
-    y1: botCenter.v,
-    z1: botCenter.z,
-    accent: true,
-    radiusScale: 1.65,
-    weight: 2.6,
-  });
-
-  // 4 subtle outer vertical corner pillars framing the 3-tier stack
-  corners.forEach(([cx, cz]) => {
-    const pTop = proj(cx, yLevels[0], cz);
-    const pBot = proj(cx, yLevels[2], cz);
-    segments.push({
-      x0: pTop.u,
-      y0: pTop.v,
-      z0: pTop.z,
-      x1: pBot.u,
-      y1: pBot.v,
-      z1: pBot.z,
-      accent: false,
-      radiusScale: 0.72,
-      weight: 0.75,
-    });
-  });
-
-  return {
-    segments,
-    middleRing: { cx: 0.5, cy: 0.5, cz: 0, r: 0.105 },
-  };
-}
-
-function sampleIsometricCrmNormalized(count: number, rand: () => number): NormalizedPoint[] {
-  const cfg = WHAT_I_DO_PARTICLE_CONFIG;
-  const baseR = cfg.tubeRadiusFrac; // ~0.009
-  const { segments, middleRing } = buildIsometricCrmSegments();
-  const result: NormalizedPoint[] = [];
-
-  const interiorDustBudget = Math.floor(count * cfg.interiorDustMaxFrac);
-  const ringBudget = Math.floor(count * 0.16);
-  const segBudget = count - interiorDustBudget - ringBudget;
-
-  const totalWeight = segments.reduce((acc, s) => acc + s.weight, 0);
-
-  // 1. Sample 3D thick granular tubes along every isometric segment
-  for (const seg of segments) {
-    const share = Math.max(24, Math.round((segBudget * seg.weight) / totalWeight));
-    const dx = seg.x1 - seg.x0;
-    const dy = seg.y1 - seg.y0;
-    const dz = seg.z1 - seg.z0;
-    const len2d = Math.max(1e-4, Math.hypot(dx, dy));
-    const nx = -dy / len2d;
-    const ny = dx / len2d;
-    const R = baseR * seg.radiusScale;
-
-    for (let i = 0; i < share && result.length < segBudget; i++) {
-      const baseT = i / Math.max(1, share - 1);
-      // 8% along-path jitter
-      const alongJitter = ((rand() - 0.5) * 2 * cfg.alongJitterFrac) / Math.max(6, share * 0.06);
-      const t = Math.max(0, Math.min(1, baseT + alongJitter));
-
-      const px = seg.x0 + dx * t;
-      const py = seg.y0 + dy * t;
-      const pz = seg.z0 + dz * t;
-
-      const isStray = rand() < cfg.outerStrayFrac;
-      let offPerp = 0;
-      let offZ = 0;
-      if (isStray) {
-        const ang = rand() * Math.PI * 2;
-        const rad = R * (1.25 + rand() * 1.45);
-        offPerp = Math.cos(ang) * rad;
-        offZ = Math.sin(ang) * rad * 2.2;
-      } else {
-        // Uniform circular cross-section r = R * sqrt(rand) + 15% perpendicular edge roughness
-        const r = R * Math.sqrt(rand());
-        const theta = rand() * Math.PI * 2;
-        const edgeRough = (rand() - 0.5) * 2 * cfg.perpJitterFrac * R;
-        offPerp = Math.cos(theta) * r + edgeRough;
-        offZ = Math.sin(theta) * r * 2.2;
-      }
-
-      result.push({
-        u: Math.max(0.02, Math.min(0.98, px + nx * offPerp)),
-        v: Math.max(0.02, Math.min(0.98, py + ny * offPerp)),
-        z: pz + offZ,
-        accent: seg.accent ? 1 : 0,
-        order: t,
-        dust: isStray ? 0.35 : 0,
-      });
-    }
-  }
-
-  // 2. Dense #5B5BF0 indigo ring on the middle isometric plate
-  const ringR = baseR * 1.45;
-  for (let i = 0; i < ringBudget; i++) {
-    const a = (i / ringBudget) * Math.PI * 2 + (rand() - 0.5) * 0.04;
-    const isStray = rand() < cfg.outerStrayFrac;
-    const radial = isStray
-      ? ringR * (1.2 + rand() * 1.3)
-      : ringR * Math.sqrt(rand()) + (rand() - 0.5) * 2 * cfg.perpJitterFrac * ringR;
-    const theta = rand() * Math.PI * 2;
-    const radEff = middleRing.r + Math.cos(theta) * radial;
-    const u = middleRing.cx + Math.cos(a) * radEff;
-    const v = middleRing.cy + Math.sin(a) * radEff * 0.56; // isometric ellipse foreshortening
-    const z = Math.sin(a) * radEff * 0.9 + Math.sin(theta) * radial * 2.0;
-    result.push({
-      u: Math.max(0.02, Math.min(0.98, u)),
-      v: Math.max(0.02, Math.min(0.98, v)),
-      z,
-      accent: 1,
-      order: a / (Math.PI * 2),
-      dust: isStray ? 0.3 : 0,
-    });
-  }
-
-  // 3. <= 4.5% sparse interior/surround dust keeping interiors cleanly hollow
-  while (result.length < count) {
-    const angle = rand() * Math.PI * 2;
-    const rad = Math.sqrt(rand()) * 0.4;
-    result.push({
-      u: Math.max(0.04, Math.min(0.96, 0.5 + Math.cos(angle) * rad)),
-      v: Math.max(0.04, Math.min(0.96, 0.5 + Math.sin(angle) * rad * 0.85)),
-      z: (rand() - 0.5) * 0.9,
-      accent: rand() < 0.14 ? 0.6 : 0,
-      order: rand(),
-      dust: 1,
-    });
-  }
-
-  return result;
-}
-
 const SVG_DIAGRAMS: Record<
   string,
   { viewW: number; viewH: number; primitives: GranularPrimitive[] }
 > = {
-  frontend: {
-    // Rounded browser frame (hollow) + dense #5B5BF0 hero CTA/visual + 3 rounded cards w/ solid dark text bars
-    viewW: 400,
-    viewH: 270,
+  crm: {
+    // 01 · CRM & Enterprise Platforms: Spacious 3-stage Kanban pipeline, AI lead match, ACID deal contract, closed-won crest, RBAC hierarchy shield
+    viewW: 380,
+    viewH: 260,
     primitives: [
-      // Outer rounded browser frame (rx = 12 = 3% of 400) + top nav divider
-      { kind: 'path', d: roundedRectD(20, 16, 360, 238, 12), accent: false, weight: 3.4, zLayer: 0.0, radiusScale: 1.08 },
-      { kind: 'path', d: 'M 20 48 H 380', accent: false, weight: 1.6, zLayer: 0.04, radiusScale: 0.95 },
-      // Top nav brand pill (indigo dense fill) + 4 compact nav ink bars
-      { kind: 'fillRect', x: 34, y: 26, w: 28, h: 12, rx: 5, accent: true, weight: 0.8, zLayer: 0.18, density: 0.7 },
-      { kind: 'fillRect', x: 222, y: 29, w: 26, h: 6, rx: 3, accent: false, weight: 0.45, zLayer: 0.1, density: 0.9 },
-      { kind: 'fillRect', x: 258, y: 29, w: 26, h: 6, rx: 3, accent: false, weight: 0.45, zLayer: 0.1, density: 0.9 },
-      { kind: 'fillRect', x: 294, y: 29, w: 26, h: 6, rx: 3, accent: false, weight: 0.45, zLayer: 0.1, density: 0.9 },
-      { kind: 'fillRect', x: 330, y: 29, w: 32, h: 6, rx: 3, accent: false, weight: 0.45, zLayer: 0.1, density: 0.9 },
-      // Hero left solid ink headline bars + dense #5B5BF0 CTA pill
-      { kind: 'fillRect', x: 38, y: 66, w: 162, h: 10, rx: 4, accent: false, weight: 1.2, zLayer: 0.2, density: 0.92 },
-      { kind: 'fillRect', x: 38, y: 84, w: 128, h: 9, rx: 4, accent: false, weight: 0.95, zLayer: 0.18, density: 0.92 },
-      { kind: 'fillRect', x: 38, y: 101, w: 98, h: 6, rx: 3, accent: false, weight: 0.55, zLayer: 0.15, density: 0.85 },
-      { kind: 'fillRect', x: 38, y: 116, w: 78, h: 20, rx: 10, accent: true, weight: 1.8, zLayer: 0.35, density: 0.65 },
-      // Hero right rounded visual frame (hollow outline + dense indigo focal block)
-      { kind: 'path', d: roundedRectD(234, 62, 130, 78, 10), accent: false, weight: 2.2, zLayer: 0.24, radiusScale: 1.0 },
-      { kind: 'fillRect', x: 248, y: 74, w: 102, h: 54, rx: 7, accent: true, weight: 2.4, zLayer: 0.3, density: 0.6 },
-      // Row of 3 hollow rounded cards with small solid ink text bars inside
-      // Card 1
-      { kind: 'path', d: roundedRectD(36, 154, 100, 86, 10), accent: false, weight: 1.9, zLayer: 0.14, radiusScale: 0.96 },
-      { kind: 'path', d: roundedRectD(46, 164, 80, 38, 6), accent: false, weight: 1.2, zLayer: 0.2, radiusScale: 0.82 },
-      { kind: 'fillRect', x: 48, y: 211, w: 62, h: 6, rx: 3, accent: false, weight: 0.55, zLayer: 0.22, density: 0.95 },
-      { kind: 'fillRect', x: 48, y: 223, w: 42, h: 5, rx: 2.5, accent: false, weight: 0.4, zLayer: 0.22, density: 0.95 },
-      // Card 2 (featured center card with #5B5BF0 accent badge)
-      { kind: 'path', d: roundedRectD(150, 154, 100, 86, 10), accent: false, weight: 1.9, zLayer: 0.28, radiusScale: 1.0 },
-      { kind: 'fillRect', x: 160, y: 164, w: 80, h: 38, rx: 6, accent: true, weight: 2.0, zLayer: 0.36, density: 0.6 },
-      { kind: 'fillRect', x: 162, y: 211, w: 62, h: 6, rx: 3, accent: false, weight: 0.55, zLayer: 0.32, density: 0.95 },
-      { kind: 'fillRect', x: 162, y: 223, w: 44, h: 5, rx: 2.5, accent: false, weight: 0.4, zLayer: 0.32, density: 0.95 },
-      // Card 3
-      { kind: 'path', d: roundedRectD(264, 154, 100, 86, 10), accent: false, weight: 1.9, zLayer: 0.14, radiusScale: 0.96 },
-      { kind: 'path', d: roundedRectD(274, 164, 80, 38, 6), accent: false, weight: 1.2, zLayer: 0.2, radiusScale: 0.82 },
-      { kind: 'fillRect', x: 276, y: 211, w: 62, h: 6, rx: 3, accent: false, weight: 0.55, zLayer: 0.22, density: 0.95 },
-      { kind: 'fillRect', x: 276, y: 223, w: 42, h: 5, rx: 2.5, accent: false, weight: 0.4, zLayer: 0.22, density: 0.95 },
+      // Top RBAC Security Shield with keyhole & clearance ring (Center)
+      { kind: 'path', d: 'M 172 18 L 190 12 L 208 18 C 208 32, 190 40, 190 40 C 190 40, 172 32, 172 18 Z', accent: true, weight: 2.6, zLayer: 0.5, radiusScale: 1.15 },
+      { kind: 'fillCircle', cx: 190, cy: 25, r: 3.5, accent: true, weight: 1.2, zLayer: 0.55 },
+      { kind: 'path', d: 'M 186 25 V 21 C 186 18, 194 18, 194 21 V 25', accent: true, weight: 1.6, zLayer: 0.55, radiusScale: 0.9 },
+
+      // Stage 1 (Left): Leads Ingestion & AI Scoring
+      { kind: 'path', d: roundedRectD(36, 56, 92, 164, 10), accent: false, weight: 2.2, zLayer: 0.15, radiusScale: 1.0 },
+      { kind: 'fillCircle', cx: 82, cy: 96, r: 16, accent: false, weight: 1.6, zLayer: 0.22 },
+      { kind: 'fillRect', x: 52, y: 126, w: 60, h: 18, rx: 9, accent: true, weight: 1.8, zLayer: 0.35, density: 0.75 },
+      { kind: 'fillRect', x: 54, y: 160, w: 56, h: 8, rx: 4, accent: false, weight: 0.8, zLayer: 0.2, density: 0.95 },
+      { kind: 'fillRect', x: 60, y: 176, w: 44, h: 6, rx: 3, accent: false, weight: 0.6, zLayer: 0.2, density: 0.95 },
+
+      // Directional Flow Pipeline 1 (Stage 1 -> Stage 2)
+      { kind: 'path', d: 'M 128 114 H 144 M 138 109 L 144 114 L 138 119', accent: true, weight: 2.2, zLayer: 0.35, radiusScale: 1.1 },
+
+      // Stage 2 (Center): Active Deals & ACID Transactions (Elevated Focal Card)
+      { kind: 'path', d: roundedRectD(144, 48, 92, 178, 10), accent: false, weight: 2.6, zLayer: 0.28, radiusScale: 1.05 },
+      { kind: 'fillRect', x: 156, y: 80, w: 68, h: 22, rx: 11, accent: true, weight: 2.4, zLayer: 0.42, density: 0.65 },
+      // ACID Lock Padlock Emblem
+      { kind: 'path', d: roundedRectD(178, 122, 24, 18, 4), accent: true, weight: 2.0, zLayer: 0.45, radiusScale: 0.95 },
+      { kind: 'path', d: 'M 183 122 V 114 C 183 109, 197 109, 197 114 V 122', accent: true, weight: 2.0, zLayer: 0.45, radiusScale: 0.95 },
+      // Milestone Progress Bar
+      { kind: 'path', d: roundedRectD(156, 162, 68, 8, 4), accent: false, weight: 1.0, zLayer: 0.3, radiusScale: 0.85 },
+      { kind: 'fillRect', x: 156, y: 162, w: 48, h: 8, rx: 4, accent: true, weight: 1.4, zLayer: 0.38, density: 0.9 },
+
+      // Directional Flow Pipeline 2 (Stage 2 -> Stage 3)
+      { kind: 'path', d: 'M 236 114 H 252 M 246 109 L 252 114 L 246 119', accent: true, weight: 2.2, zLayer: 0.35, radiusScale: 1.1 },
+
+      // Stage 3 (Right): Closed Won & Revenue KPI
+      { kind: 'path', d: roundedRectD(252, 56, 92, 164, 10), accent: false, weight: 2.2, zLayer: 0.15, radiusScale: 1.0 },
+      // Celebration Victory Badge with Checkmark
+      { kind: 'fillCircle', cx: 298, cy: 96, r: 18, accent: true, weight: 2.2, zLayer: 0.45 },
+      { kind: 'path', d: 'M 288 96 L 294 102 L 308 88', accent: false, weight: 3.2, zLayer: 0.55, radiusScale: 1.15 },
+      // Upward Revenue Growth Sparkline
+      { kind: 'path', d: 'M 264 184 L 284 170 L 304 154 L 324 136 L 334 130', accent: true, weight: 3.0, zLayer: 0.38, radiusScale: 1.25 },
+      { kind: 'fillCircle', cx: 334, cy: 130, r: 4.5, accent: true, weight: 1.4, zLayer: 0.48 },
+
+      // Bottom Activity Stream Line
+      { kind: 'path', d: 'M 48 236 H 332', accent: false, weight: 1.2, zLayer: 0.1, radiusScale: 0.85 },
+      { kind: 'fillCircle', cx: 60, cy: 236, r: 3.5, accent: true, weight: 1.0, zLayer: 0.2 },
+    ],
+  },
+  frontend: {
+    // 02 · Modern & Reactive Frontend: Responsive Desktop Window + Floating Mobile Viewport, React 19 atom, shadcn/ui toggle & slider, 60fps kinetic motion wave
+    viewW: 380,
+    viewH: 260,
+    primitives: [
+      // Desktop Browser Frame
+      { kind: 'path', d: roundedRectD(24, 20, 236, 220, 12), accent: false, weight: 3.0, zLayer: -0.15, radiusScale: 1.05 },
+      { kind: 'path', d: 'M 24 50 H 260', accent: false, weight: 1.4, zLayer: 0.0, radiusScale: 0.95 },
+      // Window control dots
+      { kind: 'fillCircle', cx: 40, cy: 35, r: 4, accent: true, weight: 1.0, zLayer: 0.1 },
+      { kind: 'fillCircle', cx: 54, cy: 35, r: 4, accent: false, weight: 0.7, zLayer: 0.1 },
+      { kind: 'fillCircle', cx: 68, cy: 35, r: 4, accent: false, weight: 0.7, zLayer: 0.1 },
+      // App Router URL search pill
+      { kind: 'path', d: roundedRectD(92, 28, 120, 14, 7), accent: false, weight: 1.2, zLayer: 0.1, radiusScale: 0.85 },
+
+      // Modern UI Controls (shadcn/ui)
+      // Toggle Switch
+      { kind: 'path', d: roundedRectD(42, 70, 48, 24, 12), accent: true, weight: 2.0, zLayer: 0.28, radiusScale: 1.0 },
+      { kind: 'fillCircle', cx: 74, cy: 82, r: 8, accent: true, weight: 2.0, zLayer: 0.38 },
+      // Slider
+      { kind: 'path', d: roundedRectD(104, 78, 96, 8, 4), accent: false, weight: 1.2, zLayer: 0.2, radiusScale: 0.85 },
+      { kind: 'fillCircle', cx: 164, cy: 82, r: 7, accent: true, weight: 1.8, zLayer: 0.35 },
+
+      // React 19 Atomic Symbol
+      { kind: 'path', d: 'M 102 114 C 102 96, 182 96, 182 114 C 182 132, 102 132, 102 114', accent: true, weight: 2.4, zLayer: 0.35, radiusScale: 1.1 },
+      { kind: 'path', d: 'M 118 90 C 134 78, 166 150, 150 138 C 134 150, 102 78, 118 90', accent: true, weight: 2.4, zLayer: 0.35, radiusScale: 1.1 },
+      { kind: 'fillCircle', cx: 142, cy: 114, r: 6, accent: true, weight: 2.0, zLayer: 0.45 },
+
+      // 60fps Kinetic Motion Sine Wave (GSAP / Framer Motion)
+      { kind: 'path', d: 'M 38 184 C 74 148, 106 220, 142 184 C 178 148, 210 220, 246 184', accent: true, weight: 3.2, zLayer: 0.38, radiusScale: 1.35 },
+      { kind: 'path', d: roundedRectD(188, 150, 58, 16, 8), accent: true, weight: 1.4, zLayer: 0.32, radiusScale: 0.9 },
+
+      // Floating Responsive Mobile Viewport (Right Foreground)
+      { kind: 'path', d: roundedRectD(272, 36, 84, 188, 16), accent: false, weight: 3.0, zLayer: 0.48, radiusScale: 1.05 },
+      { kind: 'path', d: roundedRectD(298, 46, 32, 8, 4), accent: true, weight: 1.6, zLayer: 0.52, radiusScale: 0.85 },
+      { kind: 'path', d: roundedRectD(282, 72, 64, 52, 8), accent: true, weight: 1.8, zLayer: 0.52, radiusScale: 0.95 },
+      { kind: 'fillRect', x: 282, y: 148, w: 64, h: 20, rx: 10, accent: true, weight: 2.0, zLayer: 0.55, density: 0.8 },
+      { kind: 'path', d: roundedRectD(300, 212, 28, 4, 2), accent: false, weight: 1.2, zLayer: 0.5, radiusScale: 0.8 },
     ],
   },
   integrations: {
-    viewW: 360,
+    // 03 · Multimodal AI & RAG: Central Neural Core & RAG Agent with 6 Multimodal Satellites (Whisper audio, Qdrant vector cube, Vision tensor, LangGraph, Chunks, Tokens)
+    viewW: 380,
     viewH: 260,
     primitives: [
-      // Outer hexagonal bus perimeter (hollow)
-      { kind: 'path', d: 'M 180 34 L 296 72 L 296 188 L 180 226 L 64 188 L 64 72 Z', accent: false, weight: 2.8, zLayer: -0.3, radiusScale: 1.02 },
-      // 6 thick hollow circular satellite nodes
-      { kind: 'path', d: 'M 180 16 A 18 18 0 1 0 180 52 A 18 18 0 1 0 180 16', accent: false, weight: 1.5, zLayer: -0.18, radiusScale: 1.0 },
-      { kind: 'path', d: 'M 296 54 A 18 18 0 1 0 296 90 A 18 18 0 1 0 296 54', accent: false, weight: 1.5, zLayer: -0.1, radiusScale: 1.0 },
-      { kind: 'path', d: 'M 296 170 A 18 18 0 1 0 296 206 A 18 18 0 1 0 296 170', accent: false, weight: 1.5, zLayer: -0.18, radiusScale: 1.0 },
-      { kind: 'path', d: 'M 180 208 A 18 18 0 1 0 180 244 A 18 18 0 1 0 180 208', accent: false, weight: 1.5, zLayer: -0.1, radiusScale: 1.0 },
-      { kind: 'path', d: 'M 64 170 A 18 18 0 1 0 64 206 A 18 18 0 1 0 64 170', accent: false, weight: 1.5, zLayer: -0.18, radiusScale: 1.0 },
-      { kind: 'path', d: 'M 64 54 A 18 18 0 1 0 64 90 A 18 18 0 1 0 64 54', accent: false, weight: 1.5, zLayer: -0.1, radiusScale: 1.0 },
-      // Center hub thick hollow ring + dense #5B5BF0 inner core ring
-      { kind: 'path', d: 'M 180 96 A 34 34 0 1 0 180 164 A 34 34 0 1 0 180 96', accent: false, weight: 2.6, zLayer: 0.45, radiusScale: 1.2 },
-      { kind: 'path', d: 'M 180 110 A 20 20 0 1 0 180 150 A 20 20 0 1 0 180 110', accent: true, weight: 2.3, zLayer: 0.6, radiusScale: 1.35 },
-      // 6 thick granular #5B5BF0 radial conduits
-      { kind: 'path', d: 'M 180 96 L 180 52', accent: true, weight: 1.1, zLayer: 0.15, radiusScale: 1.05 },
-      { kind: 'path', d: 'M 210 114 L 278 81', accent: true, weight: 1.1, zLayer: 0.15, radiusScale: 1.05 },
-      { kind: 'path', d: 'M 210 146 L 278 179', accent: true, weight: 1.1, zLayer: 0.15, radiusScale: 1.05 },
-      { kind: 'path', d: 'M 180 164 L 180 208', accent: true, weight: 1.1, zLayer: 0.15, radiusScale: 1.05 },
-      { kind: 'path', d: 'M 150 146 L 82 179', accent: true, weight: 1.1, zLayer: 0.15, radiusScale: 1.05 },
-      { kind: 'path', d: 'M 150 114 L 82 81', accent: true, weight: 1.1, zLayer: 0.15, radiusScale: 1.05 },
+      // Outer Constellation Perimeter Bus
+      { kind: 'path', d: 'M 190 28 L 320 76 L 320 184 L 190 232 L 60 184 L 60 76 Z', accent: false, weight: 1.8, zLayer: -0.2, radiusScale: 0.95 },
+      // Central Multimodal Neural Core & RAG Agent
+      { kind: 'path', d: 'M 190 92 A 38 38 0 1 0 190 168 A 38 38 0 1 0 190 92', accent: false, weight: 2.6, zLayer: 0.35, radiusScale: 1.15 },
+      { kind: 'path', d: 'M 190 110 A 20 20 0 1 0 190 150 A 20 20 0 1 0 190 110', accent: true, weight: 2.6, zLayer: 0.55, radiusScale: 1.25 },
+      { kind: 'fillCircle', cx: 190, cy: 130, r: 10, accent: true, weight: 2.2, zLayer: 0.6 },
+
+      // Satellite 1: Top (190, 28) · LLM Reasoning & Token Stream
+      { kind: 'path', d: 'M 190 12 A 16 16 0 1 0 190 44 A 16 16 0 1 0 190 12', accent: false, weight: 2.0, zLayer: 0.15, radiusScale: 0.95 },
+      { kind: 'fillRect', x: 182, y: 22, w: 16, h: 4, rx: 2, accent: true, weight: 0.8, zLayer: 0.22, density: 0.95 },
+      { kind: 'fillRect', x: 184, y: 30, w: 12, h: 4, rx: 2, accent: true, weight: 0.7, zLayer: 0.22, density: 0.95 },
+
+      // Satellite 2: Top-Right (320, 76) · Qdrant Vector DB & 3D Embeddings
+      { kind: 'path', d: 'M 320 54 L 338 65 L 338 87 L 320 98 L 302 87 L 302 65 Z', accent: false, weight: 2.0, zLayer: 0.22, radiusScale: 0.95 },
+      { kind: 'path', d: 'M 320 76 L 320 98 M 320 76 L 338 65 M 320 76 L 302 65', accent: true, weight: 1.6, zLayer: 0.28, radiusScale: 0.9 },
+      { kind: 'fillCircle', cx: 320, cy: 76, r: 3.5, accent: true, weight: 1.0, zLayer: 0.35 },
+
+      // Satellite 3: Bottom-Right (320, 184) · Vision & CLIP Multimodal
+      { kind: 'path', d: 'M 320 170 A 14 14 0 1 0 320 198 A 14 14 0 1 0 320 170', accent: false, weight: 2.0, zLayer: 0.15, radiusScale: 0.95 },
+      { kind: 'fillCircle', cx: 320, cy: 184, r: 6, accent: true, weight: 1.6, zLayer: 0.25 },
+      { kind: 'path', d: 'M 310 174 H 306 V 178 M 330 174 H 334 V 178 M 310 194 H 306 V 190 M 330 194 H 334 V 190', accent: true, weight: 1.6, zLayer: 0.22, radiusScale: 0.9 },
+
+      // Satellite 4: Bottom (190, 232) · LangGraph State Graph & Agent Workflow
+      { kind: 'fillCircle', cx: 190, cy: 232, r: 7, accent: true, weight: 1.8, zLayer: 0.2 },
+      { kind: 'fillCircle', cx: 170, cy: 242, r: 5, accent: false, weight: 1.2, zLayer: 0.15 },
+      { kind: 'fillCircle', cx: 210, cy: 242, r: 5, accent: false, weight: 1.2, zLayer: 0.15 },
+      { kind: 'path', d: 'M 174 240 L 185 235 M 206 240 L 195 235', accent: true, weight: 1.8, zLayer: 0.22, radiusScale: 0.9 },
+
+      // Satellite 5: Bottom-Left (60, 184) · Document Chunks & RAG Retrieval
+      { kind: 'path', d: roundedRectD(44, 170, 32, 24, 4), accent: false, weight: 1.4, zLayer: 0.08, radiusScale: 0.85 },
+      { kind: 'path', d: roundedRectD(52, 176, 34, 26, 4), accent: false, weight: 2.0, zLayer: 0.2, radiusScale: 0.95 },
+      { kind: 'fillRect', x: 56, y: 184, w: 22, h: 3, rx: 1.5, accent: true, weight: 0.7, zLayer: 0.25, density: 0.95 },
+      { kind: 'fillRect', x: 56, y: 191, w: 16, h: 3, rx: 1.5, accent: true, weight: 0.6, zLayer: 0.25, density: 0.95 },
+
+      // Satellite 6: Top-Left (60, 76) · Voice STT/TTS (Whisper & Edge-TTS)
+      { kind: 'path', d: 'M 60 60 A 16 16 0 1 0 60 92 A 16 16 0 1 0 60 60', accent: false, weight: 1.8, zLayer: 0.15, radiusScale: 0.95 },
+      { kind: 'path', d: 'M 50 72 V 80 M 55 68 V 84 M 60 64 V 88 M 65 68 V 84 M 70 72 V 80', accent: true, weight: 2.4, zLayer: 0.32, radiusScale: 1.05 },
+
+      // 6 Radial Synaptic Conduits connecting satellites directly into central RAG core
+      { kind: 'path', d: 'M 190 44 L 190 92', accent: true, weight: 2.0, zLayer: 0.25, radiusScale: 1.15, isRay: true, rayIndex: 0 },
+      { kind: 'path', d: 'M 302 86 L 224 116', accent: true, weight: 2.0, zLayer: 0.25, radiusScale: 1.15, isRay: true, rayIndex: 1 },
+      { kind: 'path', d: 'M 302 174 L 224 144', accent: true, weight: 2.0, zLayer: 0.25, radiusScale: 1.15, isRay: true, rayIndex: 2 },
+      { kind: 'path', d: 'M 190 216 L 190 168', accent: true, weight: 2.0, zLayer: 0.25, radiusScale: 1.15, isRay: true, rayIndex: 3 },
+      { kind: 'path', d: 'M 78 174 L 156 144', accent: true, weight: 2.0, zLayer: 0.25, radiusScale: 1.15, isRay: true, rayIndex: 4 },
+      { kind: 'path', d: 'M 78 86 L 156 116', accent: true, weight: 2.0, zLayer: 0.25, radiusScale: 1.15, isRay: true, rayIndex: 5 },
     ],
   },
   architecture: {
-    viewW: 360,
+    // 04 · Backend & Distributed Services: High-throughput Go Echo API Gateway, 4 microservices (Auth/JWT, Worker, WebPush, Broker), WebSocket live sine waves, SSE event stream
+    viewW: 380,
     viewH: 260,
     primitives: [
-      // Spaced back & front rounded hollow cube faces
-      { kind: 'path', d: roundedRectD(88, 30, 144, 144, 11), accent: false, weight: 3.0, zLayer: -0.52, radiusScale: 1.08 },
-      { kind: 'path', d: roundedRectD(138, 80, 144, 144, 11), accent: false, weight: 3.2, zLayer: 0.52, radiusScale: 1.12 },
-      // 4 thick #5B5BF0 isometric depth struts
-      { kind: 'path', d: 'M 94 36 L 144 86', accent: true, weight: 1.3, zLayer: 0.0, radiusScale: 1.12 },
-      { kind: 'path', d: 'M 226 36 L 276 86', accent: true, weight: 1.3, zLayer: 0.0, radiusScale: 1.12 },
-      { kind: 'path', d: 'M 94 168 L 144 218', accent: true, weight: 1.3, zLayer: 0.0, radiusScale: 1.12 },
-      { kind: 'path', d: 'M 226 168 L 276 218', accent: true, weight: 1.3, zLayer: 0.0, radiusScale: 1.12 },
-      // Dense #5B5BF0 suspended central data kernel block (60% hatch fill)
-      { kind: 'fillRect', x: 162, y: 104, w: 46, h: 46, rx: 9, accent: true, weight: 2.8, zLayer: 0.05, density: 0.6 },
-      // Clean dark mini status bars along bottom edge of front cube
-      { kind: 'fillRect', x: 158, y: 196, w: 54, h: 6, rx: 3, accent: false, weight: 0.65, zLayer: 0.56, density: 0.95 },
-      { kind: 'fillRect', x: 222, y: 196, w: 38, h: 6, rx: 3, accent: false, weight: 0.5, zLayer: 0.56, density: 0.95 },
+      // Central Ingress API Gateway (Go Echo)
+      { kind: 'path', d: 'M 190 92 L 226 111 L 226 149 L 190 168 L 154 149 L 154 111 Z', accent: false, weight: 3.0, zLayer: 0.38, radiusScale: 1.1 },
+      { kind: 'path', d: 'M 190 106 L 210 130 L 190 154 L 170 130 Z', accent: true, weight: 2.6, zLayer: 0.52, radiusScale: 1.15 },
+      { kind: 'fillCircle', cx: 190, cy: 130, r: 7, accent: true, weight: 2.0, zLayer: 0.6 },
+
+      // Service 1: Top-Left · Auth & Sessions (JWT)
+      { kind: 'path', d: roundedRectD(36, 44, 84, 54, 8), accent: false, weight: 2.2, zLayer: 0.18, radiusScale: 0.95 },
+      { kind: 'path', d: 'M 54 72 H 78 M 70 72 V 78 M 76 72 V 78', accent: true, weight: 2.2, zLayer: 0.28, radiusScale: 0.95 },
+      { kind: 'fillCircle', cx: 104, cy: 58, r: 4, accent: true, weight: 1.0, zLayer: 0.25 },
+
+      // Service 2: Top-Right · FastAPI AI Worker & Task Queue
+      { kind: 'path', d: roundedRectD(260, 44, 84, 54, 8), accent: false, weight: 2.2, zLayer: 0.18, radiusScale: 0.95 },
+      { kind: 'fillRect', x: 272, y: 68, w: 60, h: 6, rx: 3, accent: true, weight: 1.2, zLayer: 0.25, density: 0.85 },
+      { kind: 'fillCircle', cx: 328, cy: 58, r: 4, accent: true, weight: 1.0, zLayer: 0.25 },
+
+      // Service 3: Bottom-Right · Notification & WebPush Daemon
+      { kind: 'path', d: roundedRectD(260, 162, 84, 54, 8), accent: false, weight: 2.2, zLayer: 0.18, radiusScale: 0.95 },
+      { kind: 'path', d: 'M 276 194 A 12 12 0 0 1 276 206 M 284 190 A 20 20 0 0 1 284 210', accent: true, weight: 2.2, zLayer: 0.28, radiusScale: 1.0 },
+      { kind: 'fillCircle', cx: 328, cy: 176, r: 4, accent: true, weight: 1.0, zLayer: 0.25 },
+
+      // Service 4: Bottom-Left · Database Broker & Event Store
+      { kind: 'path', d: roundedRectD(36, 162, 84, 54, 8), accent: false, weight: 2.2, zLayer: 0.18, radiusScale: 0.95 },
+      { kind: 'fillRect', x: 48, y: 186, w: 60, h: 6, rx: 3, accent: true, weight: 1.2, zLayer: 0.25, density: 0.85 },
+      { kind: 'fillCircle', cx: 104, cy: 176, r: 4, accent: true, weight: 1.0, zLayer: 0.25 },
+
+      // WebSocket Real-Time Bidirectional Full-Duplex Sine Waves (Left to Gateway)
+      { kind: 'path', d: 'M 120 124 C 130 112, 144 136, 154 124', accent: true, weight: 3.0, zLayer: 0.42, radiusScale: 1.25 },
+      { kind: 'path', d: 'M 120 136 C 130 148, 144 124, 154 136', accent: true, weight: 3.0, zLayer: 0.42, radiusScale: 1.25 },
+
+      // Server-Sent Events (SSE) Stream Beam (Gateway to Right)
+      { kind: 'path', d: 'M 226 130 H 260 M 254 124 L 260 130 L 254 136', accent: true, weight: 2.6, zLayer: 0.42, radiusScale: 1.15 },
+      { kind: 'fillCircle', cx: 242, cy: 130, r: 3.5, accent: true, weight: 1.0, zLayer: 0.45 },
+
+      // Microservice Mesh Interconnects
+      { kind: 'path', d: 'M 162 114 L 116 88', accent: false, weight: 1.8, zLayer: 0.1, radiusScale: 0.9 },
+      { kind: 'path', d: 'M 218 114 L 264 88', accent: false, weight: 1.8, zLayer: 0.1, radiusScale: 0.9 },
+      { kind: 'path', d: 'M 218 146 L 264 172', accent: false, weight: 1.8, zLayer: 0.1, radiusScale: 0.9 },
+      { kind: 'path', d: 'M 162 146 L 116 172', accent: false, weight: 1.8, zLayer: 0.1, radiusScale: 0.9 },
     ],
   },
   performance: {
-    viewW: 360,
+    // 05 · Databases & Cloud Storage: 3-tier Cylinder Stack (PostgreSQL/MySQL tabular disk, MongoDB document store, ACID storage), hovering Redis lightning cache ring, MinIO S3 object buckets
+    viewW: 380,
     viewH: 260,
     primitives: [
-      // Rounded hollow chart frame + L-axes
-      { kind: 'path', d: roundedRectD(24, 22, 312, 212, 11), accent: false, weight: 2.8, zLayer: -0.25, radiusScale: 1.0 },
-      { kind: 'path', d: 'M 52 198 H 312 M 52 52 V 198', accent: false, weight: 2.0, zLayer: -0.1, radiusScale: 1.05 },
-      // Hollow reference bar columns
-      { kind: 'path', d: roundedRectD(74, 152, 26, 46, 5), accent: false, weight: 1.2, zLayer: 0.05, radiusScale: 0.85 },
-      { kind: 'path', d: roundedRectD(128, 128, 26, 70, 5), accent: false, weight: 1.4, zLayer: 0.08, radiusScale: 0.85 },
-      { kind: 'path', d: roundedRectD(182, 98, 26, 100, 5), accent: false, weight: 1.6, zLayer: 0.12, radiusScale: 0.85 },
-      // Bold thick granular #5B5BF0 throughput acceleration curve
-      { kind: 'path', d: 'M 54 188 C 122 184, 152 134, 194 98 C 236 62, 268 50, 304 44', accent: true, weight: 3.8, zLayer: 0.45, radiusScale: 1.38 },
-      // Peak focal #5B5BF0 filled node + outer reticle ring
-      { kind: 'fillCircle', cx: 300, cy: 46, r: 11, accent: true, weight: 1.4, zLayer: 0.52 },
-      { kind: 'path', d: 'M 300 26 A 20 20 0 1 0 300 66 A 20 20 0 1 0 300 26', accent: false, weight: 1.2, zLayer: 0.38, radiusScale: 0.9 },
-      // Compact dark axis caption ticks
-      { kind: 'fillRect', x: 74, y: 209, w: 26, h: 5, rx: 2.5, accent: false, weight: 0.45, zLayer: 0.1, density: 0.95 },
-      { kind: 'fillRect', x: 182, y: 209, w: 26, h: 5, rx: 2.5, accent: false, weight: 0.45, zLayer: 0.1, density: 0.95 },
-      { kind: 'fillRect', x: 268, y: 209, w: 38, h: 5, rx: 2.5, accent: false, weight: 0.55, zLayer: 0.1, density: 0.95 },
+      // Hovering In-Memory Redis Distributed Cache Tier (Top)
+      { kind: 'path', d: 'M 190 42 A 56 18 0 1 0 190 78 A 56 18 0 1 0 190 42', accent: true, weight: 2.8, zLayer: 0.52, radiusScale: 1.2 },
+      { kind: 'path', d: 'M 193 32 L 183 48 L 191 48 L 186 64 L 198 46 L 190 46 Z', accent: true, weight: 2.6, zLayer: 0.62, radiusScale: 1.25 },
+      { kind: 'path', d: 'M 190 78 V 94', accent: true, weight: 2.2, zLayer: 0.45, radiusScale: 1.05 },
+
+      // Database Cylinder Tier 1: Relational Schema (PostgreSQL / MySQL)
+      { kind: 'path', d: 'M 190 74 A 68 24 0 1 0 190 122 A 68 24 0 1 0 190 74', accent: false, weight: 2.6, zLayer: 0.25, radiusScale: 1.05 },
+      { kind: 'path', d: 'M 148 98 H 232 M 174 86 V 110 M 206 86 V 110', accent: false, weight: 1.4, zLayer: 0.28, radiusScale: 0.85 },
+      { kind: 'path', d: 'M 122 98 V 126 M 258 98 V 126 M 122 126 C 122 144, 258 144, 258 126', accent: false, weight: 2.6, zLayer: 0.2, radiusScale: 1.05 },
+
+      // Database Cylinder Tier 2: Document Store (MongoDB)
+      { kind: 'path', d: 'M 122 126 V 154 M 258 126 V 154 M 122 154 C 122 172, 258 172, 258 154', accent: false, weight: 2.6, zLayer: 0.15, radiusScale: 1.05 },
+      { kind: 'path', d: 'M 166 134 C 160 134, 160 140, 154 140 C 160 140, 160 146, 166 146 M 214 134 C 220 134, 220 140, 226 140 C 220 140, 220 146, 214 146', accent: true, weight: 2.4, zLayer: 0.35, radiusScale: 1.05 },
+
+      // Database Cylinder Tier 3: ACID Transactions & Persistent Storage Base
+      { kind: 'path', d: 'M 122 154 V 182 M 258 154 V 182 M 122 182 C 122 200, 258 200, 258 182', accent: false, weight: 2.8, zLayer: 0.1, radiusScale: 1.08 },
+      // Central ACID Lock Badge
+      { kind: 'path', d: 'M 180 132 L 190 126 L 200 132 C 200 144, 190 152, 190 152 C 190 152, 180 144, 180 132 Z', accent: true, weight: 2.4, zLayer: 0.45, radiusScale: 1.15 },
+
+      // Left MinIO S3 Object Storage Bucket
+      { kind: 'path', d: 'M 54 94 L 76 82 L 98 94 L 76 106 Z', accent: false, weight: 2.0, zLayer: 0.18, radiusScale: 0.95 },
+      { kind: 'path', d: 'M 54 94 V 130 L 76 142 V 106 Z M 98 94 V 130 L 76 142', accent: false, weight: 2.0, zLayer: 0.18, radiusScale: 0.95 },
+      { kind: 'path', d: 'M 62 86 C 62 76, 90 76, 90 86', accent: true, weight: 1.8, zLayer: 0.25, radiusScale: 0.9 },
+      { kind: 'path', d: 'M 98 116 H 122 M 116 111 L 122 116 L 116 121', accent: true, weight: 2.0, zLayer: 0.25, radiusScale: 1.05 },
+
+      // Right MinIO Cluster Replica Node
+      { kind: 'path', d: 'M 282 94 L 304 82 L 326 94 L 304 106 Z', accent: false, weight: 2.0, zLayer: 0.18, radiusScale: 0.95 },
+      { kind: 'path', d: 'M 282 94 V 130 L 304 142 V 106 Z M 326 94 V 130 L 304 142', accent: false, weight: 2.0, zLayer: 0.18, radiusScale: 0.95 },
+      { kind: 'path', d: 'M 258 116 H 282 M 276 111 L 282 116 L 276 121', accent: true, weight: 2.0, zLayer: 0.25, radiusScale: 1.05 },
+
+      // High-Availability Base Pedestal & Cluster Status
+      { kind: 'path', d: 'M 104 216 H 276', accent: false, weight: 1.4, zLayer: -0.1, radiusScale: 0.9 },
+      { kind: 'fillCircle', cx: 130, cy: 216, r: 4, accent: true, weight: 1.0, zLayer: -0.05 },
+      { kind: 'fillCircle', cx: 190, cy: 216, r: 4, accent: true, weight: 1.0, zLayer: -0.05 },
+      { kind: 'fillCircle', cx: 250, cy: 216, r: 4, accent: true, weight: 1.0, zLayer: -0.05 },
     ],
   },
   design: {
-    viewW: 360,
+    // 06 · DevOps, Containerization & Linux: 3D isometric Docker container pod with corrugated ribs, Nginx SSL security shield, Drone CI automated pipeline loop, Linux terminal & server blades
+    viewW: 380,
     viewH: 260,
     primitives: [
-      // Outer thick hollow drafting circle
-      { kind: 'path', d: 'M 180 24 A 106 106 0 1 0 180 236 A 106 106 0 1 0 180 24', accent: false, weight: 3.4, zLayer: -0.22, radiusScale: 1.15 },
-      // Inscribed hollow rounded golden square
-      { kind: 'path', d: roundedRectD(106, 56, 148, 148, 11), accent: false, weight: 2.6, zLayer: 0.0, radiusScale: 1.02 },
-      // Precision drafting crosshairs
-      { kind: 'path', d: 'M 42 130 H 318 M 180 12 V 248', accent: false, weight: 1.5, zLayer: -0.32, radiusScale: 0.85 },
-      // Thick #5B5BF0 inner harmonic ring
-      { kind: 'path', d: 'M 180 76 A 54 54 0 1 0 180 184 A 54 54 0 1 0 180 76', accent: true, weight: 2.8, zLayer: 0.28, radiusScale: 1.25 },
-      // Bold #5B5BF0 golden spiral + dense focal center lens
-      { kind: 'path', d: 'M 180 130 C 180 96, 214 96, 214 130 C 214 176, 146 176, 146 130 C 146 66, 244 66, 244 130', accent: true, weight: 2.6, zLayer: 0.45, radiusScale: 1.18 },
-      { kind: 'fillCircle', cx: 180, cy: 130, r: 12, accent: true, weight: 1.3, zLayer: 0.55 },
+      // 3D Isometric Docker Container Pod
+      { kind: 'path', d: 'M 190 68 L 246 96 L 190 124 L 134 96 Z', accent: false, weight: 2.6, zLayer: 0.35, radiusScale: 1.05 },
+      { kind: 'path', d: 'M 134 96 V 164 L 190 192 V 124 Z', accent: false, weight: 2.8, zLayer: 0.35, radiusScale: 1.05 },
+      { kind: 'path', d: 'M 246 96 V 164 L 190 192', accent: false, weight: 2.8, zLayer: 0.35, radiusScale: 1.05 },
+      // Corrugated Container Ribs (Left face)
+      { kind: 'path', d: 'M 148 103 V 171', accent: true, weight: 2.2, zLayer: 0.4, radiusScale: 0.95 },
+      { kind: 'path', d: 'M 162 110 V 178', accent: true, weight: 2.2, zLayer: 0.4, radiusScale: 0.95 },
+      { kind: 'path', d: 'M 176 117 V 185', accent: true, weight: 2.2, zLayer: 0.4, radiusScale: 0.95 },
+      // Corrugated Container Ribs (Right face)
+      { kind: 'path', d: 'M 204 117 V 185 M 218 110 V 178 M 232 103 V 171', accent: false, weight: 1.8, zLayer: 0.32, radiusScale: 0.9 },
+      // Corner Lift Castings
+      { kind: 'fillCircle', cx: 134, cy: 96, r: 4, accent: true, weight: 1.0, zLayer: 0.4 },
+      { kind: 'fillCircle', cx: 246, cy: 96, r: 4, accent: true, weight: 1.0, zLayer: 0.4 },
+      { kind: 'fillCircle', cx: 190, cy: 124, r: 4, accent: true, weight: 1.2, zLayer: 0.42 },
+      { kind: 'fillCircle', cx: 190, cy: 192, r: 4, accent: true, weight: 1.2, zLayer: 0.42 },
+
+      // Nginx Ingress Reverse Proxy & SSL/TLS Cryptographic Security Shield
+      { kind: 'path', d: 'M 40 96 L 62 86 L 84 96 C 84 120, 62 134, 62 134 C 62 134, 40 120, 40 96 Z', accent: true, weight: 2.8, zLayer: 0.48, radiusScale: 1.15 },
+      { kind: 'path', d: roundedRectD(52, 108, 20, 14, 3), accent: true, weight: 1.8, zLayer: 0.55, radiusScale: 0.9 },
+      { kind: 'path', d: 'M 57 108 V 103 C 57 99, 67 99, 67 103 V 108', accent: true, weight: 1.8, zLayer: 0.55, radiusScale: 0.9 },
+      { kind: 'path', d: 'M 86 114 H 124 M 118 109 L 124 114 L 118 119', accent: true, weight: 2.4, zLayer: 0.42, radiusScale: 1.1 },
+
+      // CI/CD Automated Continuous Deployment Pipeline Loop (Drone CI)
+      { kind: 'path', d: 'M 78 68 C 124 28, 256 28, 302 68', accent: true, weight: 2.6, zLayer: 0.28, radiusScale: 1.15 },
+      { kind: 'path', d: 'M 302 192 C 256 232, 124 232, 78 192', accent: false, weight: 1.8, zLayer: 0.2, radiusScale: 0.95 },
+      { kind: 'fillCircle', cx: 120, cy: 44, r: 5, accent: true, weight: 1.2, zLayer: 0.32 },
+      { kind: 'fillCircle', cx: 190, cy: 32, r: 6, accent: true, weight: 1.4, zLayer: 0.35 },
+      { kind: 'fillCircle', cx: 260, cy: 44, r: 5, accent: true, weight: 1.2, zLayer: 0.32 },
+      { kind: 'fillCircle', cx: 302, cy: 130, r: 7, accent: true, weight: 1.6, zLayer: 0.48 },
+      { kind: 'path', d: 'M 297 130 L 301 134 L 308 126', accent: false, weight: 2.4, zLayer: 0.55, radiusScale: 0.95 },
+
+      // Linux Terminal Console & Server Blade Base
+      { kind: 'path', d: roundedRectD(270, 68, 86, 48, 6), accent: false, weight: 1.8, zLayer: 0.22, radiusScale: 0.92 },
+      { kind: 'path', d: 'M 278 92 L 286 96 L 278 100', accent: true, weight: 2.0, zLayer: 0.28, radiusScale: 0.9 },
+      { kind: 'fillRect', x: 290, y: 92, w: 6, h: 9, rx: 1, accent: true, weight: 1.0, zLayer: 0.3, density: 0.9 },
+
+      // Server Blade Chassis
+      { kind: 'path', d: roundedRectD(40, 226, 300, 12, 4), accent: false, weight: 1.6, zLayer: -0.15, radiusScale: 0.9 },
+      { kind: 'fillCircle', cx: 56, cy: 232, r: 2.5, accent: true, weight: 0.7, zLayer: -0.05 },
+      { kind: 'fillCircle', cx: 66, cy: 232, r: 2.5, accent: true, weight: 0.7, zLayer: -0.05 },
     ],
   },
   testimonial: {
@@ -951,8 +893,286 @@ const SVG_DIAGRAMS: Record<
       { kind: 'fillRect', x: 96, y: 201, w: 48, h: 6, rx: 3, accent: true, weight: 1.15, zLayer: 0.28, density: 0.85 },
     ],
   },
+
+  /* ─────────────────────────────────────────────────────────────
+   * 05 OWN APPS — 10 ARCHITECTURAL PARTICLE EMBLEMS
+   * Strict What I Do / uiPlane design standard:
+   * Thick granular stroke paths, hollow interiors, 3D Z layers,
+   * selective #5B5BF0 accent highlights.
+   * ───────────────────────────────────────────────────────────── */
+  'app-parakgram': {
+    // 01 · Parakgram: Constellation social network graph, concentric 24h story aura ring & chat bubbles
+    viewW: 380,
+    viewH: 260,
+    primitives: [
+      // Outer 24h Story Aura Ring
+      { kind: 'path', d: 'M 190 38 A 88 88 0 1 0 190 214 A 88 88 0 1 0 190 38', accent: true, weight: 2.2, zLayer: -0.15 },
+      // Central Profile Node (User Core)
+      { kind: 'fillCircle', cx: 190, cy: 126, r: 18, accent: true, weight: 2.5, zLayer: 0.4 },
+      { kind: 'path', d: 'M 190 46 A 80 80 0 0 1 270 126', accent: false, weight: 1.2, zLayer: -0.05 },
+      // Surrounding Community Nodes
+      { kind: 'fillCircle', cx: 104, cy: 76, r: 12, accent: false, weight: 1.6, zLayer: 0.2 },
+      { kind: 'fillCircle', cx: 276, cy: 76, r: 12, accent: false, weight: 1.6, zLayer: 0.2 },
+      { kind: 'fillCircle', cx: 104, cy: 176, r: 13, accent: false, weight: 1.6, zLayer: 0.2 },
+      { kind: 'fillCircle', cx: 276, cy: 176, r: 14, accent: true, weight: 2.0, zLayer: 0.3 },
+      // Curved Connection Links (Social Graph Edges)
+      { kind: 'path', d: 'M 190 126 Q 140 92 104 76', accent: false, weight: 2.2, zLayer: 0.15 },
+      { kind: 'path', d: 'M 190 126 Q 240 92 276 76', accent: false, weight: 2.2, zLayer: 0.15 },
+      { kind: 'path', d: 'M 190 126 Q 140 160 104 176', accent: false, weight: 2.2, zLayer: 0.15 },
+      { kind: 'path', d: 'M 190 126 Q 240 160 276 176', accent: true, weight: 2.4, zLayer: 0.25 },
+      { kind: 'path', d: 'M 104 76 C 130 46, 250 46, 276 76', accent: false, weight: 1.4, zLayer: 0.05 },
+      { kind: 'path', d: 'M 104 176 C 130 206, 250 206, 276 176', accent: true, weight: 1.6, zLayer: 0.1 },
+      // Real-Time Chat Speech Bubble Overlay
+      { kind: 'path', d: roundedRectD(224, 102, 54, 28, 8), accent: true, weight: 2.2, zLayer: 0.45 },
+      { kind: 'path', d: 'M 234 130 L 226 138 L 230 130', accent: true, weight: 2.0, zLayer: 0.45 },
+      { kind: 'fillCircle', cx: 242, cy: 116, r: 2.5, accent: true, weight: 1.0, zLayer: 0.5 },
+      { kind: 'fillCircle', cx: 251, cy: 116, r: 2.5, accent: true, weight: 1.0, zLayer: 0.5 },
+      { kind: 'fillCircle', cx: 260, cy: 116, r: 2.5, accent: true, weight: 1.0, zLayer: 0.5 },
+      // 24h Story Orbit Active Dot
+      { kind: 'fillCircle', cx: 190, cy: 38, r: 5.5, accent: true, weight: 2.2, zLayer: 0.35 },
+    ],
+  },
+
+  'app-parak-rag': {
+    // 02 · PARAK AI Assistant: 3D wireframe neural orb, voice soundwave ripples, vector search nodes
+    viewW: 380,
+    viewH: 260,
+    primitives: [
+      // 3D Neural Sphere Wireframe (Outer ring + latitude & longitude ellipses)
+      { kind: 'path', d: 'M 190 48 A 78 78 0 1 0 190 204 A 78 78 0 1 0 190 48', accent: false, weight: 2.4, zLayer: 0.0 },
+      // Equator ellipse
+      { kind: 'path', d: 'M 112 126 A 78 26 0 1 0 268 126 A 78 26 0 1 0 112 126', accent: true, weight: 2.2, zLayer: 0.25 },
+      // Latitude arcs
+      { kind: 'path', d: 'M 130 94 A 60 18 0 0 1 250 94', accent: false, weight: 1.3, zLayer: 0.1 },
+      { kind: 'path', d: 'M 130 158 A 60 18 0 0 0 250 158', accent: false, weight: 1.3, zLayer: 0.1 },
+      // Central meridian ellipse
+      { kind: 'path', d: 'M 190 48 A 28 78 0 1 0 190 204 A 28 78 0 1 0 190 48', accent: true, weight: 2.0, zLayer: 0.3 },
+      // Floating AI Core Nucleus
+      { kind: 'fillCircle', cx: 190, cy: 126, r: 16, accent: true, weight: 3.0, zLayer: 0.5 },
+      // Live Audio STT/TTS Soundwave Spectrum (Left)
+      { kind: 'path', d: 'M 84 116 V 136', accent: true, weight: 2.4, zLayer: 0.2 },
+      { kind: 'path', d: 'M 72 104 V 148', accent: true, weight: 2.8, zLayer: 0.25 },
+      { kind: 'path', d: 'M 60 118 V 134', accent: true, weight: 2.2, zLayer: 0.2 },
+      { kind: 'path', d: 'M 48 122 V 130', accent: false, weight: 1.6, zLayer: 0.15 },
+      // Qdrant Vector Search Cluster Rays & Embeddings (Right)
+      { kind: 'path', d: 'M 268 126 L 310 96', accent: true, weight: 1.8, zLayer: 0.3 },
+      { kind: 'path', d: 'M 268 126 L 324 126', accent: true, weight: 2.2, zLayer: 0.35 },
+      { kind: 'path', d: 'M 268 126 L 306 156', accent: true, weight: 1.8, zLayer: 0.3 },
+      { kind: 'fillCircle', cx: 310, cy: 96, r: 6.5, accent: true, weight: 1.8, zLayer: 0.4 },
+      { kind: 'fillCircle', cx: 324, cy: 126, r: 7.5, accent: true, weight: 2.2, zLayer: 0.45 },
+      { kind: 'fillCircle', cx: 306, cy: 156, r: 6.5, accent: true, weight: 1.8, zLayer: 0.4 },
+    ],
+  },
+
+  'app-parak-task-manager': {
+    // 03 · Parak Task Manager: Kanban 3-column OS, active card drag handle & status pills
+    viewW: 380,
+    viewH: 260,
+    primitives: [
+      // Main OS Window Board Frame
+      { kind: 'path', d: roundedRectD(44, 34, 292, 192, 14), accent: false, weight: 2.2, zLayer: -0.1 },
+      // Header dividing rule & search/filter pill
+      { kind: 'path', d: 'M 44 64 H 336', accent: false, weight: 1.3, zLayer: 0.0 },
+      { kind: 'path', d: roundedRectD(58, 44, 46, 12, 6), accent: false, weight: 1.2, zLayer: 0.1 },
+      { kind: 'path', d: roundedRectD(284, 44, 40, 12, 6), accent: true, weight: 1.4, zLayer: 0.15 },
+      // Column 1: Backlog / To Do
+      { kind: 'path', d: roundedRectD(58, 76, 76, 136, 8), accent: false, weight: 1.5, zLayer: 0.1 },
+      { kind: 'path', d: roundedRectD(66, 90, 60, 32, 6), accent: false, weight: 1.6, zLayer: 0.2 },
+      { kind: 'path', d: roundedRectD(66, 132, 60, 26, 6), accent: false, weight: 1.2, zLayer: 0.2 },
+      // Column 2: In Progress (Elevated Active Column)
+      { kind: 'path', d: roundedRectD(152, 68, 76, 152, 8), accent: true, weight: 2.4, zLayer: 0.3 },
+      // Active Dragging Card with Priority Pill & Gripper
+      { kind: 'path', d: roundedRectD(160, 84, 60, 48, 7), accent: true, weight: 2.4, zLayer: 0.45 },
+      { kind: 'path', d: 'M 170 96 H 210 M 170 102 H 210', accent: true, weight: 1.8, zLayer: 0.5 },
+      { kind: 'fillRect', x: 170, y: 112, w: 40, h: 8, rx: 4, accent: true, weight: 1.4, zLayer: 0.5, density: 0.7 },
+      { kind: 'path', d: roundedRectD(160, 142, 60, 30, 6), accent: false, weight: 1.4, zLayer: 0.25 },
+      // Column 3: Done (Completed with checkmark)
+      { kind: 'path', d: roundedRectD(246, 76, 76, 136, 8), accent: false, weight: 1.5, zLayer: 0.1 },
+      { kind: 'path', d: roundedRectD(254, 90, 60, 38, 6), accent: true, weight: 1.8, zLayer: 0.35 },
+      // Checkmark icon
+      { kind: 'path', d: 'M 274 108 L 280 114 L 294 100', accent: true, weight: 2.8, zLayer: 0.5 },
+      { kind: 'path', d: roundedRectD(254, 138, 60, 24, 6), accent: false, weight: 1.2, zLayer: 0.2 },
+    ],
+  },
+
+  'app-harime-mehr': {
+    // 04 · HarimeMehr: Protective community shield, anatomical caring heart, continuous ECG lifeline
+    viewW: 380,
+    viewH: 260,
+    primitives: [
+      // Outer Protective Heraldic Shield Wireframe
+      { kind: 'path', d: 'M 190 32 L 264 60 C 264 136, 230 196, 190 228 C 150 196, 116 136, 116 60 Z', accent: false, weight: 2.6, zLayer: 0.05 },
+      // Shield inner accent rim
+      { kind: 'path', d: 'M 190 46 L 250 70 C 250 132, 222 184, 190 212 C 158 184, 130 132, 130 70 Z', accent: true, weight: 1.4, zLayer: 0.15 },
+      // Caring Heart Wireframe Silhouette
+      { kind: 'path', d: 'M 190 84 C 168 60, 138 72, 138 100 C 138 128, 168 154, 190 178 C 212 154, 242 128, 242 100 C 242 72, 212 60, 190 84 Z', accent: true, weight: 2.8, zLayer: 0.35 },
+      // Full-span Continuous ECG Pulse Lifeline
+      { kind: 'path', d: 'M 54 130 H 136 L 148 106 L 158 158 L 176 76 L 194 172 L 208 116 L 218 136 L 244 130 H 326', accent: true, weight: 3.2, zLayer: 0.5 },
+      // Radiating Community Reach Arcs
+      { kind: 'path', d: 'M 88 88 A 130 130 0 0 0 88 172', accent: false, weight: 1.3, zLayer: -0.1 },
+      { kind: 'path', d: 'M 292 88 A 130 130 0 0 1 292 172', accent: false, weight: 1.3, zLayer: -0.1 },
+    ],
+  },
+
+  'app-mana-amlak': {
+    // 05 · Mana Amlak: Modern architectural villa wireframe, glass curtain pillars, floating map pin
+    viewW: 380,
+    viewH: 260,
+    primitives: [
+      // Modern Villa Cantilever Roofline
+      { kind: 'path', d: 'M 190 56 L 282 102 L 190 148 L 98 102 Z', accent: true, weight: 2.8, zLayer: 0.35 },
+      // Glass Facade Pillars & Foundation Frame
+      { kind: 'path', d: 'M 98 102 V 176 L 190 222 V 148', accent: false, weight: 2.4, zLayer: 0.2 },
+      { kind: 'path', d: 'M 282 102 V 176 L 190 222', accent: false, weight: 2.4, zLayer: 0.2 },
+      // Architectural Glass Mullions
+      { kind: 'path', d: 'M 144 125 V 199', accent: false, weight: 1.4, zLayer: 0.25 },
+      { kind: 'path', d: 'M 236 125 V 199', accent: false, weight: 1.4, zLayer: 0.25 },
+      { kind: 'path', d: 'M 98 139 L 190 185 L 282 139', accent: false, weight: 1.2, zLayer: 0.15 },
+      // Base Terrace Platform
+      { kind: 'path', d: 'M 72 188 L 190 240 L 308 188', accent: false, weight: 1.8, zLayer: -0.1 },
+      // Floating Map Coordinate Pin
+      { kind: 'path', d: 'M 190 24 C 176 24, 164 36, 164 50 C 164 70, 190 92, 190 92 C 190 92, 216 70, 216 50 C 216 36, 204 24, 190 24 Z', accent: true, weight: 2.6, zLayer: 0.55 },
+      { kind: 'fillCircle', cx: 190, cy: 48, r: 5.5, accent: true, weight: 1.8, zLayer: 0.6 },
+    ],
+  },
+
+  'app-artam-amlak': {
+    // 06 · Artam Amlak: Commercial city high-rise skyline perspective, beacon spire, agency key
+    viewW: 380,
+    viewH: 260,
+    primitives: [
+      // Left Residential Tower
+      { kind: 'path', d: roundedRectD(70, 94, 66, 126, 4), accent: false, weight: 1.8, zLayer: 0.05 },
+      { kind: 'path', d: 'M 80 118 H 126 M 80 144 H 126 M 80 170 H 126 M 80 196 H 126', accent: false, weight: 1.1, zLayer: 0.1 },
+      // Center Tower: Modern Commercial Skyscraper with Spire
+      { kind: 'path', d: roundedRectD(148, 52, 84, 168, 6), accent: true, weight: 2.6, zLayer: 0.3 },
+      { kind: 'path', d: 'M 190 16 V 52', accent: true, weight: 2.6, zLayer: 0.4 },
+      { kind: 'fillCircle', cx: 190, cy: 14, r: 4.5, accent: true, weight: 2.2, zLayer: 0.45 },
+      { kind: 'path', d: 'M 190 52 V 220', accent: true, weight: 2.0, zLayer: 0.38 },
+      { kind: 'path', d: 'M 158 90 H 222 M 158 128 H 222 M 158 166 H 222', accent: false, weight: 1.3, zLayer: 0.25 },
+      // Right Commercial Tower
+      { kind: 'path', d: roundedRectD(244, 110, 66, 110, 4), accent: false, weight: 1.8, zLayer: 0.05 },
+      { kind: 'path', d: 'M 254 136 H 300 M 254 164 H 300 M 254 192 H 300', accent: false, weight: 1.1, zLayer: 0.1 },
+      // Plaza Base Line
+      { kind: 'path', d: 'M 44 220 H 336', accent: false, weight: 2.2, zLayer: -0.1 },
+      // Real Estate Ownership Key Emblem
+      { kind: 'path', d: 'M 306 48 A 13 13 0 1 0 306 74 A 13 13 0 1 0 306 48', accent: true, weight: 2.2, zLayer: 0.45 },
+      { kind: 'path', d: 'M 306 74 V 104 M 306 90 H 318 M 306 100 H 316', accent: true, weight: 2.2, zLayer: 0.45 },
+    ],
+  },
+
+  'app-dimplomat-amlak': {
+    // 07 · Dimplomat Amlak: Classical luxury portico, Ionic fluted columns, prestige star crest
+    viewW: 380,
+    viewH: 260,
+    primitives: [
+      // Classical Triangular Pediment
+      { kind: 'path', d: 'M 82 78 L 190 32 L 298 78 Z', accent: true, weight: 2.8, zLayer: 0.35 },
+      // Prestige Medallion Star in Tympanum
+      { kind: 'path', d: 'M 190 44 L 194 54 L 204 56 L 196 63 L 198 73 L 190 67 L 182 73 L 184 63 L 176 56 L 186 54 Z', accent: true, weight: 2.0, zLayer: 0.5 },
+      // Architrave / Entablature Beam
+      { kind: 'path', d: roundedRectD(72, 78, 236, 15, 3), accent: false, weight: 2.2, zLayer: 0.2 },
+      // 4 Grand Fluted Columns
+      { kind: 'path', d: 'M 98 93 V 196 M 110 93 V 196', accent: false, weight: 2.0, zLayer: 0.15 },
+      { kind: 'path', d: 'M 152 93 V 196 M 164 93 V 196', accent: true, weight: 2.4, zLayer: 0.3 },
+      { kind: 'path', d: 'M 216 93 V 196 M 228 93 V 196', accent: true, weight: 2.4, zLayer: 0.3 },
+      { kind: 'path', d: 'M 270 93 V 196 M 282 93 V 196', accent: false, weight: 2.0, zLayer: 0.15 },
+      // Column capitals
+      { kind: 'path', d: 'M 92 93 H 116 M 146 93 H 170 M 210 93 H 234 M 264 93 H 288', accent: true, weight: 1.8, zLayer: 0.25 },
+      // Central Archway Grand Portal
+      { kind: 'path', d: 'M 174 196 V 138 C 174 122, 206 122, 206 138 V 196', accent: true, weight: 2.2, zLayer: 0.4 },
+      // Stepped Foundation Plinth
+      { kind: 'path', d: roundedRectD(64, 196, 252, 12, 3), accent: false, weight: 2.2, zLayer: 0.1 },
+      { kind: 'path', d: roundedRectD(50, 208, 280, 14, 3), accent: false, weight: 2.6, zLayer: 0.05 },
+    ],
+  },
+
+  'app-zara-elite': {
+    // 08 · Zara Elite: Haute-couture brilliant-cut diamond gem prism & fashion hanger silhouette
+    viewW: 380,
+    viewH: 260,
+    primitives: [
+      // Fashion Hanger Hook & Shoulder Line
+      { kind: 'path', d: 'M 190 28 C 198 28, 206 36, 202 46 C 198 54, 190 56, 190 64', accent: true, weight: 2.4, zLayer: 0.4 },
+      { kind: 'path', d: 'M 124 82 L 190 64 L 256 82', accent: true, weight: 2.2, zLayer: 0.3 },
+      // Diamond Table & Crown Bevels
+      { kind: 'path', d: 'M 132 82 H 248', accent: true, weight: 2.2, zLayer: 0.25 },
+      { kind: 'path', d: 'M 132 82 L 86 126 H 294 L 248 82', accent: false, weight: 2.6, zLayer: 0.2 },
+      // Star & Kite Facets
+      { kind: 'path', d: 'M 132 82 L 162 126 L 190 82 L 218 126 L 248 82', accent: true, weight: 1.8, zLayer: 0.35 },
+      // Diamond Pavilion Lines converging to lower culet point
+      { kind: 'path', d: 'M 86 126 L 190 224 L 294 126', accent: false, weight: 2.8, zLayer: 0.15 },
+      { kind: 'path', d: 'M 162 126 L 190 224 L 218 126', accent: true, weight: 2.4, zLayer: 0.4 },
+      // Mannequin Silhouette Aura Curves
+      { kind: 'path', d: 'M 64 140 C 56 172, 108 200, 144 232', accent: false, weight: 1.2, zLayer: -0.1 },
+      { kind: 'path', d: 'M 316 140 C 324 172, 272 200, 236 232', accent: false, weight: 1.2, zLayer: -0.1 },
+    ],
+  },
+
+  'app-noir': {
+    // 09 · NOIR Studio: Camera iris aperture blades, focus crosshair and cinematic framing
+    viewW: 380,
+    viewH: 260,
+    primitives: [
+      // Outer Camera Lens Barrel
+      { kind: 'path', d: 'M 190 42 A 86 86 0 1 0 190 214 A 86 86 0 1 0 190 42', accent: false, weight: 2.6, zLayer: 0.05 },
+      // Inner Precision Bezel
+      { kind: 'path', d: 'M 190 56 A 72 72 0 1 0 190 200 A 72 72 0 1 0 190 56', accent: false, weight: 1.6, zLayer: 0.15 },
+      // 6 Interlocking Curved Aperture Blades
+      { kind: 'path', d: 'M 124 128 C 136 154, 170 158, 182 142', accent: true, weight: 2.5, zLayer: 0.32 },
+      { kind: 'path', d: 'M 157 70 C 180 74, 196 104, 186 118', accent: true, weight: 2.5, zLayer: 0.32 },
+      { kind: 'path', d: 'M 223 70 C 234 94, 218 126, 198 126', accent: true, weight: 2.5, zLayer: 0.32 },
+      { kind: 'path', d: 'M 256 128 C 244 154, 210 158, 198 142', accent: true, weight: 2.5, zLayer: 0.32 },
+      { kind: 'path', d: 'M 223 186 C 200 182, 184 152, 194 138', accent: true, weight: 2.5, zLayer: 0.32 },
+      { kind: 'path', d: 'M 157 186 C 146 162, 162 130, 182 130', accent: true, weight: 2.5, zLayer: 0.32 },
+      // Center Hexagonal Iris Opening
+      { kind: 'path', d: 'M 182 142 L 186 118 L 198 126 L 198 142 L 194 138 Z', accent: true, weight: 2.2, zLayer: 0.45 },
+      // Studio Crosshairs & Millimeter Ticks
+      { kind: 'path', d: 'M 72 128 H 94 M 286 128 H 308', accent: true, weight: 2.2, zLayer: 0.2 },
+      { kind: 'path', d: 'M 190 24 V 46 M 190 210 V 232', accent: true, weight: 2.2, zLayer: 0.2 },
+      // Cinema Viewfinder Corner Crop Marks
+      { kind: 'path', d: 'M 54 48 H 76 M 54 48 V 70', accent: false, weight: 1.5, zLayer: -0.05 },
+      { kind: 'path', d: 'M 326 48 H 304 M 326 48 V 70', accent: false, weight: 1.5, zLayer: -0.05 },
+      { kind: 'path', d: 'M 54 208 H 76 M 54 208 V 186', accent: false, weight: 1.5, zLayer: -0.05 },
+      { kind: 'path', d: 'M 326 208 H 304 M 326 208 V 186', accent: false, weight: 1.5, zLayer: -0.05 },
+    ],
+  },
+
+  'app-sepas-clinic': {
+    // 10 · Sepas Clinic: Medical clipboard tablet, stethoscope bell & loop, vital ECG pulse wave
+    viewW: 380,
+    viewH: 260,
+    primitives: [
+      // Medical Tablet / Clipboard Outline
+      { kind: 'path', d: roundedRectD(112, 32, 156, 192, 14), accent: false, weight: 2.5, zLayer: 0.05 },
+      // Top Clip Clamp Mechanism
+      { kind: 'path', d: roundedRectD(158, 22, 64, 20, 6), accent: true, weight: 2.2, zLayer: 0.28 },
+      { kind: 'fillCircle', cx: 190, cy: 32, r: 3.5, accent: true, weight: 1.4, zLayer: 0.35 },
+      // Medical Cross Relief on Clipboard
+      { kind: 'path', d: roundedRectD(176, 68, 28, 9, 3), accent: true, weight: 2.2, zLayer: 0.35 },
+      { kind: 'path', d: roundedRectD(185.5, 58.5, 9, 28, 3), accent: true, weight: 2.2, zLayer: 0.35 },
+      // Patient Vital Sign Live Pulse Stream
+      { kind: 'path', d: 'M 126 138 H 152 L 162 122 L 172 160 L 188 98 L 204 168 L 214 126 L 224 144 L 254 138', accent: true, weight: 3.0, zLayer: 0.5 },
+      // Stethoscope Chest Piece Bell (Left)
+      { kind: 'fillCircle', cx: 72, cy: 154, r: 17, accent: true, weight: 2.4, zLayer: 0.45 },
+      { kind: 'fillCircle', cx: 72, cy: 154, r: 8, accent: false, weight: 1.4, zLayer: 0.5 },
+      // Stethoscope Flexible Binaural Tube
+      { kind: 'path', d: 'M 72 137 C 72 82, 126 82, 130 114 C 136 156, 88 188, 114 214 C 136 230, 182 230, 246 210', accent: true, weight: 2.8, zLayer: 0.38 },
+      // Structured EHR Data Entries
+      { kind: 'path', d: roundedRectD(134, 174, 68, 6, 3), accent: false, weight: 1.2, zLayer: 0.15 },
+      { kind: 'path', d: roundedRectD(134, 188, 48, 6, 3), accent: false, weight: 1.0, zLayer: 0.15 },
+    ],
+  },
 };
 
+/**
+ * 3. WHAT I DO / SVG WIREFRAME SAMPLER — Story Tab Chapter 02 (uiPlane) Methodology!
+ *    - Converts all primitives into clean architectural vector stroke paths (no dense clumpy solid fills!)
+ *    - Points distributed strictly proportional to geometric arc length (len * weight) -> uniform dot density!
+ *    - Uniform arc-length sampling with sub-pixel jitter (<= 0.8px in 380x260 frame) -> countable, razor-sharp lines
+ *    - 88% structure wireframes + 12% ambient stardust dust
+ *    - Subtle Z-depth parallax without radial tube blur
+ */
 export function sampleSvgNormalized(
   svgKey: string,
   count: number,
@@ -960,176 +1180,172 @@ export function sampleSvgNormalized(
 ): NormalizedPoint[] {
   const { drawProgress = 1 } = options;
   const isAnimatedIntegrations = svgKey === 'integrations' && drawProgress < 0.99;
-  const cacheKey = isAnimatedIntegrations ? '' : `svgGranularV2:${svgKey}:${count}`;
+  const cacheKey = isAnimatedIntegrations ? '' : `svgStoryWireframeV1:${svgKey}:${count}`;
 
   if (cacheKey) {
     const cached = sampleCache.get(cacheKey);
     if (cached) return cached;
   }
 
-  const rand = mulberry32(hashKey(`svgGranularV2:${svgKey}:${count}`));
-
-  // CRM & ERP uses direct 3D isometric line-segment tube sampling for crisp plate separation
-  if (svgKey === 'crm') {
-    const crmPts = sampleIsometricCrmNormalized(count, rand);
-    if (cacheKey) cacheSample(cacheKey, crmPts);
-    return crmPts;
-  }
-
+  const rand = mulberry32(hashKey(`svgStoryWireframeV1:${svgKey}:${count}`));
   const spec = SVG_DIAGRAMS[svgKey] ?? SVG_DIAGRAMS.integrations;
   const result: NormalizedPoint[] = [];
 
   if (typeof document === 'undefined') return result;
 
-  const cfg = WHAT_I_DO_PARTICLE_CONFIG;
-  const baseRadiusUnits = cfg.tubeRadiusFrac * spec.viewW; // ~0.9% of shape width
-  const interiorDustBudget = Math.floor(count * cfg.interiorDustMaxFrac);
-  const structBudget = count - interiorDustBudget;
-  const totalWeight = spec.primitives.reduce((acc, p) => acc + (p.weight ?? 1), 0);
+  // 1. Convert all primitives into clean architectural vector stroke paths (no solid blocks!)
+  interface StrokeSpec {
+    d: string;
+    weight: number;
+    accent: boolean;
+    zLayer: number;
+    isRay?: boolean;
+    rayIndex?: number;
+  }
 
-  spec.primitives.forEach((prim, primIndex) => {
-    const share = Math.max(
-      24,
-      Math.round((structBudget * (prim.weight ?? 1)) / totalWeight)
-    );
-    const baseZ = prim.zLayer ?? 0;
+  const strokes: StrokeSpec[] = [];
+  for (const prim of spec.primitives) {
+    const zLayer = prim.zLayer ?? 0;
+    const accent = Boolean(prim.accent);
+    const weight = prim.weight ?? 1.0;
 
-    if (prim.kind === 'fillRect') {
+    if (prim.kind === 'path') {
+      strokes.push({
+        d: prim.d,
+        weight,
+        accent,
+        zLayer,
+        isRay: prim.isRay,
+        rayIndex: prim.rayIndex,
+      });
+    } else if (prim.kind === 'fillRect') {
       const rx = prim.rx ?? Math.min(prim.w, prim.h) * 0.25;
-      const effDensity = prim.density ?? cfg.accentFillDensity;
-      // Stippled dense interior fill (60% hatch for accent blocks, ~92% for small ink text bars)
-      const jitterR = baseRadiusUnits * 0.28;
-      let produced = 0;
-      let attempts = 0;
-      const maxAttempts = share * 5;
-      while (produced < share && attempts < maxAttempts && result.length < structBudget) {
-        attempts++;
-        const lx = rand() * prim.w;
-        const ly = rand() * prim.h;
-        // Rounded corner rejection
-        let inside = true;
-        if (rx > 0.5) {
-          const cx = lx < rx ? rx : lx > prim.w - rx ? prim.w - rx : lx;
-          const cy = ly < rx ? rx : ly > prim.h - rx ? prim.h - rx : ly;
-          if ((lx - cx) * (lx - cx) + (ly - cy) * (ly - cy) > rx * rx) inside = false;
-        }
-        if (!inside) continue;
-        // Slight organic granular hatch pattern for ~60% accent blocks
-        if (effDensity < 0.75) {
-          const hatchWave = Math.sin((lx + ly) * 0.85) * 0.5 + 0.5;
-          if (rand() > effDensity * (0.72 + hatchWave * 0.56)) continue;
-        }
-        const px = prim.x + lx + (rand() - 0.5) * jitterR;
-        const py = prim.y + ly + (rand() - 0.5) * jitterR;
-        result.push({
-          u: Math.max(0.01, Math.min(0.99, px / spec.viewW)),
-          v: Math.max(0.01, Math.min(0.99, py / spec.viewH)),
-          z: baseZ + (rand() - 0.5) * 0.08,
-          accent: prim.accent ? 1 : 0,
-          order: lx / Math.max(1, prim.w),
-          dust: 0,
-        });
-        produced++;
-      }
-      return;
-    }
-
-    if (prim.kind === 'fillCircle') {
-      for (let i = 0; i < share && result.length < structBudget; i++) {
-        const ang = rand() * Math.PI * 2;
-        const rad = prim.r * Math.sqrt(rand()) + (rand() - 0.5) * baseRadiusUnits * 0.25;
-        const px = prim.cx + Math.cos(ang) * rad;
-        const py = prim.cy + Math.sin(ang) * rad;
-        result.push({
-          u: Math.max(0.01, Math.min(0.99, px / spec.viewW)),
-          v: Math.max(0.01, Math.min(0.99, py / spec.viewH)),
-          z: baseZ + (rand() - 0.5) * 0.1,
-          accent: prim.accent ? 1 : 0,
-          order: rad / Math.max(1, prim.r),
-          dust: 0,
+      // Outer rounded rect wireframe contour
+      strokes.push({
+        d: roundedRectD(prim.x, prim.y, prim.w, prim.h, rx),
+        weight,
+        accent,
+        zLayer,
+      });
+      // For wider accent interactive pills, add a crisp inner rule (matches Story uiPlane hero CTA button)
+      if (accent && prim.w >= 28 && prim.h >= 14) {
+        const inset = Math.max(4, rx);
+        strokes.push({
+          d: `M ${prim.x + inset} ${prim.y + prim.h * 0.5} H ${prim.x + prim.w - inset}`,
+          weight: Math.max(0.7, weight * 0.65),
+          accent: true,
+          zLayer: zLayer + 0.02,
         });
       }
-      return;
+    } else if (prim.kind === 'fillCircle') {
+      // Crisp perimeter circular stroke
+      const circleD = `M ${prim.cx - prim.r} ${prim.cy} A ${prim.r} ${prim.r} 0 1 0 ${prim.cx + prim.r} ${prim.cy} A ${prim.r} ${prim.r} 0 1 0 ${prim.cx - prim.r} ${prim.cy}`;
+      strokes.push({
+        d: circleD,
+        weight,
+        accent,
+        zLayer,
+      });
+      // Concentric inner ring for larger focal cores (e.g. victory badge, central neural core)
+      if (prim.r >= 9) {
+        const rInner = prim.r * 0.52;
+        const innerCircleD = `M ${prim.cx - rInner} ${prim.cy} A ${rInner} ${rInner} 0 1 0 ${prim.cx + rInner} ${prim.cy} A ${rInner} ${rInner} 0 1 0 ${prim.cx - rInner} ${prim.cy}`;
+        strokes.push({
+          d: innerCircleD,
+          weight: Math.max(0.7, weight * 0.7),
+          accent,
+          zLayer: zLayer + 0.03,
+        });
+      }
     }
+  }
 
-    // Thick granular particle tube along pre-sampled SVG polyline LUT (~500x faster, zero main-thread freeze!)
-    const { lut, segs, totalLen } = getSvgPathPolyline(prim.d);
-    const tubeR = baseRadiusUnits * (prim.radiusScale ?? 1.0);
+  // 2. Budget: 88% uniform wireframe structure + 12% ambient dust (exact Story Chapter 02 proportion)
+  const structBudget = Math.floor(count * 0.88);
+
+  interface MeasuredStroke {
+    d: string;
+    lut: Float32Array;
+    segs: number;
+    totalLen: number;
+    weightedLen: number;
+    accent: boolean;
+    zLayer: number;
+    isRay?: boolean;
+    rayIndex?: number;
+  }
+
+  const measured: MeasuredStroke[] = [];
+  let totalWeightedLen = 0;
+
+  for (const s of strokes) {
+    const { lut, segs, totalLen } = getSvgPathPolyline(s.d);
+    if (totalLen <= 0.01) continue;
+    const weightedLen = totalLen * Math.max(0.2, s.weight);
+    totalWeightedLen += weightedLen;
+    measured.push({
+      ...s,
+      lut,
+      segs,
+      totalLen,
+      weightedLen,
+    });
+  }
+
+  if (totalWeightedLen <= 0 || measured.length === 0) return result;
+
+  // 3. Uniform arc-length proportional point distribution (exact Story Chapter 02 formula)
+  let allocated = 0;
+  for (let s = 0; s < measured.length; s++) {
+    const item = measured[s];
+    const countForStroke =
+      s === measured.length - 1
+        ? Math.max(0, structBudget - allocated)
+        : Math.max(1, Math.round((item.weightedLen / totalWeightedLen) * structBudget));
+    allocated += countForStroke;
 
     let maxRatio = 1;
-    if (svgKey === 'integrations' && primIndex >= 9) {
-      const rayIdx = primIndex - 9;
-      const rayStart = rayIdx * 0.14;
+    if (svgKey === 'integrations' && item.isRay && drawProgress < 0.99) {
+      const rayIdx = item.rayIndex ?? 0;
+      const rayStart = rayIdx * 0.12;
       const rayEnd = rayStart + 0.28;
       maxRatio = Math.max(0.04, Math.min(1, (drawProgress - rayStart) / (rayEnd - rayStart)));
     }
 
-    for (let i = 0; i < share && result.length < structBudget; i++) {
-      const baseT = (i / Math.max(1, share - 1)) * maxRatio;
-      // 8% along-path jitter
-      const alongJitter = ((rand() - 0.5) * 2 * cfg.alongJitterFrac * tubeR) / totalLen;
-      const clampedT = Math.max(0, Math.min(1, baseT + alongJitter));
+    for (let k = 0; k < countForStroke; k++) {
+      // Uniform spacing along exact stroke arc length + tiny sub-pixel jitter (< 0.8px)
+      const uFrac = (k + 0.5 + (rand() - 0.5) * 0.40) / Math.max(1, countForStroke);
+      const clampedT = Math.max(0, Math.min(1, uFrac * maxRatio));
 
-      // O(1) linear interpolation on cached LUT (zero DOM calls!)
-      const fIdx = clampedT * segs;
-      const idx0 = Math.min(segs, fIdx | 0);
-      const idx1 = Math.min(segs, idx0 + 1);
+      // Fast O(1) linear interpolation on pre-computed arc-length LUT
+      const fIdx = clampedT * item.segs;
+      const idx0 = Math.min(item.segs, fIdx | 0);
+      const idx1 = Math.min(item.segs, idx0 + 1);
       const frac = fIdx - idx0;
       const o0 = idx0 * 4;
       const o1 = idx1 * 4;
 
-      const ptx = lut[o0] + (lut[o1] - lut[o0]) * frac;
-      const pty = lut[o0 + 1] + (lut[o1 + 1] - lut[o0 + 1]) * frac;
-      let tx = lut[o0 + 2] + (lut[o1 + 2] - lut[o0 + 2]) * frac;
-      let ty = lut[o0 + 3] + (lut[o1 + 3] - lut[o0 + 3]) * frac;
-      const tLen = Math.hypot(tx, ty);
-      if (tLen > 1e-4) {
-        tx /= tLen;
-        ty /= tLen;
-      } else {
-        tx = 1;
-        ty = 0;
-      }
-      // Unit perpendicular normal
-      const nx = -ty;
-      const ny = tx;
+      const px = item.lut[o0] + (item.lut[o1] - item.lut[o0]) * frac;
+      const py = item.lut[o0 + 1] + (item.lut[o1 + 1] - item.lut[o0 + 1]) * frac;
 
-      const isStray = rand() < cfg.outerStrayFrac;
-      let perpOff = 0;
-      let alongOff = 0;
-      let zOff = 0;
-      if (isStray) {
-        // 3..5% outer granular sparks hugging the tube edge
-        const ang = rand() * Math.PI * 2;
-        const rad = tubeR * (1.25 + rand() * 1.45);
-        perpOff = Math.cos(ang) * rad;
-        alongOff = Math.sin(ang) * rad * 0.6;
-        zOff = (rand() - 0.5) * 0.12;
-      } else {
-        // Circular cross-section distribution: r = R * sqrt(rand)
-        const r = tubeR * Math.sqrt(rand());
-        const theta = rand() * Math.PI * 2;
-        // 15% perpendicular roughness + 8% along-path roughness
-        const perpRough = (rand() - 0.5) * 2 * cfg.perpJitterFrac * tubeR;
-        const alongRough = (rand() - 0.5) * 2 * cfg.alongJitterFrac * tubeR;
-        perpOff = Math.cos(theta) * r + perpRough;
-        alongOff = alongRough;
-        zOff = ((Math.sin(theta) * r) / spec.viewW) * 1.8;
-      }
-
-      const fx = ptx + nx * perpOff + tx * alongOff;
-      const fy = pty + ny * perpOff + ty * alongOff;
+      // Exact sub-pixel jitter: <= 0.0022 of viewBox (< 0.8px in 380x260 frame)
+      const jitterU = (rand() - 0.5) * 0.0022;
+      const jitterV = (rand() - 0.5) * 0.0022;
+      const u = Math.max(0.01, Math.min(0.99, px / spec.viewW + jitterU));
+      const v = Math.max(0.01, Math.min(0.99, py / spec.viewH + jitterV));
+      // Subtle Z-depth parallax without blurring
+      const z = item.zLayer * 0.35 + (rand() - 0.5) * 0.015;
 
       result.push({
-        u: Math.max(0.01, Math.min(0.99, fx / spec.viewW)),
-        v: Math.max(0.01, Math.min(0.99, fy / spec.viewH)),
-        z: baseZ + zOff,
-        accent: prim.accent ? 1 : 0,
-        order: baseT,
-        dust: isStray ? 0.32 : 0,
+        u,
+        v,
+        z,
+        accent: item.accent ? 1 : 0,
+        order: clampedT,
+        dust: 0,
       });
     }
-  });
+  }
 
   // Pad structure if rounding fell slightly short
   while (result.length < structBudget && result.length > 0) {
@@ -1137,15 +1353,15 @@ export function sampleSvgNormalized(
     result.push({ ...src });
   }
 
-  // <= 4.5% sparse interior/surround dust (interiors stay cleanly hollow!)
+  // 4. Subtle ambient dust (airy stardust keeping whole frame alive like Story uiPlane)
   while (result.length < count) {
     const angle = rand() * Math.PI * 2;
-    const rad = Math.sqrt(rand()) * 0.44;
+    const rad = Math.sqrt(rand()) * 0.46;
     result.push({
-      u: Math.max(0.03, Math.min(0.97, 0.5 + Math.cos(angle) * rad)),
-      v: Math.max(0.03, Math.min(0.97, 0.5 + Math.sin(angle) * rad * 0.85)),
-      z: (rand() - 0.5) * 0.8,
-      accent: rand() < 0.12 ? 0.55 : 0,
+      u: Math.max(0.02, Math.min(0.98, 0.5 + Math.cos(angle) * rad)),
+      v: Math.max(0.02, Math.min(0.98, 0.5 + Math.sin(angle) * rad * 0.7)),
+      z: (rand() - 0.5) * 0.3,
+      accent: rand() < 0.1 ? 0.5 : 0,
       order: rand(),
       dust: 1,
     });
@@ -1845,7 +2061,7 @@ export async function sampleStripWordNormalized(
   options: { repeatCount?: number; separator?: string; isRtl?: boolean } = {}
 ): Promise<NormalizedPoint[]> {
   const { repeatCount = 3, separator = '—', isRtl = false } = options;
-  const cacheKey = `strip2k:${word}:${repeatCount}:${separator}:${count}:${isRtl}`;
+  const cacheKey = `strip3k:${word}:${repeatCount}:${separator}:${count}:${isRtl}`;
   const cached = sampleCache.get(cacheKey);
   if (cached) return cached;
 
@@ -1857,10 +2073,10 @@ export async function sampleStripWordNormalized(
     }
   }
 
-  // Sample ONE crisp tile at 1024×380, then replicate cleanly across `repeatCount` tiles
+  // Sample ONE crisp tile at 1024×280, then replicate cleanly across `repeatCount` tiles
   // so every tile is pixel-identical and modulo wrapping has ZERO seam!
   const tileW = 1024;
-  const tileH = 380;
+  const tileH = 280;
   let ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null = null;
   if (typeof OffscreenCanvas !== 'undefined') {
     const off = new OffscreenCanvas(tileW, tileH);
@@ -1888,7 +2104,7 @@ export async function sampleStripWordNormalized(
     : '"Inter Tight", "Vazirmatn", sans-serif';
 
   // Measure word to fit cleanly inside left 76% of the tile, leaving 24% for the separator dash
-  let fontSize = 248;
+  let fontSize = 236;
   ctx.font = `900 ${fontSize}px ${fontFamily}`;
   const wordW = ctx.measureText(word).width;
   if (wordW > tileW * 0.72) {
@@ -1898,12 +2114,12 @@ export async function sampleStripWordNormalized(
 
   ctx.fillStyle = '#000000';
   ctx.textAlign = 'center';
-  ctx.fillText(word, tileW * 0.4, tileH * 0.52);
+  ctx.fillText(word, tileW * 0.4, tileH * 0.5);
 
   // Draw architectural separator dash (marked in right 20% of tile for indigo accent)
   const dashX0 = tileW * 0.81;
   const dashX1 = tileW * 0.93;
-  ctx.fillRect(dashX0, tileH * 0.5 - 11, dashX1 - dashX0, 22);
+  ctx.fillRect(dashX0, tileH * 0.5 - 12, dashX1 - dashX0, 24);
 
   const imgData = ctx.getImageData(0, 0, tileW, tileH).data;
   const edgePts: number[] = [];

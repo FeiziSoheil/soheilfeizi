@@ -348,7 +348,7 @@ function resolveActiveMajorSlot(
 
   if (section === 'whatido') {
     const count = t.whatido.tabs.length;
-    const idx = Math.min(count - 1, Math.max(0, Math.floor(p * count)));
+    const idx = Math.min(count - 1, Math.max(0, Math.floor(p * count + 0.18)));
     const tab = t.whatido.tabs[idx];
     return {
       key: `whatido:${tab.id}`,

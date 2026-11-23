@@ -2,9 +2,11 @@
 
 import React, { useEffect, useRef } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import gsap from 'gsap';
 import { ArrowDown, ArrowUpRight } from 'lucide-react';
 import type { Locale } from '@/lib/content';
+import { HERO_PORTRAIT_CONFIG } from '@/lib/site.config';
 import {
   STORY_CHAPTERS,
   STORY_UI_COPY,
@@ -133,6 +135,38 @@ export default function StoryText({
           >
             {copy.body}
           </p>
+
+          {/* Chapter 09: Author portrait badge featuring Soheil's photo */}
+          {chapter.id === 'portrait' && (
+            <div
+              data-story-fade
+              className="mt-4 sm:mt-6 flex items-center gap-3.5 sm:gap-4 rounded-2xl border border-[#ECEAE6]/12 bg-[#ECEAE6]/[0.05] p-2.5 sm:p-3 backdrop-blur-md max-w-md"
+            >
+              <div className="relative h-14 w-14 sm:h-16 sm:w-16 shrink-0 overflow-hidden rounded-xl border border-[#5B5BF0]/40 bg-[#0E0E14]">
+                <Image
+                  src={HERO_PORTRAIT_CONFIG.cutoutSrc}
+                  alt={locale === 'fa' ? 'سهیل فیضی' : 'Soheil Feizi'}
+                  fill
+                  sizes="64px"
+                  className="object-cover object-top"
+                  priority
+                />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-sm sm:text-base text-[#ECEBE7] truncate">
+                    {locale === 'fa' ? 'سهیل فیضی' : 'Soheil Feizi'}
+                  </span>
+                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#10B981] animate-pulse" />
+                </div>
+                <p className="font-mono text-[11px] sm:text-xs text-[#ECEBE7]/60 truncate mt-0.5">
+                  {locale === 'fa'
+                    ? 'مهندس نرم‌افزار و هوش مصنوعی'
+                    : 'Full-Stack & AI Engineer'}
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Intro scroll cue */}
           {copy.note && (

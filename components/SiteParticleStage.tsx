@@ -554,7 +554,8 @@ function resolveActiveSiteSlot(
   section: SectionId,
   p: number,
   locale: Locale,
-  heroPortraitHovered: boolean
+  heroPortraitHovered: boolean,
+  appsActiveIndex?: number
 ): ResolvedSlot {
   const t = CONTENT[locale];
   const isRtl = locale === 'fa';
@@ -616,7 +617,7 @@ function resolveActiveSiteSlot(
 
   if (section === 'whatido') {
     const count = t.whatido.tabs.length;
-    const idx = Math.min(count - 1, Math.max(0, Math.floor(p * count)));
+    const idx = Math.min(count - 1, Math.max(0, Math.floor(p * count + 0.18)));
     const tab = t.whatido.tabs[idx];
     return {
       key: `whatido:${tab.id}`,
@@ -647,8 +648,7 @@ function resolveActiveSiteSlot(
   }
 
   if (section === 'statement') {
-    // 3 phases: enter (0..0.20), crisp hold (0.20..0.76 -> >= 56%), edge-outward evaporation (0.76..1.0)
-    const evap = p > 0.76 ? Math.min(1, (p - 0.76) / 0.21) : 0;
+    // Statement holds cleanly until White Hole singularity swallows/morphs it into Quote Marks
     return {
       key: `statement:${locale}`,
       spec: {
@@ -658,7 +658,7 @@ function resolveActiveSiteSlot(
         align: 'center',
       },
       opacity: 1,
-      evaporate: evap,
+      evaporate: 0,
       isStrip: false,
     };
   }
@@ -689,6 +689,27 @@ function resolveActiveSiteSlot(
       opacity: 1,
       evaporate: 0,
       isStrip: true,
+    };
+  }
+
+  if (section === 'apps') {
+    const items = t.apps.items;
+    const count = items.length;
+    const idx =
+      typeof appsActiveIndex === 'number' && appsActiveIndex >= 0 && appsActiveIndex < count
+        ? appsActiveIndex
+        : Math.min(count - 1, Math.max(0, Math.floor(Math.max(0, Math.min(0.9999, p)) * count)));
+    const app = items[idx] ?? items[0];
+    return {
+      key: `app-emblem:${app.id}`,
+      spec: {
+        id: 'app-emblem',
+        descriptor: `svg:app-${app.id}`,
+        drawProgress: 1,
+      },
+      opacity: 1,
+      evaporate: 0,
+      isStrip: false,
     };
   }
 
@@ -937,6 +958,7 @@ export default function SiteParticleStage({
         ? SITE_PARTICLE_CONFIG.mobileCount
         : SITE_PARTICLE_CONFIG.desktopCount;
     const trophyCount = isSoftwareGl ? 6500 : isMobile ? 7500 : 16500;
+    const diagramCount = isSoftwareGl ? 12000 : isMobile ? 14000 : 22000;
 
     const cloudBuffer = createOpenCloudBuffer(morphCount);
     const posFromArr = new Float32Array(cloudBuffer.positions);
@@ -1226,7 +1248,7 @@ export default function SiteParticleStage({
     const setCachedBuffer = (key: string, buf: StoryTargetBuffer) => {
       if (bufferCache.has(key)) {
         bufferCache.delete(key);
-      } else if (bufferCache.size >= 14) {
+      } else if (bufferCache.size >= 48) {
         const oldest = bufferCache.keys().next().value;
         if (oldest !== undefined) bufferCache.delete(oldest);
       }
@@ -1310,59 +1332,190 @@ export default function SiteParticleStage({
       morphElapsedSec = 0;
     };
 
-    // Lazy background pre-warmer for the next adjacent diagram/emblem (0ms scroll transitions)
+    // Lazy background pre-warmer for smooth 0ms scroll transitions
     let prewarmTimer = 0;
-    const schedulePrewarmNext = (resolvedKey: string, localeNow: Locale) => {
-      window.clearTimeout(prewarmTimer);
-      let nextKey: string | null = null;
-      let nextSpec: LocalSlotSpec | null = null;
-      let nextCount: number = nonHeroCount;
+    const prewarmQueue: Array<{
+      key: string;
+      spec: LocalSlotSpec;
+      count: number;
+      w: number;
+      h: number;
+    }> = [];
+    let isProcessingPrewarm = false;
+
+    const processPrewarmQueue = () => {
+      if (disposed || isProcessingPrewarm || prewarmQueue.length === 0) return;
+      const item = prewarmQueue.shift();
+      if (!item) return;
+
+      if (bufferCache.has(item.key)) {
+        if (prewarmQueue.length > 0) {
+          prewarmTimer = window.setTimeout(processPrewarmQueue, 16);
+        }
+        return;
+      }
+
+      isProcessingPrewarm = true;
+      void particleRegistry
+        .buildStoryTargetBuffer(item.spec, item.count, item.w, item.h)
+        .then((buf) => {
+          isProcessingPrewarm = false;
+          if (!buf || disposed) return;
+          setCachedBuffer(item.key, padTargetBuffer(buf, morphCount));
+          if (prewarmQueue.length > 0) {
+            prewarmTimer = window.setTimeout(processPrewarmQueue, 24);
+          }
+        })
+        .catch(() => {
+          isProcessingPrewarm = false;
+          if (prewarmQueue.length > 0) {
+            prewarmTimer = window.setTimeout(processPrewarmQueue, 24);
+          }
+        });
+    };
+
+    const enqueuePrewarm = (
+      key: string,
+      spec: LocalSlotSpec,
+      count: number,
+      w: number,
+      h: number,
+      highPriority = false
+    ) => {
+      if (bufferCache.has(key)) return;
+      if (prewarmQueue.some((q) => q.key === key)) return;
+      if (highPriority) {
+        prewarmQueue.unshift({ key, spec, count, w, h });
+      } else {
+        prewarmQueue.push({ key, spec, count, w, h });
+      }
+      if (!isProcessingPrewarm) {
+        window.clearTimeout(prewarmTimer);
+        prewarmTimer = window.setTimeout(processPrewarmQueue, 24);
+      }
+    };
+
+    const schedulePrewarmPipeline = (localeNow: Locale) => {
       const isMobileNow = width < 768;
-      let nextW = isMobileNow ? Math.min(width * 0.65, 220) : 460;
-      let nextH = isMobileNow ? Math.min(height * 0.24, 170) : 420;
+      const diagramW = isMobileNow ? Math.min(width * 0.94, 380) : 460;
+      const diagramH = isMobileNow ? Math.min(height * 0.45, 380) : 420;
+      const trophyW = isMobileNow ? 96 : 132;
+      const trophyH = isMobileNow ? 96 : 132;
+
+      // 1. Trophy (About section)
+      enqueuePrewarm(
+        'about-trophy',
+        { id: 'about-trophy', descriptor: 'svg:trophy' },
+        trophyCount,
+        trophyW,
+        trophyH
+      );
+
+      // 2. All What I Do tabs (crm, frontend, integrations, architecture, performance, design)
+      //    Prioritized immediately after Hero so 02 What I Do NEVER hitches on first scroll!
+      const tabs = CONTENT[localeNow].whatido.tabs;
+      for (const tab of tabs) {
+        enqueuePrewarm(
+          `whatido:${tab.id}`,
+          { id: 'whatido-diagram', descriptor: `svg:${tab.id}`, drawProgress: 1 },
+          diagramCount,
+          diagramW,
+          diagramH
+        );
+      }
+
+      // 3. Process stages
+      for (let sIdx = 0; sIdx < 6; sIdx++) {
+        enqueuePrewarm(
+          `process:${sIdx}`,
+          { id: 'process-stage', descriptor: `process:${sIdx}` },
+          diagramCount,
+          diagramW,
+          diagramH
+        );
+      }
+    };
+
+    const schedulePrewarmNext = (resolvedKey: string, localeNow: Locale) => {
+      const isMobileNow = width < 768;
+      const nextW = isMobileNow ? Math.min(width * 0.94, 380) : 460;
+      const nextH = isMobileNow ? Math.min(height * 0.45, 380) : 420;
+
       if (resolvedKey === 'hero-portrait') {
-        nextKey = 'about-trophy';
-        nextSpec = { id: 'about-trophy', descriptor: 'svg:trophy' };
-        nextCount = trophyCount;
-        nextW = isMobileNow ? 96 : 132;
-        nextH = isMobileNow ? 96 : 132;
-      } else if (resolvedKey === 'about-trophy') {
+        schedulePrewarmPipeline(localeNow);
+        return;
+      }
+
+      if (resolvedKey === 'about-trophy') {
         const firstTab = CONTENT[localeNow].whatido.tabs[0];
         if (firstTab) {
-          nextKey = `whatido:${firstTab.id}`;
-          nextSpec = { id: 'whatido-diagram', descriptor: `svg:${firstTab.id}`, drawProgress: 1 };
+          enqueuePrewarm(
+            `whatido:${firstTab.id}`,
+            { id: 'whatido-diagram', descriptor: `svg:${firstTab.id}`, drawProgress: 1 },
+            diagramCount,
+            nextW,
+            nextH,
+            true
+          );
         }
-      } else if (resolvedKey.startsWith('whatido:')) {
+        return;
+      }
+
+      if (resolvedKey.startsWith('whatido:')) {
         const tabs = CONTENT[localeNow].whatido.tabs;
         const curId = resolvedKey.slice('whatido:'.length);
         const curIdx = tabs.findIndex((tb) => tb.id === curId);
         if (curIdx >= 0 && curIdx + 1 < tabs.length) {
           const nextTab = tabs[curIdx + 1];
-          nextKey = `whatido:${nextTab.id}`;
-          nextSpec = { id: 'whatido-diagram', descriptor: `svg:${nextTab.id}`, drawProgress: 1 };
+          enqueuePrewarm(
+            `whatido:${nextTab.id}`,
+            { id: 'whatido-diagram', descriptor: `svg:${nextTab.id}`, drawProgress: 1 },
+            diagramCount,
+            nextW,
+            nextH,
+            true
+          );
+        } else if (curIdx === tabs.length - 1) {
+          enqueuePrewarm(
+            'process:0',
+            { id: 'process-stage', descriptor: 'process:0' },
+            diagramCount,
+            nextW,
+            nextH,
+            true
+          );
         }
-      } else if (resolvedKey.startsWith('process:')) {
+        return;
+      }
+
+      if (resolvedKey.startsWith('process:')) {
         const curIdx = parseInt(resolvedKey.slice('process:'.length), 10) || 0;
         if (curIdx + 1 < 6) {
-          nextKey = `process:${curIdx + 1}`;
-          nextSpec = { id: 'process-stage', descriptor: `process:${curIdx + 1}` };
+          enqueuePrewarm(
+            `process:${curIdx + 1}`,
+            { id: 'process-stage', descriptor: `process:${curIdx + 1}` },
+            diagramCount,
+            nextW,
+            nextH,
+            true
+          );
         }
+        return;
       }
-      if (!nextKey || !nextSpec || bufferCache.has(nextKey)) return;
-      const keyToWarm = nextKey;
-      const specToWarm = nextSpec;
-      const countToWarm = nextCount;
-      const warmW = nextW;
-      const warmH = nextH;
-      prewarmTimer = window.setTimeout(() => {
-        if (disposed || bufferCache.has(keyToWarm)) return;
-        void particleRegistry
-          .buildStoryTargetBuffer(specToWarm, countToWarm, warmW, warmH)
-          .then((buf) => {
-            if (!buf || disposed) return;
-            setCachedBuffer(keyToWarm, padTargetBuffer(buf, morphCount));
-          });
-      }, 90);
+
+      if (resolvedKey.startsWith('app-emblem:')) {
+        const apps = CONTENT[localeNow].apps.items;
+        apps.forEach((app) => {
+          enqueuePrewarm(
+            `app-emblem:${app.id}`,
+            { id: 'app-emblem', descriptor: `svg:app-${app.id}`, drawProgress: 1 },
+            diagramCount,
+            nextW,
+            nextH
+          );
+        });
+        return;
+      }
     };
 
     const requestSlotMorph = (resolved: ResolvedSlot, localeNow: Locale) => {
@@ -1376,11 +1529,17 @@ export default function SiteParticleStage({
 
       const isHeroPortrait = resolved.spec.descriptor === 'image:portrait';
       const isTrophySlot = resolved.key === 'about-trophy';
+      const isDiagramSlot =
+        resolved.key.startsWith('whatido:') ||
+        resolved.key.startsWith('process:') ||
+        resolved.key.startsWith('app-emblem:');
       const targetSampleCount = isHeroPortrait
         ? morphCount
         : isTrophySlot
           ? trophyCount
-          : nonHeroCount;
+          : isDiagramSlot
+            ? diagramCount
+            : nonHeroCount;
 
       const cached = bufferCache.get(resolved.key);
       if (cached) {
@@ -1399,7 +1558,7 @@ export default function SiteParticleStage({
             ? 96
             : 132
           : isMobileNow
-            ? Math.min(width * 0.65, 220)
+            ? Math.min(width * 0.94, 380)
             : 460;
       const fallbackH = isHeroPortrait
         ? isMobileNow
@@ -1410,7 +1569,7 @@ export default function SiteParticleStage({
             ? 96
             : 132
           : isMobileNow
-            ? Math.min(height * 0.24, 170)
+            ? Math.min(height * 0.45, 380)
             : 420;
       void particleRegistry
         .buildStoryTargetBuffer(spec, targetSampleCount, fallbackW, fallbackH)
@@ -1435,7 +1594,8 @@ export default function SiteParticleStage({
     };
 
     const unsubRegistry = particleRegistry.subscribe(() => {
-      bufferCache.clear();
+      // Do NOT wipe bufferCache on simple layout notifications!
+      // Element-local particle shape coordinates are independent of document scroll rects.
       layoutDirty = true;
     });
 
@@ -1500,6 +1660,8 @@ export default function SiteParticleStage({
       dustMat.uniforms.uResolution.value.set(width, height);
       ringMat.uniforms.uPixelRatio.value = nextDpr;
       bufferCache.clear();
+      prewarmQueue.length = 0;
+      schedulePrewarmPipeline(useScrollStore.getState().locale);
       layoutDirty = true;
     };
 
@@ -1550,6 +1712,15 @@ export default function SiteParticleStage({
       const dt = Math.min(clock.getDelta(), 1 / 30);
       const elapsed = clock.getElapsedTime();
       const st = useScrollStore.getState();
+
+      // Immediately yield & suspend simulation while transitioning between tabs (TabTransitionOverlay active)
+      if (st.tabTransition.active) {
+        if (!isSoftwareGl) {
+          frameId = requestAnimationFrame(tick);
+        }
+        return;
+      }
+
       const { scroll, params } = st;
 
       fpsFrames++;
@@ -1632,7 +1803,8 @@ export default function SiteParticleStage({
           st.activeSection,
           secP,
           st.locale,
-          st.heroPortraitHovered
+          st.heroPortraitHovered,
+          st.appsActiveIndex
         );
       }
       const secP = st.sectionProgress[st.activeSection] ?? 0;
@@ -1698,7 +1870,9 @@ export default function SiteParticleStage({
         ? morphCount
         : isTrophyMode
           ? trophyCount
-          : nonHeroCount;
+          : isDiagramTubeMode
+            ? diagramCount
+            : nonHeroCount;
       const targetUseShade = isHeroMode ? 1 : 0;
       const targetHeroBottom = resolved.key === 'hero-portrait' ? 1 : 0;
       const targetPointMin = isHeroMode
@@ -1725,8 +1899,8 @@ export default function SiteParticleStage({
             : 1.42
           : isDiagramTubeMode
             ? isMobile
-              ? 1.95
-              : 2.05
+              ? WHAT_I_DO_PARTICLE_CONFIG.pointSizeMobile
+              : WHAT_I_DO_PARTICLE_CONFIG.pointSizeDesktop
             : isMobile
               ? SITE_PARTICLE_CONFIG.pointSizeMobile
               : SITE_PARTICLE_CONFIG.pointSizeDesktop;
@@ -1751,10 +1925,10 @@ export default function SiteParticleStage({
         : isTrophyMode
           ? 74
           : isDiagramTubeMode
-            ? 115
+            ? 110
             : 108;
-      // ZERO artificial blue hover aura on Hero portrait
-      const targetHoverBoost = isHeroMode ? 0 : 0.42;
+      // Gentle hover boost for diagram mode so lines remain crystalline and never blow out
+      const targetHoverBoost = isHeroMode ? 0 : isDiagramTubeMode ? 0.20 : 0.42;
 
       // Determine whether cursor is actively inside Hero portrait slot for localized photo reveal
       let targetHeroReveal = 0;
@@ -1962,6 +2136,7 @@ export default function SiteParticleStage({
       cancelAnimationFrame(frameId);
       clearTimeout(frameId);
       window.clearTimeout(prewarmTimer);
+      prewarmQueue.length = 0;
       unsubRegistry();
       bufferCache.clear();
       window.removeEventListener('pointermove', onPointerMove);

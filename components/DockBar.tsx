@@ -82,6 +82,16 @@ export default function DockBar({
 
   const switchTimerRef = useRef<number | null>(null);
 
+  // Eagerly prefetch alternate routes so tab switching requires ZERO network wait
+  useEffect(() => {
+    try {
+      router.prefetch('/story?from=tab');
+      router.prefetch('/?v=site');
+    } catch {
+      // ignore
+    }
+  }, [router]);
+
   useEffect(() => {
     return () => {
       if (switchTimerRef.current !== null) {
@@ -110,7 +120,7 @@ export default function DockBar({
       } else {
         router.push('/?v=site');
       }
-    }, 260);
+    }, 280);
   };
 
   const renderDockPill = (skin: 'light' | 'dark', isMirror: boolean) => {
@@ -175,6 +185,13 @@ export default function DockBar({
               <button
                 type="button"
                 onClick={() => handleSwitchView('site')}
+                onPointerEnter={() => {
+                  try {
+                    router.prefetch('/?v=site');
+                  } catch {
+                    // ignore
+                  }
+                }}
                 aria-current={activeView === 'site' ? 'page' : undefined}
                 className={siteBtnClass}
               >
@@ -184,6 +201,13 @@ export default function DockBar({
               <button
                 type="button"
                 onClick={() => handleSwitchView('story')}
+                onPointerEnter={() => {
+                  try {
+                    router.prefetch('/story?from=tab');
+                  } catch {
+                    // ignore
+                  }
+                }}
                 aria-current={activeView === 'story' ? 'page' : undefined}
                 className={storyBtnClass}
               >

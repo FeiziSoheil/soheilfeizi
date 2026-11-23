@@ -351,29 +351,59 @@ export async function buildPortraitShape(
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
     if (ctx) {
       try {
-        ctx.drawImage(img, 0, 0, sw, sh);
+        const imgRatio = img.naturalWidth / Math.max(1, img.naturalHeight);
+        const canvasRatio = sw / sh;
+        let sx = 0;
+        let sy = 0;
+        let sWidth = img.naturalWidth;
+        let sHeight = img.naturalHeight;
+        if (imgRatio > canvasRatio) {
+          sWidth = img.naturalHeight * canvasRatio;
+          sx = (img.naturalWidth - sWidth) * 0.5;
+        } else {
+          sHeight = img.naturalWidth / canvasRatio;
+          sy = 0;
+        }
+        ctx.drawImage(img, sx, sy, sWidth, sHeight, 0, 0, sw, sh);
+
         const data = ctx.getImageData(0, 0, sw, sh).data;
         const lumGrid = new Float32Array(sw * sh);
+        const alphaGrid = new Float32Array(sw * sh);
+        let hasAlpha = false;
+
         for (let i = 0; i < sw * sh; i++) {
           const p4 = i * 4;
           const a = data[p4 + 3] / 255;
-          lumGrid[i] =
-            a > 0.5
-              ? (data[p4] * 0.299 + data[p4 + 1] * 0.587 + data[p4 + 2] * 0.114) / 255
-              : 0;
+          alphaGrid[i] = a;
+          if (a < 0.85) hasAlpha = true;
+          const rawLum =
+            (data[p4] * 0.299 + data[p4 + 1] * 0.587 + data[p4 + 2] * 0.114) / 255;
+          // In cutout mode: ensure dark hair / clothes still get counted with baseline tone
+          lumGrid[i] = a > 0.2 ? Math.max(0.12, rawLum) : 0;
         }
 
         for (let y = 1; y < sh - 1; y++) {
           for (let x = 1; x < sw - 1; x++) {
             const idxPx = y * sw + x;
-            const lum = lumGrid[idxPx];
-            if (lum < 0.08) continue;
+            const a = alphaGrid[idxPx];
+            if (hasAlpha && a < 0.2) continue;
 
-            // Elliptical vignette cleanly isolating head & shoulders
-            const ex = (x / (sw - 1) - 0.5) * 2.0;
-            const ey = (y / (sh - 1) - 0.48) * 2.0;
-            const rEll = Math.hypot(ex * 1.06, ey * 0.96);
-            const vig = Math.max(0, 1 - Math.max(0, (rEll - 0.65) / 0.36));
+            const lum = lumGrid[idxPx];
+            if (!hasAlpha && lum < 0.08) continue;
+
+            // Soft bottom fade so lower torso dissolves cleanly, or elliptical vignette if opaque
+            let vig = 1.0;
+            if (hasAlpha) {
+              vig = Math.max(
+                0,
+                1 - Math.pow(Math.max(0, (y / (sh - 1) - 0.78) / 0.22), 1.5)
+              );
+            } else {
+              const ex = (x / (sw - 1) - 0.5) * 2.0;
+              const ey = (y / (sh - 1) - 0.48) * 2.0;
+              const rEll = Math.hypot(ex * 1.06, ey * 0.96);
+              vig = Math.max(0, 1 - Math.max(0, (rEll - 0.65) / 0.36));
+            }
             if (vig <= 0.02) continue;
 
             // Crisp Sobel gradient for unmistakable facial contour & eyes/jawline sharpness
@@ -396,11 +426,11 @@ export async function buildPortraitShape(
             const px = (x / (sw - 1) - 0.5) * worldW;
             const py = (0.5 - y / (sh - 1)) * worldH;
 
-            if (edge > 0.24 && lum > 0.18) {
+            if (edge > 0.22 && lum > 0.14) {
               rimPoints.push([px, py, lum]);
             }
 
-            const prob = (Math.pow(lum, 1.1) * 0.65 + edge * 0.85) * vig;
+            const prob = (Math.pow(lum, 1.05) * 0.65 + edge * 0.85) * vig;
             if (prob > 0.14 && rand() < prob) {
               facePoints.push([px, py, lum]);
             }

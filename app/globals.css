@@ -125,8 +125,8 @@
   overflow: hidden;
 }
 
-/* Tall multi-block sections release sticky overflow on mobile/small tablets so nothing clips */
-@media (max-width: 1023px) {
+/* Tall multi-block sections release sticky overflow on mobile/small tablets or short screens so nothing clips */
+@media (max-width: 1023px), (max-height: 720px) {
   .pin-section-mobile-flow {
     height: auto !important;
     min-height: 100svh;

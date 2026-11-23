@@ -215,6 +215,7 @@ export class PortfolioDirector {
 
     for (const sec of this.sections) {
       sec.clipTarget.classList.remove('bh-layer-outer', 'bh-layer-inner', 'bh-layer-hidden');
+      sec.el.classList.remove('bh-layer-hidden');
     }
     this.sectionRoles.clear();
 
@@ -393,8 +394,11 @@ export class PortfolioDirector {
     const sec = this.sections.find((s) => s.id === id);
     if (!sec) return;
     const scrollableSpan = Math.max(0, sec.contentEnd - sec.contentStart);
-    const targetP = (stepIdx + 0.12) / Math.max(1, totalSteps);
-    this.scrollToY(sec.contentStart + scrollableSpan * targetP, { duration: 0.95 });
+    const targetP =
+      id === 'apps'
+        ? ((stepIdx + 0.42) / Math.max(1, totalSteps)) * 0.94
+        : (stepIdx + 0.12) / Math.max(1, totalSteps);
+    this.scrollToY(sec.contentStart + scrollableSpan * targetP, { duration: 0.58 });
   }
 
   private onNativeScroll = () => {
@@ -548,12 +552,14 @@ export class PortfolioDirector {
 
     const cl = sec.clipTarget.classList;
     cl.remove('bh-layer-outer', 'bh-layer-inner', 'bh-layer-hidden');
+    sec.el.classList.remove('bh-layer-hidden');
     if (nextRole === 'outer') {
       cl.add('bh-layer-outer');
     } else if (nextRole === 'inner') {
       cl.add('bh-layer-inner');
     } else if (nextRole === 'hidden') {
       cl.add('bh-layer-hidden');
+      sec.el.classList.add('bh-layer-hidden');
     }
   }
 

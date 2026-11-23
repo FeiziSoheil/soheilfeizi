@@ -44,8 +44,8 @@ import StoryText from './StoryText';
 import StoryHud from './Hud';
 import StoryGate from './Gate';
 import DockBar from '@/components/DockBar';
+import { HERO_PORTRAIT_CONFIG } from '@/lib/site.config';
 
-import portraitAsset from '@/src/assets/images/soheil_editorial_portrait_1795200948891.jpg';
 import dashboardAsset from '@/src/assets/images/work_verve_ledger_1795257247109.jpg';
 
 gsap.registerPlugin(ScrollTrigger);
@@ -74,9 +74,15 @@ export default function StoryExperience() {
   const setSoundEnabled = useScrollStore((s) => s.setSoundEnabled);
   const tabTransition = useScrollStore((s) => s.tabTransition);
 
-  const [entered, setEntered] = useState(
-    () => tabTransition.active && tabTransition.to === 'story'
-  );
+  const [entered, setEntered] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('from') === 'tab' || params.get('debug') === 'shapes') {
+        return true;
+      }
+    }
+    return tabTransition.active && tabTransition.to === 'story';
+  });
   const [loadProgress, setLoadProgress] = useState(4);
   const [isReady, setIsReady] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -966,11 +972,15 @@ export default function StoryExperience() {
           <div className="absolute inset-0 flex items-center justify-end opacity-40 px-10">
             <div className="relative h-[62vh] w-[48vw] max-w-2xl overflow-hidden rounded-[var(--radius-lg)] border border-[#ECEAE6]/12">
               <Image
-                src={activeIndex === 9 ? portraitAsset : dashboardAsset}
-                alt=""
+                src={
+                  activeIndex === 9
+                    ? HERO_PORTRAIT_CONFIG.cutoutSrc
+                    : dashboardAsset
+                }
+                alt={locale === 'fa' ? 'سهیل فیضی' : 'Soheil Feizi'}
                 fill
                 referrerPolicy="no-referrer"
-                className="object-cover grayscale contrast-125"
+                className="object-cover object-top grayscale contrast-125"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-transparent to-[#0A0A0A]/60" />
             </div>

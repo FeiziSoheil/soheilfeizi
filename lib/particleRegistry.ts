@@ -233,24 +233,40 @@ class ParticleRegistryManager {
     if (!pts.length) return null;
 
     const isStrip = spec.descriptor.startsWith('strip:');
-    const isSquareDiagram =
-      spec.descriptor.startsWith('svg:') || spec.descriptor.startsWith('process:');
-    // For infinite marquee strip, make the sampled span 1.95× viewport width (3 full tiles)
-    // so modulo wrapping fills edge-to-edge seamlessly with zero gaps!
-    // For 1:1 geometric diagrams (What I Do & Process), scale uniformly by min(boxW, boxH) * 0.88
-    // so shapes stay perfectly circular and strictly contained inside the slot on mobile.
+    const isSvgDiagram = spec.descriptor.startsWith('svg:');
+    const isTrophy = spec.descriptor === 'svg:trophy';
+    const isProcessDiagram = spec.descriptor.startsWith('process:');
+    const isSquareDiagram = isTrophy || isProcessDiagram;
+
     const vw = typeof window !== 'undefined' ? window.innerWidth : 1440;
-    const squareFit = Math.min(boxW, boxH) * 0.88;
-    const effectiveW = isStrip
-      ? Math.max(boxW * 1.65, vw * 1.95)
-      : isSquareDiagram
-        ? squareFit
-        : boxW;
-    const effectiveH = isStrip
-      ? boxH * 0.78
-      : isSquareDiagram
-        ? squareFit
-        : boxH;
+    const isMobile = typeof window !== 'undefined' ? window.innerWidth < 768 : false;
+
+    let effectiveW = boxW;
+    let effectiveH = boxH;
+
+    if (isStrip) {
+      effectiveW = Math.max(boxW * 1.45, vw * 1.72);
+      effectiveH = Math.max(boxH * 1.32, isMobile ? 85 : 140);
+    } else if (isSquareDiagram) {
+      const fitFactor = isMobile ? 0.98 : 0.88;
+      const squareFit = Math.min(boxW, boxH) * fitFactor;
+      effectiveW = squareFit;
+      effectiveH = squareFit;
+    } else if (isSvgDiagram) {
+      // For What I Do diagrams (380x260, aspect ~1.46): maintain proper aspect ratio
+      // and expand gracefully with generous clearance so elements never clump!
+      const targetAspect = 380 / 260;
+      const fitFactor = isMobile ? 0.98 : 0.92;
+      const availW = boxW * fitFactor;
+      const availH = boxH * fitFactor;
+      if (availW / availH > targetAspect) {
+        effectiveH = availH;
+        effectiveW = availH * targetAspect;
+      } else {
+        effectiveW = availW;
+        effectiveH = availW / targetAspect;
+      }
+    }
 
     const positions = new Float32Array(count * 3);
     const accents = new Float32Array(count);

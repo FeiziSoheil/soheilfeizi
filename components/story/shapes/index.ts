@@ -15,18 +15,56 @@ import {
   buildUiPlaneShape,
   buildWordShape,
 } from './mediaShapes';
-import portraitAsset from '@/src/assets/images/soheil_editorial_portrait_1795200948891.jpg';
+import { HERO_PORTRAIT_CONFIG } from '@/lib/site.config';
 
 export type ShapeLibrary = Record<ShapeId, ShapeBuffer>;
 
+/**
+ * Module-level memory cache so all 11 shapes are ONLY baked once per session.
+ * Subsequent tab switches Site <-> Story resolve instantly (0ms), with zero lag.
+ */
+const shapeLibraryCache = new Map<string, ShapeLibrary>();
+
 function yieldMainThread(): Promise<void> {
   return new Promise((resolve) => {
-    if (typeof window !== 'undefined') {
-      window.setTimeout(resolve, 8);
-    } else {
+    if (typeof window === 'undefined') {
       resolve();
+      return;
     }
+    // Yield to the browser paint pipeline so TabTransitionOverlay canvas paints smoothly at 60fps
+    requestAnimationFrame(() => {
+      setTimeout(resolve, 0);
+    });
   });
+}
+
+export function getCachedStoryShapeLibrary(
+  count: number,
+  locale: Locale
+): ShapeLibrary | null {
+  return shapeLibraryCache.get(`${count}-${locale}`) ?? null;
+}
+
+/**
+ * Pre-bake story shape library during idle time on Site tab so switching to Story
+ * finds all shapes already computed in memory with zero freeze.
+ */
+export function prewarmStoryShapeLibrary(count: number, locale: Locale): void {
+  const cacheKey = `${count}-${locale}`;
+  if (shapeLibraryCache.has(cacheKey)) return;
+
+  if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+    (window as unknown as { requestIdleCallback: (cb: () => void, opts?: { timeout: number }) => number }).requestIdleCallback(
+      () => {
+        void buildStoryShapeLibrary(count, locale);
+      },
+      { timeout: 4000 }
+    );
+  } else if (typeof window !== 'undefined') {
+    setTimeout(() => {
+      void buildStoryShapeLibrary(count, locale);
+    }, 1200);
+  }
 }
 
 /**
@@ -40,6 +78,13 @@ export async function buildStoryShapeLibrary(
   onProgress?: (pct: number) => void,
   shouldCancel?: () => boolean
 ): Promise<ShapeLibrary | null> {
+  const cacheKey = `${count}-${locale}`;
+  const cached = shapeLibraryCache.get(cacheKey);
+  if (cached) {
+    onProgress?.(100);
+    return cached;
+  }
+
   const report = (p: number) => onProgress?.(Math.min(100, Math.round(p)));
   const aborted = () => Boolean(shouldCancel?.());
 
@@ -89,9 +134,10 @@ export async function buildStoryShapeLibrary(
   await yieldMainThread();
 
   if (aborted()) return null;
-  const pSrc =
-    typeof portraitAsset === 'string' ? portraitAsset : portraitAsset.src;
-  const portrait = await buildPortraitShape(count, pSrc);
+  const portrait = await buildPortraitShape(
+    count,
+    HERO_PORTRAIT_CONFIG.cutoutSrc
+  );
   report(95);
   await yieldMainThread();
 
@@ -99,7 +145,7 @@ export async function buildStoryShapeLibrary(
   const ring = buildClosingRingShape(count);
   report(100);
 
-  return {
+  const library: ShapeLibrary = {
     introCloud,
     sphere,
     uiPlane,
@@ -112,6 +158,9 @@ export async function buildStoryShapeLibrary(
     portrait,
     ring,
   };
+
+  shapeLibraryCache.set(cacheKey, library);
+  return library;
 }
 
 export { buildWordShape };
