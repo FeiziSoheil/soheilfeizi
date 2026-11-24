@@ -1285,8 +1285,21 @@ export default function SiteParticleStage({
         toSlotId = nextSlotId;
         visFrom = nextVisible ? 1 : 0;
         visTo = nextVisible ? 1 : 0;
-        lastFromOrigin.set(0, 0);
-        lastToOrigin.set(0, 0);
+        if (nextVisible && nextSlotId) {
+          const scrollPos = useScrollStore.getState().scroll.pos;
+          const rect = particleRegistry.getLiveScreenRect(nextSlotId, scrollPos, height);
+          if (rect) {
+            const wOrigin = toWebgl(rect.centerX, rect.centerY);
+            lastFromOrigin.set(wOrigin.x, wOrigin.y);
+            lastToOrigin.set(wOrigin.x, wOrigin.y);
+          } else {
+            lastFromOrigin.set(0, 0);
+            lastToOrigin.set(0, 0);
+          }
+        } else {
+          lastFromOrigin.set(0, 0);
+          lastToOrigin.set(0, 0);
+        }
         morphProgress = 1;
         activeBakeLimit = targetLimit;
         if (nextBuf.stripSpan) activeStripLen = nextBuf.stripSpan;
@@ -1313,14 +1326,28 @@ export default function SiteParticleStage({
       visTo = nextVisible ? 1 : 0;
 
       if (visFrom < 0.05 && nextVisible && nextSlotId) {
+        posFromArr.set(nextBuf.positions);
+        accentFromArr.set(nextBuf.accents);
+        dustFromArr.set(nextBuf.dustMask);
+        shadeFromArr.set(nextBuf.shades);
+        posFromAttr.needsUpdate = true;
+        accentFromAttr.needsUpdate = true;
+        dustFromAttr.needsUpdate = true;
+        shadeFromAttr.needsUpdate = true;
+
         const scrollPos = useScrollStore.getState().scroll.pos;
         const rect = particleRegistry.getLiveScreenRect(nextSlotId, scrollPos, height);
         if (rect) {
           const wOrigin = toWebgl(rect.centerX, rect.centerY);
           lastFromOrigin.set(wOrigin.x, wOrigin.y);
           lastToOrigin.set(wOrigin.x, wOrigin.y);
-          fromSlotId = nextSlotId;
+        } else if (nextSlotId === 'app-emblem') {
+          const estX = width < 1024 ? 0 : width * 0.22;
+          const estY = width < 1024 ? height * 0.25 : height * 0.15;
+          lastFromOrigin.set(estX, estY);
+          lastToOrigin.set(estX, estY);
         }
+        fromSlotId = nextSlotId;
       }
 
       if (!nextVisible && fromSlotId) {
@@ -1343,6 +1370,25 @@ export default function SiteParticleStage({
     }> = [];
     let isProcessingPrewarm = false;
 
+    const scheduleNextPrewarm = (delay = 24) => {
+      const win = typeof window !== 'undefined' ? (window as any) : null;
+      if (win?.requestIdleCallback) {
+        prewarmTimer = win.requestIdleCallback(processPrewarmQueue, { timeout: 120 });
+      } else if (win) {
+        prewarmTimer = win.setTimeout(processPrewarmQueue, delay);
+      }
+    };
+
+    const cancelPrewarmTimer = () => {
+      const win = typeof window !== 'undefined' ? (window as any) : null;
+      if (win?.cancelIdleCallback) {
+        win.cancelIdleCallback(prewarmTimer);
+      }
+      if (win?.clearTimeout) {
+        win.clearTimeout(prewarmTimer);
+      }
+    };
+
     const processPrewarmQueue = () => {
       if (disposed || isProcessingPrewarm || prewarmQueue.length === 0) return;
       const item = prewarmQueue.shift();
@@ -1350,7 +1396,7 @@ export default function SiteParticleStage({
 
       if (bufferCache.has(item.key)) {
         if (prewarmQueue.length > 0) {
-          prewarmTimer = window.setTimeout(processPrewarmQueue, 16);
+          scheduleNextPrewarm(16);
         }
         return;
       }
@@ -1363,13 +1409,13 @@ export default function SiteParticleStage({
           if (!buf || disposed) return;
           setCachedBuffer(item.key, padTargetBuffer(buf, morphCount));
           if (prewarmQueue.length > 0) {
-            prewarmTimer = window.setTimeout(processPrewarmQueue, 24);
+            scheduleNextPrewarm(24);
           }
         })
         .catch(() => {
           isProcessingPrewarm = false;
           if (prewarmQueue.length > 0) {
-            prewarmTimer = window.setTimeout(processPrewarmQueue, 24);
+            scheduleNextPrewarm(24);
           }
         });
     };
@@ -1390,8 +1436,8 @@ export default function SiteParticleStage({
         prewarmQueue.push({ key, spec, count, w, h });
       }
       if (!isProcessingPrewarm) {
-        window.clearTimeout(prewarmTimer);
-        prewarmTimer = window.setTimeout(processPrewarmQueue, 24);
+        cancelPrewarmTimer();
+        scheduleNextPrewarm(highPriority ? 4 : 24);
       }
     };
 
@@ -1402,19 +1448,58 @@ export default function SiteParticleStage({
       const trophyW = isMobileNow ? 96 : 132;
       const trophyH = isMobileNow ? 96 : 132;
 
-      // 1. Trophy (About section)
+      const tabs = CONTENT[localeNow].whatido.tabs;
+      const apps = CONTENT[localeNow].apps.items;
+
+      // 1. High Priority Section Entry Shapes:
+      // Prewarm the entry shape of each section first so whatever section the user scrolls to NEVER hitches!
+      // - 01 About: Trophy
       enqueuePrewarm(
         'about-trophy',
         { id: 'about-trophy', descriptor: 'svg:trophy' },
         trophyCount,
         trophyW,
-        trophyH
+        trophyH,
+        true
       );
 
-      // 2. All What I Do tabs (crm, frontend, integrations, architecture, performance, design)
-      //    Prioritized immediately after Hero so 02 What I Do NEVER hitches on first scroll!
-      const tabs = CONTENT[localeNow].whatido.tabs;
-      for (const tab of tabs) {
+      // - 02 What I Do: First tab
+      if (tabs[0]) {
+        enqueuePrewarm(
+          `whatido:${tabs[0].id}`,
+          { id: 'whatido-diagram', descriptor: `svg:${tabs[0].id}`, drawProgress: 1 },
+          diagramCount,
+          diagramW,
+          diagramH,
+          true
+        );
+      }
+
+      // - 03 Process: Stage 0
+      enqueuePrewarm(
+        'process:0',
+        { id: 'process-stage', descriptor: 'process:0' },
+        diagramCount,
+        diagramW,
+        diagramH,
+        true
+      );
+
+      // - 05 Own Apps: First app emblem (Parakgram)
+      if (apps[0]) {
+        enqueuePrewarm(
+          `app-emblem:${apps[0].id}`,
+          { id: 'app-emblem', descriptor: `svg:app-${apps[0].id}`, drawProgress: 1 },
+          diagramCount,
+          diagramW,
+          diagramH,
+          true
+        );
+      }
+
+      // 2. Remaining What I Do tabs
+      for (let i = 1; i < tabs.length; i++) {
+        const tab = tabs[i];
         enqueuePrewarm(
           `whatido:${tab.id}`,
           { id: 'whatido-diagram', descriptor: `svg:${tab.id}`, drawProgress: 1 },
@@ -1424,8 +1509,8 @@ export default function SiteParticleStage({
         );
       }
 
-      // 3. Process stages
-      for (let sIdx = 0; sIdx < 6; sIdx++) {
+      // 3. Remaining Process stages
+      for (let sIdx = 1; sIdx < 6; sIdx++) {
         enqueuePrewarm(
           `process:${sIdx}`,
           { id: 'process-stage', descriptor: `process:${sIdx}` },
@@ -1434,6 +1519,54 @@ export default function SiteParticleStage({
           diagramH
         );
       }
+
+      // 4. Remaining Own Apps emblems
+      for (let aIdx = 1; aIdx < apps.length; aIdx++) {
+        const app = apps[aIdx];
+        enqueuePrewarm(
+          `app-emblem:${app.id}`,
+          { id: 'app-emblem', descriptor: `svg:app-${app.id}`, drawProgress: 1 },
+          diagramCount,
+          diagramW,
+          diagramH
+        );
+      }
+
+      // 5. Subsequent sections (Statement, Testimonial, Contact)
+      enqueuePrewarm(
+        `statement:${localeNow}`,
+        {
+          id: 'statement-title',
+          descriptor: `statement:${STATEMENT_COPY[localeNow].particleWord}`,
+          isRtl: localeNow === 'fa',
+          align: 'center',
+        },
+        nonHeroCount,
+        diagramW,
+        diagramH
+      );
+
+      enqueuePrewarm(
+        'quoteMarks',
+        { id: 'testimonial-figure', descriptor: 'quotes:marks' },
+        nonHeroCount,
+        diagramW,
+        diagramH
+      );
+
+      const stripWord = CONTACT_CONFIG[localeNow].marqueeWord;
+      enqueuePrewarm(
+        `wordSoheilStrip:${localeNow}`,
+        {
+          id: 'cta-logo',
+          descriptor: `strip:${stripWord}`,
+          isRtl: localeNow === 'fa',
+          align: 'center',
+        },
+        nonHeroCount,
+        diagramW,
+        diagramH
+      );
     };
 
     const schedulePrewarmNext = (resolvedKey: string, localeNow: Locale) => {
@@ -1499,7 +1632,36 @@ export default function SiteParticleStage({
             nextH,
             true
           );
+        } else {
+          // Prewarm first app with high priority before Selected Work begins
+          const firstApp = CONTENT[localeNow].apps.items[0];
+          if (firstApp) {
+            enqueuePrewarm(
+              `app-emblem:${firstApp.id}`,
+              { id: 'app-emblem', descriptor: `svg:app-${firstApp.id}`, drawProgress: 1 },
+              diagramCount,
+              nextW,
+              nextH,
+              true
+            );
+          }
         }
+        return;
+      }
+
+      if (resolvedKey === 'none') {
+        // While browsing Selected Work, make sure all Own Apps emblems are prewarmed
+        const apps = CONTENT[localeNow].apps.items;
+        apps.forEach((app, idx) => {
+          enqueuePrewarm(
+            `app-emblem:${app.id}`,
+            { id: 'app-emblem', descriptor: `svg:app-${app.id}`, drawProgress: 1 },
+            diagramCount,
+            nextW,
+            nextH,
+            idx === 0
+          );
+        });
         return;
       }
 
@@ -1524,6 +1686,20 @@ export default function SiteParticleStage({
       if (!resolved.spec) {
         buildToken++;
         applyNextTarget(cloudBuffer, null, false, false, nonHeroCount);
+        const isMobileNow = width < 768;
+        const nextW = isMobileNow ? Math.min(width * 0.94, 380) : 460;
+        const nextH = isMobileNow ? Math.min(height * 0.45, 380) : 420;
+        const apps = CONTENT[localeNow].apps.items;
+        apps.forEach((app, idx) => {
+          enqueuePrewarm(
+            `app-emblem:${app.id}`,
+            { id: 'app-emblem', descriptor: `svg:app-${app.id}`, drawProgress: 1 },
+            diagramCount,
+            nextW,
+            nextH,
+            idx === 0
+          );
+        });
         return;
       }
 
@@ -2111,9 +2287,12 @@ export default function SiteParticleStage({
       }
 
       // Pause WebGL drawing while transitioning between tabs or occluded behind opaque Selected Work canvas
+      // Note: As we approach the end of Selected Work (> 75%), keep rendering active to prime the GPU pipeline
+      const workProgress = st.sectionProgress.work ?? 0;
       const occludedByWork =
         st.tabTransition.active ||
         (st.activeSection === 'work' &&
+          workProgress < 0.75 &&
           !resolved.spec &&
           visFrom < 0.02 &&
           visTo < 0.02);
@@ -2129,13 +2308,16 @@ export default function SiteParticleStage({
       }
     };
 
+    // Immediately kick off background prewarming for section entry shapes
+    schedulePrewarmPipeline(useScrollStore.getState().locale);
+
     tick();
 
     return () => {
       disposed = true;
       cancelAnimationFrame(frameId);
       clearTimeout(frameId);
-      window.clearTimeout(prewarmTimer);
+      cancelPrewarmTimer();
       prewarmQueue.length = 0;
       unsubRegistry();
       bufferCache.clear();

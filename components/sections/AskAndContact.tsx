@@ -372,7 +372,7 @@ export function FinalContactSection({
               <h3 className="font-mono text-[11px] opacity-45 mb-2">
                 {t.contact.footer.col2Title}
               </h3>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-2.5">
                 <a
                   href={t.person.linkedin}
                   target="_blank"
@@ -391,6 +391,16 @@ export function FinalContactSection({
                   className="inline-flex items-center gap-1 rounded-full border border-[var(--hairline)] px-3.5 py-1 hover:border-[#5B5BF0] hover:text-[#8F8FFF] transition-colors"
                 >
                   <span>GitHub</span>
+                  <ArrowUpRight className="h-3.5 w-3.5" />
+                </a>
+                <a
+                  href={t.person.teamWebsite}
+                  target="_blank"
+                  rel="noreferrer"
+                  data-cursor="view"
+                  className="inline-flex items-center gap-1 rounded-full border border-[var(--hairline)] px-3.5 py-1 hover:border-[#5B5BF0] hover:text-[#8F8FFF] transition-colors"
+                >
+                  <span>{t.person.teamLabel}</span>
                   <ArrowUpRight className="h-3.5 w-3.5" />
                 </a>
               </div>

@@ -289,7 +289,6 @@ export function OwnAppsSection({
   onJumpToApp?: (appIdx: number) => void;
 }) {
   const t = CONTENT[locale];
-  const p = useScrollStore((s) => s.sectionProgress.apps);
   const isRtl = locale === 'fa';
 
   const apps = t.apps.items;
@@ -302,10 +301,13 @@ export function OwnAppsSection({
   // Smooth hold on final project
   const scrollableSpanVh = Math.max(1, totalHeightVh - 100);
   const holdFrac = Math.min(0.35, OWN_APPS_CONFIG.endHoldVh / scrollableSpanVh);
-  const pEff = Math.max(0, Math.min(0.9999, p / Math.max(0.01, 1 - holdFrac)));
 
-  // Continuous active app index driven by scroll
-  const scrollActiveIdx = Math.min(totalApps - 1, Math.max(0, Math.floor(pEff * totalApps)));
+  // Compute discrete active app index driven by scroll — zero per-frame React re-renders!
+  const scrollActiveIdx = useScrollStore((s) => {
+    const p = s.sectionProgress.apps;
+    const pEff = Math.max(0, Math.min(0.9999, p / Math.max(0.01, 1 - holdFrac)));
+    return Math.min(totalApps - 1, Math.max(0, Math.floor(pEff * totalApps)));
+  });
 
   // Interactive selection state for 0ms instant response on click
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
@@ -601,7 +603,7 @@ export function OwnAppsSection({
             {/* 2. BOTTOM: MINIMALIST GLASS INFORMATION CARD */}
             <article
               ref={cardRef}
-              className="relative w-full rounded-[var(--radius-lg)] border border-white/10 bg-white/[0.025] backdrop-blur-xl p-3.5 xs:p-4 sm:p-7 shadow-[0_24px_64px_-16px_rgba(0,0,0,0.7),0_0_40px_rgba(91,91,240,0.06)] flex flex-col justify-between overflow-hidden mt-3 xs:mt-4 sm:mt-0"
+              className="relative w-full rounded-[var(--radius-lg)] border border-white/10 bg-[#0B0B10]/90 p-3.5 xs:p-4 sm:p-7 shadow-[0_24px_64px_-16px_rgba(0,0,0,0.7),0_0_40px_rgba(91,91,240,0.06)] flex flex-col justify-between overflow-hidden mt-3 xs:mt-4 sm:mt-0"
             >
               {/* Row 1: Metadata + Status Chip */}
               <div
@@ -686,7 +688,7 @@ export function OwnAppsSection({
                 className="mt-3 sm:mt-4 flex flex-wrap items-center justify-between gap-3 pt-2"
               >
                 <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-                  {/* Primary GitHub Button */}
+                  {/* Primary Action Button (GitHub or Live Demo) */}
                   <MagneticPill
                     href={activeApp.url || OWN_APPS_CONFIG.githubUrl}
                     target="_blank"
@@ -697,21 +699,6 @@ export function OwnAppsSection({
                     <span>{activeApp.urlLabel || (locale === 'fa' ? 'مشاهده در گیت‌هاب' : 'View on GitHub')}</span>
                     <ArrowUpRight className="h-3.5 w-3.5" />
                   </MagneticPill>
-
-                  {/* Secondary Live Demo Button (if distinct demo url exists) */}
-                  {activeApp.url && activeApp.url.includes('github.io') && (
-                    <MagneticPill
-                      href={activeApp.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      onClick={() => soundEngine.playStippleTick()}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/[0.04] px-3.5 py-1.5 font-mono text-xs font-medium text-white/90 hover:bg-white/[0.1] hover:border-white/40 transition-all cursor-pointer"
-                    >
-                      <Sparkles className="h-3.5 w-3.5 text-[#5B5BF0]" />
-                      <span>{locale === 'fa' ? 'دموی زنده' : 'Live Demo'}</span>
-                      <ArrowUpRight className="h-3 w-3" />
-                    </MagneticPill>
-                  )}
 
                   {/* Special Synth trigger for dastgah if present */}
                   {activeApp.id === 'dastgah' && (

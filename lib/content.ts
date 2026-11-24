@@ -52,6 +52,8 @@ export interface LocalizedContent {
     email: string;
     linkedin: string;
     github: string;
+    teamWebsite: string;
+    teamLabel: string;
     availability: string;
   };
   gateway: {
@@ -252,6 +254,8 @@ export const CONTENT: Record<Locale, LocalizedContent> = {
       email: 'soheil.feizi@hotmail.com',
       linkedin: 'https://linkedin.com/in/soheilfeizi',
       github: 'https://github.com/FeiziSoheil',
+      teamWebsite: 'https://code1sprint.vercel.app',
+      teamLabel: 'تیم Code1Sprint',
       availability: 'آماده همکاری در پروژه‌های پیشرفته و مشاوره معماری',
     },
     gateway: {
@@ -488,7 +492,18 @@ export const CONTENT: Record<Locale, LocalizedContent> = {
           stack: ['Go Echo', 'FastAPI', 'MongoDB', 'Next.js', 'LangChain', 'Redis'],
           accentTint: '#4848D6',
           urlLabel: 'مشاهده در گیت‌هاب',
-          url: 'https://github.com/FeiziSoheil',
+          url: 'https://github.com/FeiziSoheil/Clinic',
+        },
+        {
+          id: 'promagic',
+          name: 'ProMagic',
+          year: '۱۴۰۴ / ۲۰۲۵',
+          tagline: 'پلتفرم مدرن فروشگاه آنلاین و کاتالوگ محصولات برند پرومجیک.',
+          detail: 'فروشگاه و کاتالوگ لوکس با Next.js 15 و Go Echo v5، ویرایشگر متن پیشرفته TipTap v3، دیتابیس PostgreSQL و بازتولید آنی کش صفحات.',
+          stack: ['Next.js 15', 'React 19', 'Go Echo v5', 'PostgreSQL', 'Tailwind 4', 'TipTap v3'],
+          accentTint: '#D97706',
+          urlLabel: 'مشاهده سایت پرومجیک',
+          url: 'https://promagic.ir',
         },
       ],
     },
@@ -638,7 +653,7 @@ export const CONTENT: Record<Locale, LocalizedContent> = {
       closeLabel: 'بستن',
       footer: {
         col1Title: 'ایمیل و تماس مستقیم',
-        col2Title: 'شبکه‌ها و گیت‌هاب',
+        col2Title: 'شبکه‌ها، تیم و گیت‌هاب',
         col3Title: 'همکاری و استقرار',
         scheduleCta: 'پیام مستقیم در تلگرام',
         scheduleNote: 'تلفن: ۰۹۱۴۲۸۹۵۸۲۵ · ایمیل: soheil.feizi@hotmail.com · تهران / ریموت',
@@ -676,6 +691,8 @@ export const CONTENT: Record<Locale, LocalizedContent> = {
       email: 'soheil.feizi@hotmail.com',
       linkedin: 'https://linkedin.com/in/soheilfeizi',
       github: 'https://github.com/FeiziSoheil',
+      teamWebsite: 'https://code1sprint.vercel.app',
+      teamLabel: 'Code1Sprint (Team)',
       availability: 'Available for complex software & AI systems architecture',
     },
     gateway: {
@@ -912,7 +929,18 @@ export const CONTENT: Record<Locale, LocalizedContent> = {
           stack: ['Go Echo', 'FastAPI', 'MongoDB', 'Next.js', 'LangChain', 'Redis'],
           accentTint: '#4848D6',
           urlLabel: 'View on GitHub',
-          url: 'https://github.com/FeiziSoheil',
+          url: 'https://github.com/FeiziSoheil/Clinic',
+        },
+        {
+          id: 'promagic',
+          name: 'ProMagic',
+          year: '2025',
+          tagline: 'Modern luxury e-commerce & product catalog platform for ProMagic brand.',
+          detail: 'Full-stack platform built with Next.js 15, Go Echo v5, PostgreSQL, and TipTap v3 rich content editor, featuring instant cache revalidation and responsive luxury UI.',
+          stack: ['Next.js 15', 'React 19', 'Go Echo v5', 'PostgreSQL', 'Tailwind 4', 'TipTap v3'],
+          accentTint: '#D97706',
+          urlLabel: 'Visit ProMagic Site',
+          url: 'https://promagic.ir',
         },
       ],
     },
@@ -1062,7 +1090,7 @@ export const CONTENT: Record<Locale, LocalizedContent> = {
       closeLabel: 'Close',
       footer: {
         col1Title: 'Direct Email & Phone',
-        col2Title: 'Social & GitHub',
+        col2Title: 'Social, Team & GitHub',
         col3Title: 'Collaboration',
         scheduleCta: 'Message on Telegram',
         scheduleNote: 'Phone: +989142895825 · Email: soheil.feizi@hotmail.com · Tehran / Remote',

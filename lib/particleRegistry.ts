@@ -226,6 +226,16 @@ class ParticleRegistryManager {
     fallbackW = 380,
     fallbackH = 380
   ): Promise<StoryTargetBuffer | null> {
+    // Yield to the event loop so heavy SVG arc-length and particle calculations
+    // never block the current requestAnimationFrame frame or cause a scroll hitch.
+    await new Promise<void>((resolve) => {
+      if (typeof setTimeout !== 'undefined') {
+        setTimeout(resolve, 0);
+      } else {
+        resolve();
+      }
+    });
+
     const layout = this.layouts.get(spec.id);
     const boxW = layout?.width ?? fallbackW;
     const boxH = layout?.height ?? fallbackH;

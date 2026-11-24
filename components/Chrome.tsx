@@ -20,7 +20,7 @@ interface ChromeProps {
   mode: ViewMode;
   activeSection: SectionId;
   theme: 'light' | 'dark';
-  totalProgress: number;
+  totalProgress?: number;
   singularityActive?: boolean;
   outerTheme?: 'light' | 'dark';
   innerTheme?: 'light' | 'dark';
@@ -48,6 +48,7 @@ export default function Chrome({
 }: ChromeProps) {
   const t = CONTENT[locale];
   const sectionProgress = useScrollStore((s) => s.sectionProgress);
+  const storeTotalProgress = useScrollStore((s) => s.totalProgress);
   const isMobile = useIsMobile();
 
   const [menuOpen, setMenuOpen] = useState(false);
@@ -61,7 +62,8 @@ export default function Chrome({
 
   const primaryTheme = singularityActive ? (outerTheme ?? theme) : theme;
   const secondaryTheme = innerTheme ?? (primaryTheme === 'dark' ? 'light' : 'dark');
-  const progressPct = `${Math.min(100, Math.max(0, totalProgress * 100))}%`;
+  const activeProgress = totalProgress ?? storeTotalProgress;
+  const progressPct = `${Math.min(100, Math.max(0, activeProgress * 100))}%`;
   const isRtl = locale === 'fa';
   const menuClipOrigin = isMobile
     ? isRtl

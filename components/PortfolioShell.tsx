@@ -57,7 +57,6 @@ export default function PortfolioShell({
   const tabTransition = useScrollStore((s) => s.tabTransition);
   const activeSection = useScrollStore((s) => s.activeSection);
   const theme = useScrollStore((s) => s.theme);
-  const totalProgress = useScrollStore((s) => s.totalProgress);
   const guiVisible = useScrollStore((s) => s.guiVisible);
   const singularityActive = useScrollStore((s) => s.singularity.active);
   const singularityOuterTheme = useScrollStore((s) => s.singularity.outerTheme);
@@ -445,7 +444,6 @@ export default function PortfolioShell({
             mode={mode}
             activeSection={activeSection}
             theme={theme}
-            totalProgress={totalProgress}
             singularityActive={singularityActive}
             outerTheme={singularityOuterTheme}
             innerTheme={singularityInnerTheme}

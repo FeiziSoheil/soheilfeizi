@@ -192,7 +192,7 @@ export default function Gateway({
 
       {/* Bottom hairline footer links */}
       <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4 border-t border-[#141414]/15 pt-3.5 sm:pt-4 text-[11px] sm:text-xs font-mono">
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-4 sm:gap-6">
           <a
             href={`mailto:${t.person.email}`}
             data-cursor="view"
@@ -209,6 +209,16 @@ export default function Gateway({
             className="inline-flex items-center gap-1 hover:text-[#5B5BF0] transition-colors"
           >
             <span>{t.gateway.linkedinLabel}</span>
+            <ArrowUpRight className="h-3 w-3" />
+          </a>
+          <a
+            href={t.person.teamWebsite}
+            target="_blank"
+            rel="noreferrer"
+            data-cursor="view"
+            className="inline-flex items-center gap-1 hover:text-[#5B5BF0] transition-colors"
+          >
+            <span>{t.person.teamLabel}</span>
             <ArrowUpRight className="h-3 w-3" />
           </a>
         </div>

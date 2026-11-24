@@ -895,11 +895,34 @@ const SVG_DIAGRAMS: Record<
   },
 
   /* ─────────────────────────────────────────────────────────────
-   * 05 OWN APPS — 10 ARCHITECTURAL PARTICLE EMBLEMS
+   * 05 OWN APPS — 11 ARCHITECTURAL PARTICLE EMBLEMS
    * Strict What I Do / uiPlane design standard:
    * Thick granular stroke paths, hollow interiors, 3D Z layers,
    * selective #5B5BF0 accent highlights.
    * ───────────────────────────────────────────────────────────── */
+  'app-promagic': {
+    // 00 · ProMagic: Luxury massage recliner silhouette, ergonomic SL-track curve, glowing wellness spark & luxury pedestal
+    viewW: 380,
+    viewH: 260,
+    primitives: [
+      // Outer subtle luxury wellness aura ellipse
+      { kind: 'path', d: 'M 190 28 A 120 90 0 1 0 190 208 A 120 90 0 1 0 190 28', accent: false, weight: 1.1, zLayer: -0.15 },
+      // Four-point Magic Wellness Spark (Top Center)
+      { kind: 'path', d: 'M 190 24 Q 190 40 206 40 Q 190 40 190 56 Q 190 40 174 40 Q 190 40 190 24 Z', accent: true, weight: 2.2, zLayer: 0.4 },
+      { kind: 'fillCircle', cx: 190, cy: 40, r: 3.5, accent: true, weight: 1.8, zLayer: 0.45 },
+      // Luxury Recliner Ergonomic Body Shell
+      { kind: 'path', d: 'M 130 70 C 145 60, 180 58, 205 65 C 235 74, 255 105, 250 145 C 246 175, 225 195, 185 198 C 150 200, 125 185, 115 155 C 108 132, 115 95, 130 70 Z', accent: true, weight: 2.6, zLayer: 0.2 },
+      // Inner Ergonomic SL-Track Spine & Massage Headrest Cushion
+      { kind: 'path', d: roundedRectD(146, 76, 36, 24, 8), accent: true, weight: 2.0, zLayer: 0.35 },
+      { kind: 'path', d: 'M 164 100 C 168 120, 195 130, 200 155 C 204 175, 185 185, 165 185', accent: false, weight: 2.2, zLayer: 0.3 },
+      // Mechanical Footrest & Calves Cradle
+      { kind: 'path', d: roundedRectD(225, 150, 42, 28, 7), accent: true, weight: 2.0, zLayer: 0.25 },
+      // Modernist Sleek Base Pedestal Stand
+      { kind: 'path', d: roundedRectD(135, 206, 110, 12, 6), accent: false, weight: 2.2, zLayer: 0.1 },
+      { kind: 'fillRect', x: 160, y: 218, w: 60, h: 5, rx: 2.5, accent: true, weight: 1.2, zLayer: 0.15 },
+    ],
+  },
+
   'app-parakgram': {
     // 01 · Parakgram: Constellation social network graph, concentric 24h story aura ring & chat bubbles
     viewW: 380,

@@ -824,43 +824,8 @@ export class PortfolioDirector {
           fieldLineAlpha: 0,
         };
 
-    // 7. Gentle soft-snap near section starts ONLY when NOT inside an active singularity transition
-    //    so users can freely pause and inspect any scrub radius (25%, 50%, 75%) without snapping away.
-    if (
-      !singularity.active &&
-      !this.reducedMotion &&
-      this.lenis &&
-      !this.isUserTouching &&
-      !this.isSnapping &&
-      !this.isTunneling &&
-      this.idleMs > 220 &&
-      Math.abs(this.velocity) < 0.85 &&
-      this.impulse < 0.04 &&
-      Math.abs(this.pos - this.lastSnapCheckPos) > 16 &&
-      this.anchorYs.length > 0
-    ) {
-      const snapRadius = vh * Math.min(0.05, params.snapZone);
-      for (const ay of this.anchorYs) {
-        const delta = Math.abs(this.pos - ay);
-        if (delta > 8 && delta <= snapRadius) {
-          // Never snap across a singularity boundary
-          const wouldEnterBoundary = this.boundaries.some(
-            (b) => this.pos > b.startY - 24 && this.pos < b.endY + 24
-          );
-          if (wouldEnterBoundary) break;
-          this.isSnapping = true;
-          this.lastSnapCheckPos = ay;
-          this.lenis.scrollTo(ay, {
-            duration: Math.max(0.5, params.snapDuration / 1000),
-            easing: easeOutQuint,
-            onComplete: () => {
-              this.isSnapping = false;
-            },
-          });
-          break;
-        }
-      }
-    }
+    // 7. Gentle soft-snap disabled to avoid scroll hijacking and hitching at section boundaries
+    // Navigation jumps (DockBar, Chrome, links) handle targeted scrolling smoothly via scrollToSection.
 
     // Crisp binary theme (zero fade!) — spatial color split happens strictly on the circle edge
     const themeLerp = activeSectionTheme === 'dark' ? 1 : 0;
