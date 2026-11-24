@@ -44,6 +44,7 @@ STRICT SCOPE RULE:
 - If a user asks about unrelated topics (politics, general homework, medical/legal advice, generic coding exercises), politely decline in 1-2 short sentences and invite them to ask about Soheil's work, stack, or experience instead.
 - Match the user's language (Persian/Farsi or English).
 - Tone: first-person adjacent or concise third-person, confident, direct, technical, zero clichés, max 120 words per answer.
+- Formatting: Output clean, readable text. Use short bullet points for lists and bold labels where helpful. Avoid messy, deeply-nested or broken markdown.
 
 FACTS ABOUT SOHEIL FEIZI:
 - Experience: 5+ years of software engineering, distributed systems, machine learning, and full-stack development (20+ production systems shipped).
@@ -129,10 +130,90 @@ export async function POST(req: NextRequest) {
         item.content.length <= 1200
     );
 
-  // Optional Anthropic server-side path if ANTHROPIC_API_KEY is configured (e.g. Vercel deployment)
-  const anthropicKey = process.env.ANTHROPIC_API_KEY?.trim();
   const geminiKey = process.env.GEMINI_API_KEY?.trim();
+  const anthropicKey = process.env.ANTHROPIC_API_KEY?.trim();
 
+  if (geminiKey) {
+    try {
+      const ai = new GoogleGenAI({
+        apiKey: geminiKey,
+      });
+
+      const contents = [
+        ...safeHistory.map((m) => ({
+          role: m.role === 'assistant' ? 'model' : 'user',
+          parts: [{ text: m.content }],
+        })),
+        { role: 'user', parts: [{ text: rawMessage }] },
+      ];
+
+      const configuredModel = process.env.GEMINI_MODEL?.trim();
+      const modelCandidates = Array.from(
+        new Set([configuredModel, 'gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-4-hydrogen'].filter(Boolean))
+      ) as string[];
+
+      let streamResponse: Awaited<ReturnType<typeof ai.models.generateContentStream>> | null = null;
+      let lastGeminiError: unknown = null;
+
+      for (const model of modelCandidates) {
+        try {
+          streamResponse = await ai.models.generateContentStream({
+            model,
+            contents,
+            config: {
+              systemInstruction: `${SYSTEM_PROMPT}\nPreferred language if ambiguous: ${locale === 'fa' ? 'Persian' : 'English'}.`,
+            },
+          });
+          if (streamResponse) break;
+        } catch (candidateErr) {
+          lastGeminiError = candidateErr;
+          continue;
+        }
+      }
+
+      if (streamResponse) {
+        const encoder = new TextEncoder();
+        const readable = new ReadableStream({
+          async start(controller) {
+            try {
+              for await (const chunk of streamResponse!) {
+                const text = chunk.text;
+                if (text) {
+                  controller.enqueue(encoder.encode(text));
+                }
+              }
+            } catch (err) {
+              controller.error(err);
+            } finally {
+              controller.close();
+            }
+          },
+        });
+
+        return new Response(readable, {
+          headers: {
+            'Content-Type': 'text/plain; charset=utf-8',
+            'Cache-Control': 'no-cache, no-transform',
+          },
+        });
+      }
+
+      if (!anthropicKey) {
+        throw lastGeminiError || new Error('All Gemini model candidates failed');
+      }
+    } catch (geminiErr) {
+      if (!anthropicKey) {
+        const message = geminiErr instanceof Error ? geminiErr.message : 'upstream_gemini_error';
+        return new Response(
+          JSON.stringify({ error: 'ai_error', detail: message }),
+          { status: 502, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+      // If Anthropic key is available, fall through to Anthropic
+    }
+  }
+
+  // Fallback to Anthropic if Gemini is not configured or failed and ANTHROPIC_API_KEY is available
   if (anthropicKey) {
     try {
       const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
@@ -200,72 +281,12 @@ export async function POST(req: NextRequest) {
         });
       }
     } catch {
-      // Fall through to Gemini if Anthropic request fails
+      // Failed Anthropic request
     }
   }
 
-  if (!geminiKey) {
-    return new Response(
-      JSON.stringify({ error: 'missing_api_key' }),
-      { status: 503, headers: { 'Content-Type': 'application/json' } }
-    );
-  }
-
-  try {
-    const ai = new GoogleGenAI({
-      apiKey: geminiKey,
-      httpOptions: {
-        headers: {
-          'User-Agent': 'aistudio-build',
-        },
-      },
-    });
-
-    const contents = [
-      ...safeHistory.map((m) => ({
-        role: m.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: m.content }],
-      })),
-      { role: 'user', parts: [{ text: rawMessage }] },
-    ];
-
-    const streamResponse = await ai.models.generateContentStream({
-      model: 'gemini-4-hydrogen',
-      contents,
-      config: {
-        systemInstruction: `${SYSTEM_PROMPT}\nPreferred language if ambiguous: ${locale === 'fa' ? 'Persian' : 'English'}.`,
-      },
-    });
-
-    const encoder = new TextEncoder();
-    const readable = new ReadableStream({
-      async start(controller) {
-        try {
-          for await (const chunk of streamResponse) {
-            const text = chunk.text;
-            if (text) {
-              controller.enqueue(encoder.encode(text));
-            }
-          }
-        } catch (err) {
-          controller.error(err);
-        } finally {
-          controller.close();
-        }
-      },
-    });
-
-    return new Response(readable, {
-      headers: {
-        'Content-Type': 'text/plain; charset=utf-8',
-        'Cache-Control': 'no-cache, no-transform',
-      },
-    });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'upstream_error';
-    return new Response(
-      JSON.stringify({ error: 'ai_error', detail: message }),
-      { status: 502, headers: { 'Content-Type': 'application/json' } }
-    );
-  }
+  return new Response(
+    JSON.stringify({ error: 'missing_api_key' }),
+    { status: 503, headers: { 'Content-Type': 'application/json' } }
+  );
 }

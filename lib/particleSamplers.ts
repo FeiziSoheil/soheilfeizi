@@ -430,33 +430,42 @@ export async function sampleImageNormalized(
       }
     }
 
-    const result: NormalizedPoint[] = [];
     if (totalWeight <= 0.001) {
-      appendSurroundDust(result, count, rand);
-      sampleCache.set(cacheKey, result);
-      return result;
+      const emptyResult: NormalizedPoint[] = [];
+      appendSurroundDust(emptyResult, count, rand);
+      sampleCache.set(cacheKey, emptyResult);
+      return emptyResult;
     }
 
-    // Build exact CDF for O(log N) high-density weighted sampling (120k-160k points in <40ms!)
-    const activeIndices: number[] = [];
-    const cdf: number[] = [];
+    // Build exact CDF for high-density weighted sampling using typed arrays (avoids 150k+ array allocations)
+    const activeIndices = new Uint32Array(totalPix);
+    const cdf = new Float32Array(totalPix);
+    let activeCount = 0;
     let running = 0;
     for (let i = 0; i < totalPix; i++) {
-      if (weights[i] > 0.004) {
-        running += weights[i];
-        activeIndices.push(i);
-        cdf.push(running);
+      const w = weights[i];
+      if (w > 0.004) {
+        running += w;
+        activeIndices[activeCount] = i;
+        cdf[activeCount] = running;
+        activeCount++;
       }
     }
 
     // >= 96% on portrait body/rim; <= 4% faint ambient halo
     const haloBudget = Math.floor(count * HERO_PORTRAIT_CONFIG.ambientHaloMaxFrac);
     const bodyBudget = count - haloBudget;
+    const result: NormalizedPoint[] = new Array(count);
+
+    const invRunning = 1 / Math.max(0.0001, running);
+    const invSampleW = 1 / sampleW;
+    const invSampleH = 1 / sampleH;
+    const cdfMaxIdx = activeCount - 1;
 
     for (let i = 0; i < bodyBudget; i++) {
       const target = rand() * running;
       let lo = 0;
-      let hi = cdf.length - 1;
+      let hi = cdfMaxIdx;
       while (lo < hi) {
         const mid = (lo + hi) >>> 1;
         if (cdf[mid] < target) lo = mid + 1;
@@ -464,11 +473,11 @@ export async function sampleImageNormalized(
       }
       const pixIdx = activeIndices[lo];
       const px = pixIdx % sampleW;
-      const py = (pixIdx / sampleW) | 0;
+      const py = (pixIdx * invSampleW) | 0;
 
       // Ultra-tight sub-pixel jitter (minimal noise, crisp photographic grain)
-      const u = (px + (rand() - 0.5) * 0.85) / sampleW;
-      const v = (py + (rand() - 0.5) * 0.85) / sampleH;
+      const u = (px + (rand() - 0.5) * 0.85) * invSampleW;
+      const v = (py + (rand() - 0.5) * 0.85) * invSampleH;
       const lum = lumBuf[pixIdx];
 
       // Small z-depth proportional to luminance (±0.15 normalized) for subtle 3D parallax
@@ -480,7 +489,7 @@ export async function sampleImageNormalized(
       // ZERO blue edge-detection contours — ONLY 2..3% random scattered #5B5BF0 sparks!
       const isSpark = rand() < accentRatio ? 1 : 0;
 
-      result.push({
+      result[i] = {
         u: Math.max(0.002, Math.min(0.998, u)),
         v: Math.max(0.002, Math.min(0.998, v)),
         z,
@@ -488,7 +497,7 @@ export async function sampleImageNormalized(
         order: Math.hypot(u - 0.5, v - 0.42),
         dust: 0,
         shade,
-      });
+      };
     }
 
     // Subtle <= 4% ambient halo softly hugging the portrait silhouette
@@ -497,7 +506,7 @@ export async function sampleImageNormalized(
       const rad = 0.28 + Math.sqrt(rand()) * 0.26;
       const u = Math.max(0.01, Math.min(0.99, 0.51 + Math.cos(angle) * rad));
       const v = Math.max(0.02, Math.min(0.98, 0.52 + Math.sin(angle) * rad * 1.08));
-      result.push({
+      result[bodyBudget + i] = {
         u,
         v,
         z: (rand() - 0.5) * 0.3,
@@ -505,7 +514,7 @@ export async function sampleImageNormalized(
         order: rand(),
         dust: 1,
         shade: 0.45 + rand() * 0.25,
-      });
+      };
     }
 
     sampleCache.set(cacheKey, result);

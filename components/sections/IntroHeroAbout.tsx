@@ -140,14 +140,17 @@ export function HeroSection({
 
   // Zero-rerender RAF spotlight loop: smoothly follows pointer inside portrait box and reveals ONLY that area
   const lensTargetRef = useRef({ x: 0, y: 0, active: false });
+  const wakeLoopRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     let rafId = 0;
+    let isRunning = false;
     let sx = 0;
     let sy = 0;
     let sr = 0;
     let sAlpha = 0;
     let initialized = false;
+    let isHidden = true;
     let lastTime = performance.now();
 
     const step = (now: number) => {
@@ -181,11 +184,19 @@ export function HeroSection({
 
       if (el) {
         if (sr < 0.75 || sAlpha < 0.005) {
-          el.style.opacity = '0';
-          el.style.maskImage = 'none';
-          el.style.webkitMaskImage = 'none';
-          if (!wantActive) initialized = false;
+          if (!isHidden) {
+            el.style.opacity = '0';
+            el.style.maskImage = 'none';
+            el.style.webkitMaskImage = 'none';
+            isHidden = true;
+          }
+          if (!wantActive) {
+            initialized = false;
+            isRunning = false;
+            return;
+          }
         } else {
+          isHidden = false;
           const grad = `radial-gradient(circle ${sr.toFixed(1)}px at ${sx.toFixed(1)}px ${sy.toFixed(1)}px, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 52%, rgba(0,0,0,0.48) 78%, rgba(0,0,0,0) 100%)`;
           el.style.opacity = sAlpha.toFixed(3);
           el.style.maskImage = grad;
@@ -196,12 +207,24 @@ export function HeroSection({
       rafId = requestAnimationFrame(step);
     };
 
-    rafId = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(rafId);
+    const wakeLoop = () => {
+      if (!isRunning) {
+        isRunning = true;
+        lastTime = performance.now();
+        rafId = requestAnimationFrame(step);
+      }
+    };
+    wakeLoopRef.current = wakeLoop;
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      wakeLoopRef.current = null;
+    };
   }, []);
 
   // Masked line-by-line entrance on mount / locale switch
   useEffect(() => {
+    if (!heroEntered) return;
     const reduced =
       typeof window !== 'undefined' &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -216,10 +239,10 @@ export function HeroSection({
           {
             yPercent: 0,
             opacity: 1,
-            duration: 0.92,
+            duration: 0.95,
             stagger: 0.08,
             ease: 'power4.out',
-            delay: 0.12,
+            delay: 0.1,
           }
         );
       }
@@ -231,17 +254,17 @@ export function HeroSection({
           {
             y: 0,
             opacity: 1,
-            duration: 0.7,
+            duration: 0.72,
             stagger: 0.07,
             ease: 'power3.out',
-            delay: 0.38,
+            delay: 0.35,
           }
         );
       }
     });
 
     return () => ctx.revert();
-  }, [locale]);
+  }, [locale, heroEntered]);
 
   // Track cursor coordinates relative to the portrait box so ONLY the hovered patch reveals the real photo
   const handleHeroPointerMove = (e: React.PointerEvent<HTMLElement>) => {
@@ -261,18 +284,22 @@ export function HeroSection({
       lensTargetRef.current.x = lx;
       lensTargetRef.current.y = ly;
       lensTargetRef.current.active = true;
+      wakeLoopRef.current?.();
     } else {
       lensTargetRef.current.active = false;
+      wakeLoopRef.current?.();
     }
   };
 
   const handleHeroPointerLeave = () => {
     lensTargetRef.current.active = false;
+    wakeLoopRef.current?.();
   };
 
   const handleHeroPointerUp = (e: React.PointerEvent<HTMLElement>) => {
     if (e.pointerType !== 'mouse') {
       lensTargetRef.current.active = false;
+      wakeLoopRef.current?.();
     }
   };
 

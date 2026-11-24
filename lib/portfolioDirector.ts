@@ -184,7 +184,7 @@ export class PortfolioDirector {
         this.stepFrame();
       };
       gsap.ticker.add(this.tickerCb);
-      gsap.ticker.lagSmoothing(0);
+      gsap.ticker.lagSmoothing(500, 33);
     } else {
       window.addEventListener('scroll', this.onNativeScroll, { passive: true });
       this.tickerCb = () => this.stepFrame();

@@ -114,6 +114,34 @@ export default function PortfolioShell({
         preloadImage(wUrl),
       ]);
       if (!cancelled) {
+        setLoadProgress(78);
+        useScrollStore.getState().setTabTransitionProgress(82);
+      }
+
+      // Pre-bake the Hero portrait particles in background during Gateway progress counter
+      try {
+        const isMobileNow = typeof window !== 'undefined' && window.innerWidth < 768;
+        const targetCount = isMobileNow
+          ? HERO_PORTRAIT_CONFIG.mobileParticleCount
+          : HERO_PORTRAIT_CONFIG.particleCount;
+        const heroW = typeof window !== 'undefined'
+          ? Math.min(window.innerWidth * (isMobileNow ? 0.78 : 0.5), 680)
+          : 540;
+        const heroH = typeof window !== 'undefined'
+          ? isMobileNow ? Math.min(window.innerHeight * 0.42, 340) : Math.max(window.innerHeight, 720)
+          : 720;
+
+        await particleRegistry.buildStoryTargetBuffer(
+          { id: 'hero-portrait', descriptor: 'image:portrait' },
+          targetCount,
+          heroW,
+          heroH
+        );
+      } catch {
+        // non-critical fallback
+      }
+
+      if (!cancelled) {
         setLoadProgress(100);
         setAssetsReady(true);
         useScrollStore.getState().setTabTransitionProgress(95);
@@ -136,12 +164,15 @@ export default function PortfolioShell({
     };
   }, [setLoadProgress, setAssetsReady]);
 
-  // Prewarm Story 3D shape library in background idle time so tab switch to Story is 100% instant
+  // Prewarm Story 3D shape library in background idle time after Hero entrance animation finishes
   useEffect(() => {
     if (!assetsReady) return;
     const isMobile = window.innerWidth < 768;
     const count = isMobile ? 20_000 : 48_000;
-    prewarmStoryShapeLibrary(count, locale);
+    const timer = window.setTimeout(() => {
+      prewarmStoryShapeLibrary(count, locale);
+    }, 3800);
+    return () => window.clearTimeout(timer);
   }, [assetsReady, locale]);
 
   // 2. Restore URL query (?v=site | ?debug=shapes) & localStorage preferences

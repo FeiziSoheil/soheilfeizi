@@ -54,8 +54,25 @@ export interface CachedSlotLayout {
 class ParticleRegistryManager {
   private elements = new Map<string, HTMLElement>();
   private layouts = new Map<string, CachedSlotLayout>();
+  private targetBufferCache = new Map<string, StoryTargetBuffer>();
   private resizeObserver: ResizeObserver | null = null;
   private listeners = new Set<() => void>();
+
+  public getTargetBufferKey(spec: LocalSlotSpec, count: number, w: number, h: number): string {
+    return `${spec.descriptor}:${count}:${Math.round(w)}:${Math.round(h)}:${spec.isRtl ? '1' : '0'}`;
+  }
+
+  public getCachedStoryTargetBuffer(key: string): StoryTargetBuffer | undefined {
+    return this.targetBufferCache.get(key);
+  }
+
+  public setCachedStoryTargetBuffer(key: string, buf: StoryTargetBuffer): void {
+    if (this.targetBufferCache.size >= 64) {
+      const oldest = this.targetBufferCache.keys().next().value;
+      if (oldest !== undefined) this.targetBufferCache.delete(oldest);
+    }
+    this.targetBufferCache.set(key, buf);
+  }
 
   private ensureObserver() {
     if (typeof window === 'undefined' || this.resizeObserver) return;
@@ -226,6 +243,13 @@ class ParticleRegistryManager {
     fallbackW = 380,
     fallbackH = 380
   ): Promise<StoryTargetBuffer | null> {
+    const layout = this.layouts.get(spec.id);
+    const boxW = layout?.width ?? fallbackW;
+    const boxH = layout?.height ?? fallbackH;
+    const cacheKey = this.getTargetBufferKey(spec, count, boxW, boxH);
+    const cached = this.targetBufferCache.get(cacheKey);
+    if (cached) return cached;
+
     // Yield to the event loop so heavy SVG arc-length and particle calculations
     // never block the current requestAnimationFrame frame or cause a scroll hitch.
     await new Promise<void>((resolve) => {
@@ -236,9 +260,6 @@ class ParticleRegistryManager {
       }
     });
 
-    const layout = this.layouts.get(spec.id);
-    const boxW = layout?.width ?? fallbackW;
-    const boxH = layout?.height ?? fallbackH;
     const pts = await this.sampleDescriptor(spec, boxW, boxH, count);
     if (!pts.length) return null;
 
@@ -329,7 +350,7 @@ class ParticleRegistryManager {
       shades[j] = ts;
     }
 
-    return {
+    const targetBuffer: StoryTargetBuffer = {
       positions,
       accents,
       dustMask,
@@ -338,6 +359,8 @@ class ParticleRegistryManager {
       height: boxH,
       stripSpan: isStrip ? effectiveW : undefined,
     };
+    this.setCachedStoryTargetBuffer(cacheKey, targetBuffer);
+    return targetBuffer;
   }
 
   /**

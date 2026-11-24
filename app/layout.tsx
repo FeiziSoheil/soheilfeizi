@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { Inter_Tight, Vazirmatn, JetBrains_Mono } from 'next/font/google';
+import { Analytics } from '@vercel/analytics/next';
 import TabTransitionOverlay from '@/components/TabTransitionOverlay';
 import './globals.css';
 
@@ -124,6 +125,7 @@ export default function RootLayout({
         />
         {children}
         <TabTransitionOverlay />
+        <Analytics />
       </body>
     </html>
   );

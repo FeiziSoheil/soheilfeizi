@@ -1575,7 +1575,13 @@ export default function SiteParticleStage({
       const nextH = isMobileNow ? Math.min(height * 0.45, 380) : 420;
 
       if (resolvedKey === 'hero-portrait') {
-        schedulePrewarmPipeline(localeNow);
+        if (!heroGatherDone) {
+          window.setTimeout(() => {
+            if (!disposed) schedulePrewarmPipeline(localeNow);
+          }, Math.round((HERO_PORTRAIT_CONFIG.enterAssembleSec + 0.6) * 1000));
+        } else {
+          schedulePrewarmPipeline(localeNow);
+        }
         return;
       }
 
@@ -1717,14 +1723,6 @@ export default function SiteParticleStage({
             ? diagramCount
             : nonHeroCount;
 
-      const cached = bufferCache.get(resolved.key);
-      if (cached) {
-        applyNextTarget(cached, resolved.spec.id, true, false, targetSampleCount);
-        schedulePrewarmNext(resolved.key, localeNow);
-        return;
-      }
-
-      const token = ++buildToken;
       const spec = resolved.spec;
       const isMobileNow = width < 768;
       const fallbackW = isHeroPortrait
@@ -1747,6 +1745,35 @@ export default function SiteParticleStage({
           : isMobileNow
             ? Math.min(height * 0.45, 380)
             : 420;
+
+      const fallbackKey = particleRegistry.getTargetBufferKey(
+        spec,
+        targetSampleCount,
+        fallbackW,
+        fallbackH
+      );
+      const cached =
+        bufferCache.get(resolved.key) ||
+        particleRegistry.getCachedStoryTargetBuffer(fallbackKey);
+      if (cached) {
+        setCachedBuffer(resolved.key, cached);
+        const isInitialHero = isHeroPortrait && !heroGatherDone && visFrom < 0.05;
+        applyNextTarget(cached, resolved.spec.id, true, isInitialHero, targetSampleCount);
+        if (isInitialHero && resolved.spec.id) {
+          const scrollPos = useScrollStore.getState().scroll.pos;
+          const rect = particleRegistry.getLiveScreenRect(resolved.spec.id, scrollPos, height);
+          if (rect) {
+            const wOrigin = toWebgl(rect.centerX, rect.centerY);
+            lastFromOrigin.set(wOrigin.x, wOrigin.y);
+            lastToOrigin.set(wOrigin.x, wOrigin.y);
+            heroSlotHalfH = rect.height * 0.5;
+          }
+        }
+        schedulePrewarmNext(resolved.key, localeNow);
+        return;
+      }
+
+      const token = ++buildToken;
       void particleRegistry
         .buildStoryTargetBuffer(spec, targetSampleCount, fallbackW, fallbackH)
         .then((buf) => {
@@ -1985,9 +2012,11 @@ export default function SiteParticleStage({
       }
       const secP = st.sectionProgress[st.activeSection] ?? 0;
 
-      if (resolved.key !== currentKey || layoutDirty) {
+      if (resolved.key !== currentKey) {
         layoutDirty = false;
         requestSlotMorph(resolved, st.locale);
+      } else if (layoutDirty) {
+        layoutDirty = false;
       }
 
       desiredOpacity = resolved.spec ? resolved.opacity : 1;
@@ -2308,8 +2337,12 @@ export default function SiteParticleStage({
       }
     };
 
-    // Immediately kick off background prewarming for section entry shapes
-    schedulePrewarmPipeline(useScrollStore.getState().locale);
+    // Defer background prewarming for subsequent sections until Hero entrance assembly is completed
+    const prewarmInitTimer = window.setTimeout(() => {
+      if (!disposed) {
+        schedulePrewarmPipeline(useScrollStore.getState().locale);
+      }
+    }, Math.round((HERO_PORTRAIT_CONFIG.enterAssembleSec + 0.8) * 1000));
 
     tick();
 
@@ -2317,6 +2350,7 @@ export default function SiteParticleStage({
       disposed = true;
       cancelAnimationFrame(frameId);
       clearTimeout(frameId);
+      clearTimeout(prewarmInitTimer);
       cancelPrewarmTimer();
       prewarmQueue.length = 0;
       unsubRegistry();

@@ -227,7 +227,7 @@ export function ClientNotesSection({ locale }: { locale: Locale }) {
       style={getSingularitySectionStyle('testimonial', '200svh', '165svh')}
     >
       <div
-        className="pin-sticky flex flex-col justify-between px-4 sm:px-8 md:px-10 lg:px-16 pt-12 sm:pt-16 lg:pt-20 pb-16 sm:pb-20 lg:pb-24 overflow-y-auto lg:overflow-hidden select-none"
+        className="pin-sticky flex flex-col justify-between px-4 sm:px-8 md:px-10 lg:px-16 pt-10 sm:pt-14 md:pt-16 lg:pt-20 pb-20 sm:pb-24 lg:pb-24 overflow-hidden"
         onMouseEnter={() => setIsPaused(true)}
         onMouseLeave={() => setIsPaused(false)}
         onTouchStart={() => setIsPaused(true)}
@@ -243,18 +243,18 @@ export function ClientNotesSection({ locale }: { locale: Locale }) {
               {copy.title}
             </h2>
           </div>
-          <span className="text-[11px] sm:text-xs md:text-sm font-normal text-[#111111]/60">
+          <span className="text-[10.5px] sm:text-xs md:text-sm font-normal text-[#111111]/60">
             {copy.subtitle}
           </span>
         </div>
 
         {/* Main 3-Zone Editorial Grid: Avatar Rail | Dual-DOM Quote Stack | Particle Quote Marks */}
-        <div className="my-auto grid w-full grid-cols-1 items-center gap-3 sm:gap-5 lg:grid-cols-12 lg:gap-8 py-2 sm:py-4 lg:py-6">
+        <div className="my-auto grid w-full grid-cols-1 md:grid-cols-12 items-center gap-3 sm:gap-5 md:gap-6 lg:gap-8 py-2 sm:py-3 md:py-4 lg:py-6 flex-1 min-h-0">
           {/* Narrow Left Column: Circular Initials Avatars */}
           <div
             role="tablist"
             aria-label={copy.title}
-            className="lg:col-span-1 flex lg:flex-col items-center gap-2.5 sm:gap-3 shrink-0"
+            className="md:col-span-2 lg:col-span-1 flex flex-row md:flex-col items-center justify-start md:justify-center gap-2 sm:gap-2.5 md:gap-3 shrink-0"
           >
             {quotes.map((item, idx) => {
               const isActive = idx === activeIdx;
@@ -270,9 +270,9 @@ export function ClientNotesSection({ locale }: { locale: Locale }) {
                   className="group relative flex items-center gap-2 cursor-pointer rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-[#5B5BF0]"
                 >
                   <span
-                    className={`flex h-9.5 w-9.5 sm:h-11 sm:w-11 lg:h-12 lg:w-12 items-center justify-center rounded-full font-mono text-[11px] sm:text-xs font-bold tracking-wider transition-all duration-300 ${
+                    className={`flex h-8.5 w-8.5 sm:h-9.5 sm:w-9.5 md:h-11 md:w-11 lg:h-12 lg:w-12 items-center justify-center rounded-full font-mono text-[10.5px] sm:text-xs font-bold tracking-wider transition-all duration-300 ${
                       isActive
-                        ? 'bg-[#5B5BF0] text-white shadow-[0_8px_20px_rgba(91,91,240,0.36)] scale-105'
+                        ? 'bg-[#5B5BF0] text-white shadow-[0_6px_16px_rgba(91,91,240,0.36)] scale-105'
                         : 'bg-[#111111]/8 text-[#111111]/55 hover:bg-[#111111]/14 hover:text-[#111111]'
                     }`}
                   >
@@ -280,7 +280,7 @@ export function ClientNotesSection({ locale }: { locale: Locale }) {
                   </span>
                   <span
                     aria-hidden="true"
-                    className={`hidden lg:inline-block h-1.5 w-1.5 rounded-full transition-all duration-300 ${
+                    className={`hidden md:inline-block h-1.5 w-1.5 rounded-full transition-all duration-300 ${
                       isActive
                         ? 'bg-[#5B5BF0] scale-100 opacity-100'
                         : 'bg-transparent scale-0 opacity-0'
@@ -292,20 +292,20 @@ export function ClientNotesSection({ locale }: { locale: Locale }) {
           </div>
 
           {/* Center-Left Column: Dual-DOM Masked Quote Stack */}
-          <div className="lg:col-span-7 relative min-h-[190px] sm:min-h-[250px] lg:min-h-[320px] flex flex-col justify-center">
+          <div className="md:col-span-10 lg:col-span-7 relative min-h-[170px] sm:min-h-[200px] md:min-h-[250px] lg:min-h-[300px] flex flex-col justify-center min-w-0">
             {/* Outgoing Quote Layer */}
             {prevQuote && (
               <div
                 ref={outgoingRef}
                 aria-hidden="true"
-                className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 z-10 space-y-2.5 sm:space-y-4 lg:space-y-5"
+                className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 z-10 space-y-2 sm:space-y-3.5 md:space-y-4 lg:space-y-5"
               >
-                <div className="overflow-hidden py-0.5">
+                <div className="overflow-hidden py-1 sm:py-1.5">
                   <div
                     data-q-item
-                    className="font-extrabold tracking-[-0.03em] leading-[1.15] sm:leading-[1.1] lg:leading-[1.06] text-[#111111] text-[clamp(1.15rem,4.2vw,1.85rem)] sm:text-[clamp(1.5rem,3.8vw,2.75rem)] lg:text-[clamp(2.1rem,3.4vw,3.75rem)] text-balance"
+                    className="font-extrabold tracking-[-0.03em] leading-[1.25] sm:leading-[1.18] lg:leading-[1.08] text-[#111111] text-[clamp(1.05rem,4.2vw,1.65rem)] sm:text-[clamp(1.3rem,3.4vw,2.25rem)] lg:text-[clamp(1.85rem,2.8vw,3.25rem)] text-balance"
                   >
-                    <span className="text-[#5B5BF0] me-1.5 sm:me-2" aria-hidden="true">
+                    <span className="text-[#5B5BF0] me-1 sm:me-1.5" aria-hidden="true">
                       {locale === 'fa' ? '«' : '“'}
                     </span>
                     {prevQuote.headline}
@@ -317,7 +317,7 @@ export function ClientNotesSection({ locale }: { locale: Locale }) {
                 <div className="overflow-hidden">
                   <p
                     data-q-item
-                    className="max-w-2xl text-[12px] sm:text-[14px] lg:text-[16px] font-normal leading-relaxed text-[#111111]/75"
+                    className="max-w-2xl text-[11.5px] sm:text-[13px] md:text-[14px] lg:text-[15px] font-normal leading-relaxed text-[#111111]/75"
                   >
                     {prevQuote.body}
                   </p>
@@ -325,17 +325,17 @@ export function ClientNotesSection({ locale }: { locale: Locale }) {
                 <div className="overflow-hidden pt-1 sm:pt-2">
                   <div
                     data-q-item
-                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4 border-t border-[#111111]/12 pt-2 sm:pt-3"
+                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 sm:gap-4 border-t border-[#111111]/12 pt-2 sm:pt-3"
                   >
                     <div className="min-w-0">
                       <div className="text-xs sm:text-sm lg:text-base font-extrabold text-[#111111]">
                         {prevQuote.name}
                       </div>
-                      <div className="mt-0.5 font-mono text-[10px] sm:text-xs text-[#111111]/60 truncate">
+                      <div className="mt-0.5 font-mono text-[9.5px] sm:text-xs text-[#111111]/60 truncate">
                         {prevQuote.role} · {prevQuote.company}
                       </div>
                     </div>
-                    <span className="inline-flex self-start sm:self-auto items-center rounded-lg sm:rounded-full border border-[#5B5BF0]/25 bg-[#5B5BF0]/10 px-2.5 sm:px-3.5 py-0.5 sm:py-1 font-mono text-[9.5px] sm:text-[11px] font-medium text-[#3B3BC8] max-w-full">
+                    <span className="inline-flex self-start sm:self-auto items-center rounded-lg sm:rounded-full border border-[#5B5BF0]/25 bg-[#5B5BF0]/10 px-2 sm:px-3 py-0.5 sm:py-1 font-mono text-[9px] sm:text-[10.5px] font-medium text-[#3B3BC8] max-w-full">
                       {prevQuote.metric}
                     </span>
                   </div>
@@ -344,13 +344,13 @@ export function ClientNotesSection({ locale }: { locale: Locale }) {
             )}
 
             {/* Incoming / Active Quote Layer */}
-            <div ref={incomingRef} className="relative z-20 space-y-2.5 sm:space-y-4 lg:space-y-5">
-              <div className="overflow-hidden py-0.5">
+            <div ref={incomingRef} className="relative z-20 space-y-2 sm:space-y-3.5 md:space-y-4 lg:space-y-5">
+              <div className="overflow-hidden py-1 sm:py-1.5">
                 <blockquote
                   data-q-item
-                  className="font-extrabold tracking-[-0.03em] leading-[1.15] sm:leading-[1.1] lg:leading-[1.06] text-[#111111] text-[clamp(1.15rem,4.2vw,1.85rem)] sm:text-[clamp(1.5rem,3.8vw,2.75rem)] lg:text-[clamp(2.1rem,3.4vw,3.75rem)] text-balance will-change-transform"
+                  className="font-extrabold tracking-[-0.03em] leading-[1.25] sm:leading-[1.18] lg:leading-[1.08] text-[#111111] text-[clamp(1.05rem,4.2vw,1.65rem)] sm:text-[clamp(1.3rem,3.4vw,2.25rem)] lg:text-[clamp(1.85rem,2.8vw,3.25rem)] text-balance will-change-transform"
                 >
-                  <span className="text-[#5B5BF0] me-1.5 sm:me-2" aria-hidden="true">
+                  <span className="text-[#5B5BF0] me-1 sm:me-1.5" aria-hidden="true">
                     {locale === 'fa' ? '«' : '“'}
                   </span>
                   {activeQuote.headline}
@@ -363,7 +363,7 @@ export function ClientNotesSection({ locale }: { locale: Locale }) {
               <div className="overflow-hidden">
                 <p
                   data-q-item
-                  className="max-w-2xl text-[12px] sm:text-[14px] lg:text-[16px] font-normal leading-relaxed text-[#111111]/76"
+                  className="max-w-2xl text-[11.5px] sm:text-[13px] md:text-[14px] lg:text-[15px] font-normal leading-relaxed text-[#111111]/76"
                 >
                   {activeQuote.body}
                 </p>
@@ -372,19 +372,19 @@ export function ClientNotesSection({ locale }: { locale: Locale }) {
               <div className="overflow-hidden pt-1 sm:pt-2">
                 <div
                   data-q-item
-                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4 border-t border-[#111111]/12 pt-2 sm:pt-3"
+                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 sm:gap-4 border-t border-[#111111]/12 pt-2 sm:pt-3"
                 >
                   <div className="min-w-0">
                     <div className="text-xs sm:text-sm lg:text-base font-extrabold text-[#111111]">
                       {activeQuote.name}
                     </div>
-                    <div className="mt-0.5 font-mono text-[10px] sm:text-xs text-[#111111]/60 truncate">
+                    <div className="mt-0.5 font-mono text-[9.5px] sm:text-xs text-[#111111]/60 truncate">
                       {activeQuote.role} · {activeQuote.company}
                     </div>
                   </div>
 
                   {/* Rounded metric chip */}
-                  <span className="inline-flex self-start sm:self-auto items-center rounded-lg sm:rounded-full border border-[#5B5BF0]/25 bg-[#5B5BF0]/10 px-2.5 sm:px-3.5 py-0.5 sm:py-1 font-mono text-[9.5px] sm:text-[11px] font-medium text-[#3B3BC8] max-w-full">
+                  <span className="inline-flex self-start sm:self-auto items-center rounded-lg sm:rounded-full border border-[#5B5BF0]/25 bg-[#5B5BF0]/10 px-2 sm:px-3 py-0.5 sm:py-1 font-mono text-[9px] sm:text-[10.5px] font-medium text-[#3B3BC8] max-w-full">
                     {activeQuote.metric}
                   </span>
                 </div>
@@ -404,7 +404,7 @@ export function ClientNotesSection({ locale }: { locale: Locale }) {
         </div>
 
         {/* Bottom 7-Second Thin Rounded-Full Progress Bar (Pauses on Hover / Touch) */}
-        <div className="flex items-center justify-between gap-3 sm:gap-4 shrink-0 pt-2">
+        <div className="flex items-center justify-between gap-3 sm:gap-4 shrink-0 pt-2 mb-1 sm:mb-2">
           <div
             role="progressbar"
             aria-valuemin={0}
@@ -417,7 +417,7 @@ export function ClientNotesSection({ locale }: { locale: Locale }) {
               style={{ width: `${(progress * 100).toFixed(2)}%` }}
             />
           </div>
-          <span className="font-mono text-[10.5px] sm:text-[11px] text-[#111111]/55 tabular-nums shrink-0">
+          <span className="font-mono text-[10px] sm:text-[11px] text-[#111111]/55 tabular-nums shrink-0">
             {String(activeIdx + 1).padStart(2, '0')} / {String(quotes.length).padStart(2, '0')}
           </span>
         </div>
@@ -450,40 +450,27 @@ export function AfterHoursSection({
   const t = CONTENT[locale];
   const p = useScrollStore((s) => s.sectionProgress.afterhours);
   const sectionRef = useRef<HTMLElement | null>(null);
-  const stickyRef = useRef<HTMLDivElement | null>(null);
-  const contentRef = useRef<HTMLDivElement | null>(null);
   const scIframeRef = useRef<HTMLIFrameElement | null>(null);
   const [liveBars, setLiveBars] = useState<number[]>(IDLE_BARS);
-  const [overflowPx, setOverflowPx] = useState(0);
+  const [mobileTab, setMobileTab] = useState<'player' | 'hobbies'>('player');
+  const userInteractedTabRef = useRef(false);
+
+  // Sync mobile tab with scroll progress unless user explicitly clicked a tab
+  useEffect(() => {
+    if (!userInteractedTabRef.current) {
+      if (p >= 0.48 && mobileTab !== 'hobbies') {
+        setMobileTab('hobbies');
+      } else if (p < 0.45 && mobileTab !== 'player') {
+        setMobileTab('player');
+      }
+    }
+  }, [p, mobileTab]);
 
   useEffect(() => {
     if (scIframeRef.current) {
       soundEngine.registerSoundCloudWidget(scIframeRef.current);
     }
   }, [activeTrack]);
-
-  useEffect(() => {
-    const stickyEl = stickyRef.current;
-    const contentEl = contentRef.current;
-    if (!stickyEl || !contentEl) return;
-
-    const measure = () => {
-      const nextOverflow = Math.max(0, contentEl.scrollHeight - stickyEl.clientHeight);
-      setOverflowPx(nextOverflow);
-    };
-
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(stickyEl);
-    ro.observe(contentEl);
-    window.addEventListener('resize', measure);
-    window.addEventListener('orientationchange', measure);
-    return () => {
-      ro.disconnect();
-      window.removeEventListener('resize', measure);
-      window.removeEventListener('orientationchange', measure);
-    };
-  }, [locale]);
 
   useEffect(() => {
     if (!soundPlaying) return;
@@ -518,7 +505,6 @@ export function AfterHoursSection({
 
   const bars = soundPlaying ? liveBars : IDLE_BARS;
   const isRtl = locale === 'fa';
-  const panY = overflowPx > 0 ? -(p * overflowPx) : 0;
 
   return (
     <section
@@ -530,167 +516,200 @@ export function AfterHoursSection({
       className={`pin-section ${hasIncomingTransition('afterhours') ? '' : 'border-t border-[var(--hairline)]'} bg-transparent`}
       style={getSingularitySectionStyle('afterhours', '200svh', '210svh')}
     >
-      <div
-        ref={stickyRef}
-        className={`pin-sticky flex ${
-          overflowPx > 0 ? 'items-start' : 'items-center'
-        } px-4 sm:px-10 lg:px-16`}
-      >
-        <div
-          ref={contentRef}
-          className="grid w-full grid-cols-1 gap-7 lg:gap-10 lg:grid-cols-12 pt-16 pb-28 lg:py-16 will-change-transform"
-          style={
-            overflowPx > 0
-              ? { transform: `translate3d(0, ${panY.toFixed(1)}px, 0)` }
-              : undefined
-          }
-        >
-          {/* Live Procedural Web Audio Player (Rounded Card) */}
-          <div className="lg:col-span-6 flex flex-col justify-between rounded-[var(--radius-lg)] border border-[var(--hairline)] bg-white/[0.02] p-5 sm:p-8">
-            <div>
-              <span className="font-mono text-xs font-medium text-[#5B5BF0]">
-                {t.afterhours.kicker}
-              </span>
-              <h2 className="display-xl mt-2 text-2xl sm:text-4xl">
-                {t.afterhours.heading}
-              </h2>
-              <p className="mt-2 font-mono text-xs opacity-55">
-                {t.afterhours.playerTitle}
-              </p>
+      <div className="pin-sticky flex items-center justify-center px-4 sm:px-8 md:px-10 lg:px-16 overflow-hidden">
+        <div className="w-full max-w-6xl mx-auto py-10 sm:py-12 md:py-16">
+          {/* Mobile Segmented Tab Switcher (< md) */}
+          <div className="flex md:hidden items-center justify-center p-1 rounded-full border border-[var(--hairline)] bg-white/[0.04] backdrop-blur-md mb-4 max-w-[280px] mx-auto shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                soundEngine.playStippleTick();
+                userInteractedTabRef.current = true;
+                setMobileTab('player');
+              }}
+              className={`flex-1 py-1 px-3 rounded-full text-[11px] font-mono font-medium transition-all ${
+                mobileTab === 'player'
+                  ? 'bg-[#5B5BF0] text-white shadow-sm'
+                  : 'text-white/60 hover:text-white'
+              }`}
+            >
+              {locale === 'fa' ? '♫ پلیر صوتی' : '♫ Ambient Sound'}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                soundEngine.playStippleTick();
+                userInteractedTabRef.current = true;
+                setMobileTab('hobbies');
+              }}
+              className={`flex-1 py-1 px-3 rounded-full text-[11px] font-mono font-medium transition-all ${
+                mobileTab === 'hobbies'
+                  ? 'bg-[#5B5BF0] text-white shadow-sm'
+                  : 'text-white/60 hover:text-white'
+              }`}
+            >
+              {locale === 'fa' ? '✦ پس از کار' : '✦ After Hours'}
+            </button>
+          </div>
 
-              {/* Frequency Bars */}
-              <div
-                aria-hidden="true"
-                className="mt-6 flex h-12 items-end gap-1.5 border-b border-[var(--hairline)] pb-3"
-              >
-                {bars.map((val, i) => (
-                  <span
-                    key={i}
-                    className="flex-1 rounded-t-full bg-[#5B5BF0] transition-[height] duration-75"
-                    style={{
-                      height: `${val}%`,
-                      opacity: soundPlaying ? 0.9 : 0.28,
-                    }}
-                  />
-                ))}
-              </div>
+          <div className="grid w-full grid-cols-1 md:grid-cols-12 gap-5 sm:gap-6 md:gap-8 lg:gap-10 items-center">
+            {/* Live Procedural Web Audio Player (Rounded Card) */}
+            <div
+              className={`md:col-span-6 flex flex-col justify-between rounded-[var(--radius-lg)] border border-[var(--hairline)] bg-white/[0.02] p-4 sm:p-5 md:p-6 lg:p-8 ${
+                mobileTab === 'player' ? 'flex' : 'hidden md:flex'
+              }`}
+            >
+              <div>
+                <span className="font-mono text-[11px] sm:text-xs font-medium text-[#5B5BF0]">
+                  {t.afterhours.kicker}
+                </span>
+                <h2 className="display-xl mt-1.5 sm:mt-2 text-xl sm:text-2xl md:text-3xl lg:text-4xl">
+                  {t.afterhours.heading}
+                </h2>
+                <p className="mt-1 sm:mt-2 font-mono text-[10.5px] sm:text-xs opacity-55">
+                  {t.afterhours.playerTitle}
+                </p>
 
-              {/* Drift Tracks */}
-              <div className="mt-5 space-y-1.5">
-                {t.afterhours.tracks.map((track) => {
-                  const isCurrent = activeTrack === track.id;
-                  return (
-                    <button
-                      key={track.id}
-                      type="button"
-                      data-cursor="view"
-                      onClick={() => {
-                        soundEngine.playStippleTick();
-                        if (isCurrent && soundPlaying) {
-                          onToggleSound();
-                        } else {
-                          onSelectTrack(track.id);
-                        }
+                {/* Frequency Bars */}
+                <div
+                  aria-hidden="true"
+                  className="mt-4 sm:mt-5 md:mt-6 flex h-8 sm:h-10 md:h-12 items-end gap-1.5 border-b border-[var(--hairline)] pb-2.5 sm:pb-3"
+                >
+                  {bars.map((val, i) => (
+                    <span
+                      key={i}
+                      className="flex-1 rounded-t-full bg-[#5B5BF0] transition-[height] duration-75"
+                      style={{
+                        height: `${val}%`,
+                        opacity: soundPlaying ? 0.9 : 0.28,
                       }}
-                      className={`flex w-full items-center justify-between gap-4 rounded-[var(--radius-md)] px-3 py-3 text-start transition-colors hover:bg-white/[0.05] hover:text-[#8F8FFF] cursor-pointer ${
-                        isCurrent && soundPlaying ? 'bg-white/[0.06]' : ''
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <span
-                          className={`flex h-8 w-8 items-center justify-center rounded-full border ${
-                            isCurrent && soundPlaying
-                              ? 'border-[#5B5BF0] bg-[#5B5BF0] text-white'
-                              : 'border-[var(--hairline)]'
-                          }`}
-                        >
-                          {isCurrent && soundPlaying ? (
-                            <Pause className="h-3.5 w-3.5" />
-                          ) : (
-                            <Play className="h-3.5 w-3.5" />
-                          )}
-                        </span>
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-bold truncate">{track.title}</span>
-                            <span className="font-mono text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-full border border-[var(--hairline)] opacity-60 shrink-0">
-                              {track.type === 'soundcloud' ? 'SoundCloud' : 'Web Audio'}
-                            </span>
-                          </div>
-                          <div className="text-xs font-light opacity-60 truncate">
-                            {track.mood}
+                    />
+                  ))}
+                </div>
+
+                {/* Drift Tracks */}
+                <div className="mt-3.5 sm:mt-4 md:mt-5 space-y-1 sm:space-y-1.5">
+                  {t.afterhours.tracks.map((track) => {
+                    const isCurrent = activeTrack === track.id;
+                    return (
+                      <button
+                        key={track.id}
+                        type="button"
+                        data-cursor="view"
+                        onClick={() => {
+                          soundEngine.playStippleTick();
+                          if (isCurrent && soundPlaying) {
+                            onToggleSound();
+                          } else {
+                            onSelectTrack(track.id);
+                          }
+                        }}
+                        className={`flex w-full items-center justify-between gap-2.5 sm:gap-4 rounded-[var(--radius-md)] px-2.5 sm:px-3 py-2 sm:py-2.5 md:py-3 text-start transition-colors hover:bg-white/[0.05] hover:text-[#8F8FFF] cursor-pointer ${
+                          isCurrent && soundPlaying ? 'bg-white/[0.06]' : ''
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
+                          <span
+                            className={`flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-full border shrink-0 ${
+                              isCurrent && soundPlaying
+                                ? 'border-[#5B5BF0] bg-[#5B5BF0] text-white'
+                                : 'border-[var(--hairline)]'
+                            }`}
+                          >
+                            {isCurrent && soundPlaying ? (
+                              <Pause className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                            ) : (
+                              <Play className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                            )}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5 sm:gap-2">
+                              <span className="text-xs sm:text-sm font-bold truncate">
+                                {track.title}
+                              </span>
+                              <span className="font-mono text-[8.5px] sm:text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded-full border border-[var(--hairline)] opacity-60 shrink-0">
+                                {track.type === 'soundcloud' ? 'SoundCloud' : 'Web Audio'}
+                              </span>
+                            </div>
+                            <div className="text-[10px] sm:text-xs font-light opacity-60 truncate mt-0.5">
+                              {track.mood}
+                            </div>
                           </div>
                         </div>
+                        <span className="font-mono text-[10px] sm:text-[11px] opacity-55 shrink-0 ms-2">
+                          {track.duration}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Embedded SoundCloud Player Frame (Active for SoundCloud Tracks) */}
+                {(() => {
+                  const activeTrackData = t.afterhours.tracks.find((tr) => tr.id === activeTrack);
+                  const isSoundCloud = activeTrackData?.type === 'soundcloud';
+                  const scUrl = activeTrackData?.soundcloudUrl ?? t.afterhours.tracks[0]?.soundcloudUrl ?? '';
+                  return (
+                    <div
+                      className={`mt-3 sm:mt-4 overflow-hidden rounded-[var(--radius-md)] border border-[var(--hairline)] bg-black/40 transition-all duration-300 ${
+                        isSoundCloud ? 'block' : 'hidden'
+                      }`}
+                    >
+                      <iframe
+                        key={scUrl}
+                        id="sc-player-iframe"
+                        ref={scIframeRef}
+                        width="100%"
+                        height="120"
+                        scrolling="no"
+                        frameBorder="no"
+                        allow="autoplay; encrypted-media"
+                        src={scUrl}
+                        className="block w-full opacity-90 transition-opacity hover:opacity-100"
+                      />
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+
+            {/* Hobbies entering horizontally with p */}
+            <div
+              className={`md:col-span-6 flex flex-col justify-center ${
+                mobileTab === 'hobbies' ? 'flex' : 'hidden md:flex'
+              }`}
+            >
+              <span className="font-mono text-[11px] sm:text-xs opacity-55 mb-3 sm:mb-4 md:mb-5">
+                {t.afterhours.hobbiesHeading}
+              </span>
+              <div className="space-y-3 sm:space-y-4">
+                {t.afterhours.hobbies.map((hobby, idx) => {
+                  const entry = clamp01((p - idx * 0.1) / 0.35);
+                  const slidePx = (1 - entry) * (isRtl ? -24 : 24);
+                  return (
+                    <div
+                      key={hobby.title}
+                      className="border-b border-[var(--hairline)] pb-2.5 sm:pb-3.5 md:pb-4 will-change-transform"
+                      style={{
+                        opacity: Math.max(0.55, entry),
+                        transform: `translate3d(${slidePx}px, 0, 0)`,
+                      }}
+                    >
+                      <div className="flex items-baseline justify-between gap-3">
+                        <h3 className="text-sm sm:text-base md:text-lg lg:text-xl font-extrabold tracking-tight">
+                          {hobby.title}
+                        </h3>
+                        <span className="font-mono text-[11px] sm:text-xs text-[#5B5BF0]">
+                          0{idx + 1}
+                        </span>
                       </div>
-                      <span className="font-mono text-[11px] opacity-55 shrink-0">
-                        {track.duration}
-                      </span>
-                    </button>
+                      <p className="mt-0.5 sm:mt-1 text-[11px] sm:text-xs md:text-sm font-light opacity-75 leading-relaxed">
+                        {hobby.note}
+                      </p>
+                    </div>
                   );
                 })}
               </div>
-
-              {/* Embedded SoundCloud Player Frame (Active for SoundCloud Tracks) */}
-              {(() => {
-                const activeTrackData = t.afterhours.tracks.find((tr) => tr.id === activeTrack);
-                const isSoundCloud = activeTrackData?.type === 'soundcloud';
-                const scUrl = activeTrackData?.soundcloudUrl ?? t.afterhours.tracks[0]?.soundcloudUrl ?? '';
-                return (
-                  <div
-                    className={`mt-4 overflow-hidden rounded-[var(--radius-md)] border border-[var(--hairline)] bg-black/40 transition-all duration-300 ${
-                      isSoundCloud ? 'block' : 'hidden'
-                    }`}
-                  >
-                    <iframe
-                      key={scUrl}
-                      id="sc-player-iframe"
-                      ref={scIframeRef}
-                      width="100%"
-                      height="166"
-                      scrolling="no"
-                      frameBorder="no"
-                      allow="autoplay; encrypted-media"
-                      src={scUrl}
-                      className="block w-full opacity-90 transition-opacity hover:opacity-100"
-                    />
-                  </div>
-                );
-              })()}
-            </div>
-          </div>
-
-          {/* Hobbies entering horizontally with p */}
-          <div className="lg:col-span-6 flex flex-col justify-center">
-            <span className="font-mono text-xs opacity-55 mb-5">
-              {t.afterhours.hobbiesHeading}
-            </span>
-            <div className="space-y-4">
-              {t.afterhours.hobbies.map((hobby, idx) => {
-                const entry = clamp01((p - idx * 0.1) / 0.35);
-                const slidePx = (1 - entry) * (isRtl ? -24 : 24);
-                return (
-                  <div
-                    key={hobby.title}
-                    className="border-b border-[var(--hairline)] pb-3.5 sm:pb-4 will-change-transform"
-                    style={{
-                      opacity: Math.max(0.55, entry),
-                      transform: `translate3d(${slidePx}px, 0, 0)`,
-                    }}
-                  >
-                    <div className="flex items-baseline justify-between gap-3">
-                      <h3 className="text-base sm:text-xl font-extrabold tracking-tight">
-                        {hobby.title}
-                      </h3>
-                      <span className="font-mono text-xs text-[#5B5BF0]">
-                        0{idx + 1}
-                      </span>
-                    </div>
-                    <p className="mt-1 text-xs sm:text-sm font-light opacity-75">
-                      {hobby.note}
-                    </p>
-                  </div>
-                );
-              })}
             </div>
           </div>
         </div>

@@ -23,6 +23,176 @@ interface ChatMessage {
   content: string;
 }
 
+function parseInlineMarkdown(text: string): React.ReactNode[] {
+  const parts: React.ReactNode[] = [];
+  const mdRegex = /(\[([^\]]+)\]\(([^)]+)\))|(\*\*([^*]+)\*\*)|(`([^`]+)`)/g;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  const appendPlain = (str: string, keyPrefix: string) => {
+    const linkRegex =
+      /(https?:\/\/[^\s]+)|([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})|((?:t\.me|[\w-]+\.vercel\.app)[^\s]*)/g;
+    let lIdx = 0;
+    let lMatch: RegExpExecArray | null;
+    let subIdx = 0;
+
+    while ((lMatch = linkRegex.exec(str)) !== null) {
+      if (lMatch.index > lIdx) {
+        parts.push(str.slice(lIdx, lMatch.index));
+      }
+      const matched = lMatch[0];
+      const href = lMatch[1]
+        ? lMatch[1]
+        : lMatch[2]
+        ? `mailto:${lMatch[2]}`
+        : `https://${lMatch[3]}`;
+
+      parts.push(
+        <a
+          key={`${keyPrefix}-l-${subIdx++}`}
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-[#8F8FFF] hover:text-[#B2B2FF] underline underline-offset-2 break-all font-medium transition-colors"
+        >
+          {matched}
+        </a>
+      );
+      lIdx = linkRegex.lastIndex;
+    }
+    if (lIdx < str.length) {
+      parts.push(str.slice(lIdx));
+    }
+  };
+
+  let tokenIdx = 0;
+  while ((match = mdRegex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      appendPlain(text.slice(lastIndex, match.index), `p-${tokenIdx}`);
+    }
+    if (match[1]) {
+      parts.push(
+        <a
+          key={`md-link-${tokenIdx++}`}
+          href={match[3]}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-[#8F8FFF] hover:text-[#B2B2FF] underline underline-offset-2 break-all font-medium transition-colors"
+        >
+          {match[2]}
+        </a>
+      );
+    } else if (match[4]) {
+      parts.push(
+        <strong key={`bold-${tokenIdx++}`} className="font-semibold text-white">
+          {match[5]}
+        </strong>
+      );
+    } else if (match[6]) {
+      parts.push(
+        <code
+          key={`code-${tokenIdx++}`}
+          className="font-mono text-xs bg-white/10 px-1.5 py-0.5 rounded text-[#B2B2FF]"
+        >
+          {match[7]}
+        </code>
+      );
+    }
+    lastIndex = mdRegex.lastIndex;
+  }
+
+  if (lastIndex < text.length) {
+    const remaining = text.slice(lastIndex);
+    if (remaining.startsWith('**')) {
+      parts.push(
+        <strong key={`bold-tail-${tokenIdx++}`} className="font-semibold text-white">
+          {remaining.slice(2)}
+        </strong>
+      );
+    } else {
+      appendPlain(remaining, `p-tail`);
+    }
+  }
+
+  return parts;
+}
+
+function FormattedChatMessage({ content }: { content: string }) {
+  if (!content) return null;
+
+  const rawLines = content.split('\n');
+  const elements: React.ReactNode[] = [];
+  let currentList: { type: 'ul' | 'ol'; items: React.ReactNode[] } | null = null;
+
+  const flushList = () => {
+    if (!currentList) return;
+    const ListTag = currentList.type;
+    elements.push(
+      <ListTag
+        key={`list-${elements.length}`}
+        className="my-1.5 space-y-1.5 pl-0.5 list-none"
+      >
+        {currentList.items.map((item, i) => (
+          <li key={i} className="flex items-start gap-2 text-sm sm:text-base">
+            <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#8F8FFF]" />
+            <span className="flex-1 leading-relaxed">{item}</span>
+          </li>
+        ))}
+      </ListTag>
+    );
+    currentList = null;
+  };
+
+  rawLines.forEach((line, lineIdx) => {
+    const trimmed = line.trim();
+
+    if (!trimmed) {
+      flushList();
+      elements.push(<div key={`sp-${lineIdx}`} className="h-2" />);
+      return;
+    }
+
+    // Bullet list: - or * or •
+    const bulletMatch = /^[*\-•]\s+(.*)$/.exec(trimmed);
+    if (bulletMatch) {
+      if (!currentList || currentList.type !== 'ul') {
+        flushList();
+        currentList = { type: 'ul', items: [] };
+      }
+      currentList.items.push(parseInlineMarkdown(bulletMatch[1]));
+      return;
+    }
+
+    // Numbered list: 1. or 1)
+    const numMatch = /^(\d+)[\.\)]\s+(.*)$/.exec(trimmed);
+    if (numMatch) {
+      if (!currentList || currentList.type !== 'ol') {
+        flushList();
+        currentList = { type: 'ol', items: [] };
+      }
+      currentList.items.push(
+        <>
+          <span className="font-mono text-xs text-[#8F8FFF] mr-1">{numMatch[1]}.</span>
+          {parseInlineMarkdown(numMatch[2])}
+        </>
+      );
+      return;
+    }
+
+    // Regular paragraph line
+    flushList();
+    elements.push(
+      <p key={`p-${lineIdx}`} className="leading-relaxed">
+        {parseInlineMarkdown(trimmed)}
+      </p>
+    );
+  });
+
+  flushList();
+
+  return <div className="space-y-1">{elements}</div>;
+}
+
 export function AskMeSection({ locale }: { locale: Locale }) {
   const t = CONTENT[locale];
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -162,13 +332,19 @@ export function AskMeSection({ locale }: { locale: Locale }) {
                       : t.person.firstName.toUpperCase()}
                   </span>
                   <div
-                    className={`max-w-[85%] rounded-[var(--radius-md)] text-sm sm:text-base leading-relaxed whitespace-pre-wrap px-4 py-3 ${
+                    className={`max-w-[85%] rounded-[var(--radius-md)] text-sm sm:text-base leading-relaxed px-4 py-3 ${
                       msg.role === 'user'
-                        ? 'bg-[#5B5BF0] text-white'
+                        ? 'bg-[#5B5BF0] text-white whitespace-pre-wrap'
                         : 'border border-white/12 bg-white/[0.06] text-[#ECEAE6]'
                     }`}
                   >
-                    {msg.content || (loading ? t.ask.thinking : '')}
+                    {msg.role === 'user' ? (
+                      msg.content
+                    ) : msg.content ? (
+                      <FormattedChatMessage content={msg.content} />
+                    ) : loading ? (
+                      <span className="text-[#ECEAE6]/60 animate-pulse">{t.ask.thinking}</span>
+                    ) : null}
                   </div>
                 </div>
               ))
