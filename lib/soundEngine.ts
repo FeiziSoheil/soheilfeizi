@@ -14,7 +14,7 @@ class AmbientSoundEngine {
   private singularityGain: GainNode | null = null;
   private scWidget: any = null;
   private scIframe: HTMLIFrameElement | null = null;
-  private pendingSeekMs: number = 95000;
+  private pendingSeekMs: number = 110000;
 
   public registerSoundCloudWidget(iframe: HTMLIFrameElement | null) {
     this.scIframe = iframe;
@@ -39,12 +39,24 @@ class AmbientSoundEngine {
           });
           this.scWidget.bind('play', () => {
             if (this.pendingSeekMs > 0) {
-              const target = this.pendingSeekMs;
-              this.pendingSeekMs = 0;
               try {
-                this.scWidget.seekTo(target);
+                this.scWidget.seekTo(this.pendingSeekMs);
               } catch {
                 // ignore
+              }
+            }
+          });
+          this.scWidget.bind('playProgress', (data?: { currentPosition?: number }) => {
+            if (this.pendingSeekMs > 0) {
+              const pos = data?.currentPosition ?? 0;
+              if (pos < this.pendingSeekMs - 2000) {
+                try {
+                  this.scWidget.seekTo(this.pendingSeekMs);
+                } catch {
+                  // ignore
+                }
+              } else {
+                this.pendingSeekMs = 0;
               }
             }
           });
@@ -79,7 +91,6 @@ class AmbientSoundEngine {
       try {
         if (this.pendingSeekMs > 0) {
           this.scWidget.seekTo(this.pendingSeekMs);
-          this.pendingSeekMs = 0;
         }
         this.scWidget.play();
       } catch {
@@ -161,14 +172,14 @@ class AmbientSoundEngine {
     this.isPlaying = true;
 
     if (trackIndex === 0) {
-      // Track 0: SoundCloud (Hans Zimmer — Tick-Tock, starts at 1:35 = 95,000ms)
+      // Track 0: SoundCloud (Hans Zimmer — Tick-Tock, starts at 1:50 = 110,000ms)
       this.clearActiveTrack();
       if (this.masterGain && this.ctx) {
         const now = this.ctx.currentTime;
         this.masterGain.gain.cancelScheduledValues(now);
         this.masterGain.gain.setTargetAtTime(0.0001, now, 0.05);
       }
-      this.playSoundCloud(seekMs ?? 95000);
+      this.playSoundCloud(seekMs ?? 110000);
       return;
     }
 

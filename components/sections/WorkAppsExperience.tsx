@@ -88,13 +88,13 @@ const APP_METRICS: Record<
   },
   'harime-mehr': {
     en: [
-      { label: 'Accessibility', value: 'WCAG 2.1 AA' },
-      { label: 'Score', value: '99+ Lighthouse' },
+      { label: 'Management', value: 'Students & Tuition' },
+      { label: 'Attendance', value: 'Daily Smart Logs' },
       { label: 'Architecture', value: 'Modular TS' },
     ],
     fa: [
-      { label: 'دسترسی‌پذیری', value: 'استاندارد وب' },
-      { label: 'امتیاز لایت‌هاوس', value: '+۹۹' },
+      { label: 'مدیریت', value: 'نوآموزان و شهریه' },
+      { label: 'حضور و غیاب', value: 'ثبت و پایش روزانه' },
       { label: 'هسته', value: 'ماژولار TS' },
     ],
   },
@@ -176,7 +176,7 @@ const APP_BADGES: Record<string, Record<Locale, string>> = {
   parakgram: { en: 'FULL STACK', fa: 'فول‌استک' },
   'parak-rag': { en: 'MULTIMODAL AI', fa: 'هوش مصنوعی' },
   'parak-task-manager': { en: 'WORKSPACE OS', fa: 'سیستم تسک' },
-  'harime-mehr': { en: 'COMMUNITY', fa: 'سازمانی' },
+  'harime-mehr': { en: 'PRESCHOOL OS', fa: 'پیش‌دبستانی' },
   'mana-amlak': { en: 'LIVE DEMO', fa: 'دموی آنلاین' },
   'artam-amlak': { en: 'LIVE DEMO', fa: 'دموی آنلاین' },
   'dimplomat-amlak': { en: 'PRESTIGE', fa: 'ویترین لوکس' },
@@ -309,11 +309,12 @@ export function OwnAppsSection({
 
   // Interactive selection state for 0ms instant response on click
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
+  const [prevScrollActiveIdx, setPrevScrollActiveIdx] = useState(scrollActiveIdx);
 
-  // Sync scrollActiveIdx when scrolling moves
-  useEffect(() => {
+  if (prevScrollActiveIdx !== scrollActiveIdx) {
+    setPrevScrollActiveIdx(scrollActiveIdx);
     setSelectedIdx(null);
-  }, [scrollActiveIdx]);
+  }
 
   const activeIdx = selectedIdx !== null ? selectedIdx : scrollActiveIdx;
   const activeApp = apps[activeIdx] ?? apps[0];

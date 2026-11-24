@@ -42,7 +42,13 @@ import {
 import portraitAsset from '@/src/assets/images/soheil_editorial_portrait_1795200948891.jpg';
 import caseStudyAsset from '@/src/assets/images/case_study_commerce_device_1795200948621.jpg';
 
-export default function PortfolioShell() {
+interface PortfolioShellProps {
+  initialGatewayDone?: boolean;
+}
+
+export default function PortfolioShell({
+  initialGatewayDone = false,
+}: PortfolioShellProps) {
   const router = useRouter();
   const locale = useScrollStore((s) => s.locale);
   const mode = useScrollStore((s) => s.mode);
@@ -65,15 +71,9 @@ export default function PortfolioShell() {
   const setAssetsReady = useScrollStore((s) => s.setAssetsReady);
   const toggleGuiVisible = useScrollStore((s) => s.toggleGuiVisible);
 
-  const [gatewayDone, setGatewayDone] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get('v') === 'site' || params.get('debug') === 'shapes') {
-        return true;
-      }
-    }
-    return tabTransition.active && tabTransition.to === 'site';
-  });
+  const [gatewayDone, setGatewayDone] = useState(
+    () => initialGatewayDone || (tabTransition.active && tabTransition.to === 'site')
+  );
   const [activeTrack, setActiveTrack] = useState(0);
   const [contactModalOpen, setContactModalOpen] = useState(false);
   const [debugShapes, setDebugShapes] = useState(false);

@@ -66,7 +66,13 @@ function detectSoftwareGl(
   }
 }
 
-export default function StoryExperience() {
+interface StoryExperienceProps {
+  initialEntered?: boolean;
+}
+
+export default function StoryExperience({
+  initialEntered = false,
+}: StoryExperienceProps) {
   const router = useRouter();
   const locale = useScrollStore((s) => s.locale);
   const setLocale = useScrollStore((s) => s.setLocale);
@@ -74,15 +80,9 @@ export default function StoryExperience() {
   const setSoundEnabled = useScrollStore((s) => s.setSoundEnabled);
   const tabTransition = useScrollStore((s) => s.tabTransition);
 
-  const [entered, setEntered] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get('from') === 'tab' || params.get('debug') === 'shapes') {
-        return true;
-      }
-    }
-    return tabTransition.active && tabTransition.to === 'story';
-  });
+  const [entered, setEntered] = useState(
+    () => initialEntered || (tabTransition.active && tabTransition.to === 'story')
+  );
   const [loadProgress, setLoadProgress] = useState(4);
   const [isReady, setIsReady] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);

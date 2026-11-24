@@ -996,21 +996,68 @@ const SVG_DIAGRAMS: Record<
   },
 
   'app-harime-mehr': {
-    // 04 · HarimeMehr: Protective community shield, anatomical caring heart, continuous ECG lifeline
+    // 04 · HarimeMehr: Preschool Management OS — Student ID Badge, Attendance Roll-Call Calendar & Tuition Ledger
     viewW: 380,
     viewH: 260,
     primitives: [
-      // Outer Protective Heraldic Shield Wireframe
-      { kind: 'path', d: 'M 190 32 L 264 60 C 264 136, 230 196, 190 228 C 150 196, 116 136, 116 60 Z', accent: false, weight: 2.6, zLayer: 0.05 },
-      // Shield inner accent rim
-      { kind: 'path', d: 'M 190 46 L 250 70 C 250 132, 222 184, 190 212 C 158 184, 130 132, 130 70 Z', accent: true, weight: 1.4, zLayer: 0.15 },
-      // Caring Heart Wireframe Silhouette
-      { kind: 'path', d: 'M 190 84 C 168 60, 138 72, 138 100 C 138 128, 168 154, 190 178 C 212 154, 242 128, 242 100 C 242 72, 212 60, 190 84 Z', accent: true, weight: 2.8, zLayer: 0.35 },
-      // Full-span Continuous ECG Pulse Lifeline
-      { kind: 'path', d: 'M 54 130 H 136 L 148 106 L 158 158 L 176 76 L 194 172 L 208 116 L 218 136 L 244 130 H 326', accent: true, weight: 3.2, zLayer: 0.5 },
-      // Radiating Community Reach Arcs
-      { kind: 'path', d: 'M 88 88 A 130 130 0 0 0 88 172', accent: false, weight: 1.3, zLayer: -0.1 },
-      { kind: 'path', d: 'M 292 88 A 130 130 0 0 1 292 172', accent: false, weight: 1.3, zLayer: -0.1 },
+      // ── CENTER: Preschool Student Profile ID Card (مدیریت پرونده نوآموز) ──
+      // Card Frame
+      { kind: 'path', d: roundedRectD(140, 38, 100, 162, 12), accent: true, weight: 2.5, zLayer: 0.35 },
+      // Top Hanging Clip / Lanyard Slot
+      { kind: 'path', d: roundedRectD(174, 28, 32, 12, 5), accent: false, weight: 1.6, zLayer: 0.25 },
+      { kind: 'path', d: 'M 183 28 V 22 M 197 28 V 22', accent: false, weight: 1.5, zLayer: 0.2 },
+      // Student Portrait Ring
+      { kind: 'path', d: 'M 190 56 A 22 22 0 1 0 190 100 A 22 22 0 1 0 190 56', accent: true, weight: 2.2, zLayer: 0.45 },
+      { kind: 'fillCircle', cx: 190, cy: 74, r: 10, accent: true, weight: 1.8, zLayer: 0.5 },
+      // Child Torso / Kindergarten Uniform Outline
+      { kind: 'path', d: 'M 172 108 C 172 96, 208 96, 208 108 Z', accent: false, weight: 1.8, zLayer: 0.4 },
+      // Student Information Lines
+      { kind: 'fillRect', x: 156, y: 120, w: 68, h: 6, rx: 3, accent: false, weight: 1.0, zLayer: 0.4, density: 0.8 },
+      { kind: 'fillRect', x: 164, y: 132, w: 52, h: 5, rx: 2.5, accent: false, weight: 0.8, zLayer: 0.4, density: 0.8 },
+      // Kindergarten Excellence Star Badge
+      { kind: 'path', d: 'M 190 152 L 193 160 L 202 160 L 195 165 L 198 173 L 190 168 L 182 173 L 185 165 L 178 160 L 187 160 Z', accent: true, weight: 2.0, zLayer: 0.55 },
+
+      // ── LEFT: Attendance & Roll-Call Calendar (حضور و غیاب هوشمند) ──
+      // Calendar Board Frame
+      { kind: 'path', d: roundedRectD(38, 54, 88, 138, 10), accent: false, weight: 1.8, zLayer: 0.1 },
+      // Calendar Header with Spiral Binder Rings
+      { kind: 'path', d: roundedRectD(38, 54, 88, 24, 8), accent: true, weight: 1.6, zLayer: 0.2 },
+      { kind: 'path', d: 'M 56 46 V 58 M 82 46 V 58 M 108 46 V 58', accent: true, weight: 2.2, zLayer: 0.3 },
+      // Attendance Row 1 (Checked Present ✓)
+      { kind: 'path', d: 'M 50 96 L 56 102 L 67 90', accent: true, weight: 2.6, zLayer: 0.4 },
+      { kind: 'fillRect', x: 74, y: 94, w: 40, h: 5, rx: 2.5, accent: false, weight: 0.8, zLayer: 0.2, density: 0.85 },
+      // Attendance Row 2 (Checked Present ✓)
+      { kind: 'path', d: 'M 50 122 L 56 128 L 67 116', accent: true, weight: 2.6, zLayer: 0.4 },
+      { kind: 'fillRect', x: 74, y: 120, w: 40, h: 5, rx: 2.5, accent: false, weight: 0.8, zLayer: 0.2, density: 0.85 },
+      // Attendance Row 3 (Checked Present ✓)
+      { kind: 'path', d: 'M 50 148 L 56 154 L 67 142', accent: true, weight: 2.6, zLayer: 0.4 },
+      { kind: 'fillRect', x: 74, y: 146, w: 40, h: 5, rx: 2.5, accent: false, weight: 0.8, zLayer: 0.2, density: 0.85 },
+      // Status Summary Dot & Label
+      { kind: 'fillCircle', cx: 56, cy: 172, r: 4, accent: true, weight: 1.4, zLayer: 0.3 },
+      { kind: 'fillRect', x: 68, y: 170, w: 44, h: 5, rx: 2.5, accent: false, weight: 0.7, zLayer: 0.2, density: 0.8 },
+
+      // ── RIGHT: Tuition & Financial Ledger (شهریه و پایش اقساط) ──
+      // Ledger Card Frame
+      { kind: 'path', d: roundedRectD(254, 54, 88, 138, 10), accent: false, weight: 1.8, zLayer: 0.1 },
+      // Ledger Header Bar
+      { kind: 'path', d: roundedRectD(254, 54, 88, 24, 8), accent: false, weight: 1.4, zLayer: 0.18 },
+      // Tuition Payment Coin / Vault Badge
+      { kind: 'path', d: 'M 298 84 A 16 16 0 1 0 298 116 A 16 16 0 1 0 298 84', accent: true, weight: 2.2, zLayer: 0.4 },
+      { kind: 'path', d: 'M 291 100 L 296 105 L 305 95', accent: true, weight: 2.4, zLayer: 0.5 },
+      // Installment Progress Track & Filled Value
+      { kind: 'path', d: roundedRectD(264, 126, 68, 10, 5), accent: false, weight: 1.2, zLayer: 0.2 },
+      { kind: 'fillRect', x: 264, y: 126, w: 50, h: 10, rx: 5, accent: true, weight: 1.5, zLayer: 0.35, density: 0.85 },
+      // Financial Receipt Lines
+      { kind: 'fillRect', x: 266, y: 148, w: 64, h: 5, rx: 2.5, accent: false, weight: 0.8, zLayer: 0.2, density: 0.85 },
+      { kind: 'fillRect', x: 266, y: 160, w: 44, h: 5, rx: 2.5, accent: true, weight: 1.0, zLayer: 0.25, density: 0.85 },
+
+      // ── BUS CONNECTORS & SYSTEM DOCK (اتصال یکپارچه سیستم) ──
+      // Data Bridges between Left & Right Modules to Central Student ID
+      { kind: 'path', d: 'M 126 122 H 140', accent: true, weight: 2.0, zLayer: 0.25 },
+      { kind: 'path', d: 'M 240 122 H 254', accent: true, weight: 2.0, zLayer: 0.25 },
+      // Elevated Base Pedestal / System Dock
+      { kind: 'path', d: roundedRectD(54, 212, 272, 14, 7), accent: false, weight: 1.6, zLayer: -0.1 },
+      { kind: 'path', d: 'M 74 219 H 306', accent: true, weight: 1.8, zLayer: 0.05 },
     ],
   },
 

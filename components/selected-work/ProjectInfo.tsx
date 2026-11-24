@@ -446,7 +446,7 @@ export default function ProjectInfo({
             </div>
 
             {/* Compact pill on mobile (< sm), 100px Magnetic Circular Visit Site CTA on sm+ */}
-            <div className="shrink-0 self-start sm:self-end overflow-hidden p-2 -m-2">
+            <div className="shrink-0 self-start sm:self-end">
               <div data-mask-item data-mask-meta>
                 <a
                   ref={ctaBtnRef}
@@ -456,7 +456,7 @@ export default function ProjectInfo({
                   data-cursor="view"
                   onClick={() => soundEngine.playStippleTick()}
                   aria-label={`${copy.visitSite} — ${activeProject.title}`}
-                  className="group relative flex h-11 px-5 w-auto sm:h-[100px] sm:w-[100px] sm:px-0 items-center justify-center rounded-full bg-[#5B5BF0] text-white shadow-[0_14px_38px_rgba(91,91,240,0.45)] transition-colors duration-200 hover:bg-[#6A6AF8] will-change-transform"
+                  className="group relative flex h-11 px-5 w-auto sm:h-[100px] sm:w-[100px] sm:px-0 items-center justify-center rounded-full bg-[#5B5BF0] text-white shadow-[0_14px_38px_rgba(91,91,240,0.45)] hover:shadow-[0_18px_48px_rgba(91,91,240,0.6)] transition-[background-color,box-shadow] duration-200 hover:bg-[#6A6AF8] will-change-transform"
                 >
                   <span
                     ref={ctaTextRef}
