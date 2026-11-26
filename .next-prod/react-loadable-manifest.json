@@ -1,0 +1,61 @@
+{
+  "components/PortfolioShell.tsx -> @/components/SiteParticleStage": {
+    "id": 1285,
+    "files": [
+      "static/chunks/bd904a5c-ca5f8fcd0bb2241c.js",
+      "static/chunks/b536a0f1-6b8cd45be2d3d889.js",
+      "static/chunks/666.25369fa46a5f553a.js"
+    ]
+  },
+  "components/PortfolioShell.tsx -> @/components/sections/AskAndContact": {
+    "id": 8331,
+    "files": [
+      "static/chunks/331.4c7cd1ca7f294759.js"
+    ]
+  },
+  "components/PortfolioShell.tsx -> @/components/sections/StatementTestimonialAfterHours": {
+    "id": 2738,
+    "files": [
+      "static/chunks/738.264c735b0cd13d21.js"
+    ]
+  },
+  "components/PortfolioShell.tsx -> @/components/sections/WhatIDoAndProcess": {
+    "id": 4649,
+    "files": [
+      "static/chunks/649.49633cec02b323a4.js"
+    ]
+  },
+  "components/PortfolioShell.tsx -> @/components/sections/WorkAppsExperience": {
+    "id": 1954,
+    "files": [
+      "static/chunks/954.3c3c69a3df16990c.js"
+    ]
+  },
+  "components/PortfolioShell.tsx -> @/components/selected-work/SelectedWork": {
+    "id": 8651,
+    "files": [
+      "static/chunks/239-951358408401b03b.js",
+      "static/chunks/651.7ce842af3eef4c3c.js"
+    ]
+  },
+  "components/SiteParticleStage.tsx -> lil-gui": {
+    "id": 1563,
+    "files": [
+      "static/chunks/563.5fdc3ee084312b52.js"
+    ]
+  },
+  "components/lab/LabShell.tsx -> @/components/lab/LabCanvasL0": {
+    "id": 7142,
+    "files": [
+      "static/chunks/bd904a5c-ca5f8fcd0bb2241c.js",
+      "static/chunks/b536a0f1-6b8cd45be2d3d889.js",
+      "static/chunks/142.697c2d3e6e854542.js"
+    ]
+  },
+  "components/lab/LabShell.tsx -> lil-gui": {
+    "id": 1563,
+    "files": [
+      "static/chunks/563.5fdc3ee084312b52.js"
+    ]
+  }
+}

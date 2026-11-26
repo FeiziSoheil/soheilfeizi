@@ -92,7 +92,7 @@ export function StatementSection({ locale }: { locale: Locale }) {
  * - Left rail: circular initials avatars (AM, SR, MK), active #5B5BF0 + dot
  * - Center-left: dual-DOM GSAP mask-slide quote headline + body + author + metric chip
  * - Bottom: thin rounded-full 7s auto-advance bar (pauses on hover)
- * - Right/End: borderless giant particle « » quotation marks triggering micro-morph on swap
+ * - Particle “ ”: lg+ side column only (hidden on mobile); micro-morph on swap
  * ───────────────────────────────────────────────────────────── */
 export function ClientNotesSection({ locale }: { locale: Locale }) {
   const copy = CLIENT_NOTES_CONFIG.header[locale];
@@ -236,19 +236,19 @@ export function ClientNotesSection({ locale }: { locale: Locale }) {
         {/* Top Header Row: (06) WHAT THEY SAID + People I have worked with + Hairline */}
         <div className="flex flex-wrap items-baseline justify-between gap-2 sm:gap-4 border-b border-[#111111]/15 pb-2.5 sm:pb-3.5 shrink-0">
           <div className="flex items-baseline gap-2 sm:gap-3">
-            <span className="font-mono text-xs sm:text-sm font-medium text-[#5B5BF0] tabular-nums">
+            <span className="font-mono text-base sm:text-lg font-medium text-[#5B5BF0] tabular-nums">
               {copy.index}
             </span>
-            <h2 className="text-xs sm:text-sm md:text-[15px] font-extrabold uppercase tracking-[0.16em] sm:tracking-[0.22em] text-[#111111]">
+            <h2 className="text-base sm:text-lg md:text-xl font-extrabold uppercase tracking-[0.16em] sm:tracking-[0.22em] text-[#111111]">
               {copy.title}
             </h2>
           </div>
-          <span className="text-[10.5px] sm:text-xs md:text-sm font-normal text-[#111111]/60">
+          <span className="text-sm sm:text-base md:text-lg font-normal text-[#111111]/60">
             {copy.subtitle}
           </span>
         </div>
 
-        {/* Main 3-Zone Editorial Grid: Avatar Rail | Dual-DOM Quote Stack | Particle Quote Marks */}
+        {/* Main grid: avatars | quote | particle quotes (lg+ only) */}
         <div className="my-auto grid w-full grid-cols-1 md:grid-cols-12 items-center gap-3 sm:gap-5 md:gap-6 lg:gap-8 py-2 sm:py-3 md:py-4 lg:py-6 flex-1 min-h-0">
           {/* Narrow Left Column: Circular Initials Avatars */}
           <div
@@ -291,114 +291,114 @@ export function ClientNotesSection({ locale }: { locale: Locale }) {
             })}
           </div>
 
-          {/* Center-Left Column: Dual-DOM Masked Quote Stack */}
+          {/* Dual-DOM Masked Quote Stack */}
           <div className="md:col-span-10 lg:col-span-7 relative min-h-[170px] sm:min-h-[200px] md:min-h-[250px] lg:min-h-[300px] flex flex-col justify-center min-w-0">
-            {/* Outgoing Quote Layer */}
-            {prevQuote && (
-              <div
-                ref={outgoingRef}
-                aria-hidden="true"
-                className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 z-10 space-y-2 sm:space-y-3.5 md:space-y-4 lg:space-y-5"
-              >
+              {/* Outgoing Quote Layer */}
+              {prevQuote && (
+                <div
+                  ref={outgoingRef}
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 z-10 space-y-2 sm:space-y-3.5 md:space-y-4 lg:space-y-5"
+                >
+                  <div className="overflow-hidden py-1 sm:py-1.5">
+                    <div
+                      data-q-item
+                      className="font-extrabold tracking-[-0.035em] leading-[1.18] sm:leading-[1.12] lg:leading-[1.06] text-[#111111] text-[clamp(1.85rem,7vw,2.6rem)] sm:text-[clamp(2.25rem,5vw,3.4rem)] lg:text-[clamp(2.85rem,4vw,4.5rem)] text-balance"
+                    >
+                      <span className="text-[#5B5BF0] me-1 sm:me-1.5" aria-hidden="true">
+                        {locale === 'fa' ? '«' : '“'}
+                      </span>
+                      {prevQuote.headline}
+                      <span className="text-[#5B5BF0] ms-1" aria-hidden="true">
+                        {locale === 'fa' ? '»' : '”'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="overflow-hidden">
+                    <p
+                      data-q-item
+                      className="max-w-3xl text-[16px] sm:text-[18px] md:text-[20px] lg:text-[22px] font-normal leading-relaxed text-[#111111]/75"
+                    >
+                      {prevQuote.body}
+                    </p>
+                  </div>
+                  <div className="overflow-hidden pt-1 sm:pt-2">
+                    <div
+                      data-q-item
+                      className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4 border-t border-[#111111]/12 pt-2.5 sm:pt-3.5"
+                    >
+                      <div className="min-w-0">
+                        <div className="text-base sm:text-lg lg:text-xl font-extrabold text-[#111111]">
+                          {prevQuote.name}
+                        </div>
+                        <div className="mt-0.5 font-mono text-[13px] sm:text-base text-[#111111]/60 truncate">
+                          {prevQuote.role} · {prevQuote.company}
+                        </div>
+                      </div>
+                      <span className="inline-flex self-start sm:self-auto items-center rounded-lg sm:rounded-full border border-[#5B5BF0]/25 bg-[#5B5BF0]/10 px-3 sm:px-4 py-1.5 sm:py-2 font-mono text-xs sm:text-sm font-medium text-[#3B3BC8] max-w-full">
+                        {prevQuote.metric}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Incoming / Active Quote Layer */}
+              <div ref={incomingRef} className="relative z-20 space-y-3 sm:space-y-4 md:space-y-5 lg:space-y-6">
                 <div className="overflow-hidden py-1 sm:py-1.5">
-                  <div
+                  <blockquote
                     data-q-item
-                    className="font-extrabold tracking-[-0.03em] leading-[1.25] sm:leading-[1.18] lg:leading-[1.08] text-[#111111] text-[clamp(1.05rem,4.2vw,1.65rem)] sm:text-[clamp(1.3rem,3.4vw,2.25rem)] lg:text-[clamp(1.85rem,2.8vw,3.25rem)] text-balance"
+                    className="font-extrabold tracking-[-0.035em] leading-[1.18] sm:leading-[1.12] lg:leading-[1.06] text-[#111111] text-[clamp(1.85rem,7vw,2.6rem)] sm:text-[clamp(2.25rem,5vw,3.4rem)] lg:text-[clamp(2.85rem,4vw,4.5rem)] text-balance will-change-transform"
                   >
                     <span className="text-[#5B5BF0] me-1 sm:me-1.5" aria-hidden="true">
                       {locale === 'fa' ? '«' : '“'}
                     </span>
-                    {prevQuote.headline}
+                    {activeQuote.headline}
                     <span className="text-[#5B5BF0] ms-1" aria-hidden="true">
                       {locale === 'fa' ? '»' : '”'}
                     </span>
-                  </div>
+                  </blockquote>
                 </div>
+
                 <div className="overflow-hidden">
                   <p
                     data-q-item
-                    className="max-w-2xl text-[11.5px] sm:text-[13px] md:text-[14px] lg:text-[15px] font-normal leading-relaxed text-[#111111]/75"
+                    className="max-w-3xl text-[16px] sm:text-[18px] md:text-[20px] lg:text-[22px] font-normal leading-relaxed text-[#111111]/76"
                   >
-                    {prevQuote.body}
+                    {activeQuote.body}
                   </p>
                 </div>
+
                 <div className="overflow-hidden pt-1 sm:pt-2">
                   <div
                     data-q-item
-                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 sm:gap-4 border-t border-[#111111]/12 pt-2 sm:pt-3"
+                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4 border-t border-[#111111]/12 pt-2.5 sm:pt-3.5"
                   >
                     <div className="min-w-0">
-                      <div className="text-xs sm:text-sm lg:text-base font-extrabold text-[#111111]">
-                        {prevQuote.name}
+                      <div className="text-base sm:text-lg lg:text-xl font-extrabold text-[#111111]">
+                        {activeQuote.name}
                       </div>
-                      <div className="mt-0.5 font-mono text-[9.5px] sm:text-xs text-[#111111]/60 truncate">
-                        {prevQuote.role} · {prevQuote.company}
+                      <div className="mt-0.5 font-mono text-[13px] sm:text-base text-[#111111]/60 truncate">
+                        {activeQuote.role} · {activeQuote.company}
                       </div>
                     </div>
-                    <span className="inline-flex self-start sm:self-auto items-center rounded-lg sm:rounded-full border border-[#5B5BF0]/25 bg-[#5B5BF0]/10 px-2 sm:px-3 py-0.5 sm:py-1 font-mono text-[9px] sm:text-[10.5px] font-medium text-[#3B3BC8] max-w-full">
-                      {prevQuote.metric}
+
+                    {/* Rounded metric chip */}
+                    <span className="inline-flex self-start sm:self-auto items-center rounded-lg sm:rounded-full border border-[#5B5BF0]/25 bg-[#5B5BF0]/10 px-3 sm:px-4 py-1.5 sm:py-2 font-mono text-xs sm:text-sm font-medium text-[#3B3BC8] max-w-full">
+                      {activeQuote.metric}
                     </span>
                   </div>
                 </div>
               </div>
-            )}
-
-            {/* Incoming / Active Quote Layer */}
-            <div ref={incomingRef} className="relative z-20 space-y-2 sm:space-y-3.5 md:space-y-4 lg:space-y-5">
-              <div className="overflow-hidden py-1 sm:py-1.5">
-                <blockquote
-                  data-q-item
-                  className="font-extrabold tracking-[-0.03em] leading-[1.25] sm:leading-[1.18] lg:leading-[1.08] text-[#111111] text-[clamp(1.05rem,4.2vw,1.65rem)] sm:text-[clamp(1.3rem,3.4vw,2.25rem)] lg:text-[clamp(1.85rem,2.8vw,3.25rem)] text-balance will-change-transform"
-                >
-                  <span className="text-[#5B5BF0] me-1 sm:me-1.5" aria-hidden="true">
-                    {locale === 'fa' ? '«' : '“'}
-                  </span>
-                  {activeQuote.headline}
-                  <span className="text-[#5B5BF0] ms-1" aria-hidden="true">
-                    {locale === 'fa' ? '»' : '”'}
-                  </span>
-                </blockquote>
-              </div>
-
-              <div className="overflow-hidden">
-                <p
-                  data-q-item
-                  className="max-w-2xl text-[11.5px] sm:text-[13px] md:text-[14px] lg:text-[15px] font-normal leading-relaxed text-[#111111]/76"
-                >
-                  {activeQuote.body}
-                </p>
-              </div>
-
-              <div className="overflow-hidden pt-1 sm:pt-2">
-                <div
-                  data-q-item
-                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 sm:gap-4 border-t border-[#111111]/12 pt-2 sm:pt-3"
-                >
-                  <div className="min-w-0">
-                    <div className="text-xs sm:text-sm lg:text-base font-extrabold text-[#111111]">
-                      {activeQuote.name}
-                    </div>
-                    <div className="mt-0.5 font-mono text-[9.5px] sm:text-xs text-[#111111]/60 truncate">
-                      {activeQuote.role} · {activeQuote.company}
-                    </div>
-                  </div>
-
-                  {/* Rounded metric chip */}
-                  <span className="inline-flex self-start sm:self-auto items-center rounded-lg sm:rounded-full border border-[#5B5BF0]/25 bg-[#5B5BF0]/10 px-2 sm:px-3 py-0.5 sm:py-1 font-mono text-[9px] sm:text-[10.5px] font-medium text-[#3B3BC8] max-w-full">
-                    {activeQuote.metric}
-                  </span>
-                </div>
-              </div>
-            </div>
           </div>
 
-          {/* Right/End Column: Giant Borderless Particle Quotation Marks « » (hidden on < lg so quotes never clip or cause vertical overflow) */}
+          {/* Desktop-only: giant expanded particle quotation marks “ ” */}
           <div className="hidden lg:flex lg:col-span-4 items-center justify-center">
             <ParticleSlot
               slotId="testimonial-figure"
-              descriptor="quotes:marks"
+              descriptor="quotes:xl"
               aria-hidden="true"
-              className="h-[280px] w-full max-w-[380px] lg:h-[380px]"
+              className="h-[min(58vh,620px)] w-full max-w-[620px]"
             />
           </div>
         </div>

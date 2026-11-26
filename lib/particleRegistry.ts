@@ -268,6 +268,7 @@ class ParticleRegistryManager {
     const isTrophy = spec.descriptor === 'svg:trophy';
     const isProcessDiagram = spec.descriptor.startsWith('process:');
     const isSquareDiagram = isTrophy || isProcessDiagram;
+    const isQuoteMarks = spec.descriptor.startsWith('quotes:');
 
     const vw = typeof window !== 'undefined' ? window.innerWidth : 1440;
     const isMobile = typeof window !== 'undefined' ? window.innerWidth < 768 : false;
@@ -288,6 +289,19 @@ class ParticleRegistryManager {
       // and expand gracefully with generous clearance so elements never clump!
       const targetAspect = 380 / 260;
       const fitFactor = isMobile ? 0.98 : 0.92;
+      const availW = boxW * fitFactor;
+      const availH = boxH * fitFactor;
+      if (availW / availH > targetAspect) {
+        effectiveH = availH;
+        effectiveW = availH * targetAspect;
+      } else {
+        effectiveW = availW;
+        effectiveH = availW / targetAspect;
+      }
+    } else if (isQuoteMarks) {
+      // Quote « » art is 2048×1280 — uniform scale so wide mobile bands do not squash marks vertically
+      const targetAspect = 2048 / 1280;
+      const fitFactor = isMobile ? 0.98 : 0.94;
       const availW = boxW * fitFactor;
       const availH = boxH * fitFactor;
       if (availW / availH > targetAspect) {

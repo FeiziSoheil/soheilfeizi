@@ -167,8 +167,8 @@ export const SITE_DEBUG_SHAPES: Array<{
     label: '03 · quoteMarks',
     defaultTheme: 'light',
     description: {
-      en: 'Sculptural twin quotation marks formed from evaporated Statement particles',
-      fa: 'علامت‌های نقل‌قول ذره‌ای شکل‌گرفته از ذرات تبخیرشده‌ی بخش بیانیه',
+      en: 'Sculptural curly double quotation marks “ ” formed from evaporated Statement particles',
+      fa: 'دو علامت نقل‌قول خمیده “ ” شکل‌گرفته از ذرات تبخیرشده‌ی بخش بیانیه',
     },
   },
   {

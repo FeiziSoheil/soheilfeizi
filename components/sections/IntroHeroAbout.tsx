@@ -349,12 +349,12 @@ export function HeroSection({
         onPointerLeave={handleHeroPointerLeave}
         className="pin-sticky relative flex flex-col justify-between overflow-hidden px-4 sm:px-10 lg:px-16 pt-16 sm:pt-20 pb-20 sm:pb-28"
       >
-        {/* Right/End Full-Height Portrait Stage (100% Particles by default -> localized circular cursor photo reveal) */}
+        {/* Right/End Full-Height Portrait Stage (desktop: particles + cursor reveal; mobile: static photo) */}
         <div
           aria-label={
             locale === 'fa'
-              ? 'پرتره ذره‌ای سهیل فیضی — با حرکت موس بخش زیر نشانگر به تصویر واقعی تبدیل می‌شود'
-              : 'Interactive particle portrait of Soheil Feizi — hover to reveal real photographic detail under the cursor'
+              ? 'پرتره سهیل فیضی'
+              : 'Portrait of Soheil Feizi'
           }
           className="pointer-events-none absolute inset-y-0 end-0 z-10 flex w-full items-end justify-center lg:w-[56vw] xl:w-[52vw] lg:justify-center lg:pe-8 xl:pe-16"
         >
@@ -362,10 +362,24 @@ export function HeroSection({
             ref={portraitBoxRef}
             className="relative h-[100svh] lg:min-h-[720px] w-full max-w-[540px] sm:max-w-[600px] lg:max-w-[700px] opacity-32 sm:opacity-45 lg:opacity-100"
           >
-            {/* Layer 1: Localized Cursor-Masked Real Photograph (hidden by default; reveals ONLY inside cursor lens) */}
+            {/* Mobile: always-visible static photo (no particle cloud below md) */}
+            <div className="pointer-events-none absolute inset-0 z-10 md:hidden">
+              <Image
+                src={HERO_PORTRAIT_CONFIG.cutoutSrc}
+                alt={t.person.fullName}
+                fill
+                priority
+                sizes="100vw"
+                referrerPolicy="no-referrer"
+                className="object-cover object-top select-none"
+                style={{ filter: 'contrast(1.04)' }}
+              />
+            </div>
+
+            {/* Desktop: Localized Cursor-Masked Real Photograph (hidden by default; reveals ONLY inside cursor lens) */}
             <div
               ref={photoRevealRef}
-              className="pointer-events-none absolute inset-0 z-10 will-change-[opacity]"
+              className="pointer-events-none absolute inset-0 z-10 hidden will-change-[opacity] md:block"
               style={{ opacity: 0 }}
             >
               <Image
@@ -382,11 +396,11 @@ export function HeroSection({
               />
             </div>
 
-            {/* Layer 2: Pixel-locked 135k WebGL Particle Cloud Slot (renders full portrait by default) */}
+            {/* Desktop: Pixel-locked WebGL Particle Cloud Slot */}
             <ParticleSlot
               slotId="hero-portrait"
               descriptor="image:portrait"
-              className="pointer-events-none absolute inset-0 z-0"
+              className="pointer-events-none absolute inset-0 z-0 hidden md:block"
             />
 
             {/* Soft bottom fade scrim so lower chest bleeds organically into viewport bottom */}

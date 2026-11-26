@@ -555,10 +555,14 @@ function resolveActiveSiteSlot(
   p: number,
   locale: Locale,
   heroPortraitHovered: boolean,
-  appsActiveIndex?: number
+  appsActiveIndex?: number,
+  isMobile = false,
+  /** Hide lg-only shapes (quote marks) below desktop */
+  isCompact = false
 ): ResolvedSlot {
   const t = CONTENT[locale];
   const isRtl = locale === 'fa';
+  const hideDesktopOnlyShapes = isMobile || isCompact;
 
   if (section === 'intro') {
     if (p < 0.34) {
@@ -589,6 +593,16 @@ function resolveActiveSiteSlot(
   }
 
   if (section === 'hero') {
+    // Mobile: no hero particle portrait — static photo is shown in IntroHeroAbout instead
+    if (isMobile) {
+      return {
+        key: 'none',
+        spec: null,
+        opacity: 0,
+        evaporate: 0,
+        isStrip: false,
+      };
+    }
     // Keep particles intact on scroll-exit so they visibly travel & morph into the About SVG badge trophy
     return {
       key: 'hero-portrait',
@@ -664,11 +678,21 @@ function resolveActiveSiteSlot(
   }
 
   if (section === 'testimonial') {
+    // Mobile / tablet: no quote-mark particles (slot is lg-only)
+    if (hideDesktopOnlyShapes) {
+      return {
+        key: 'none',
+        spec: null,
+        opacity: 0,
+        evaporate: 0,
+        isStrip: false,
+      };
+    }
     return {
       key: 'quoteMarks',
       spec: {
         id: 'testimonial-figure',
-        descriptor: 'quotes:marks',
+        descriptor: 'quotes:xl',
       },
       opacity: 1,
       evaporate: 0,
@@ -793,7 +817,7 @@ function resolveDebugSpec(shapeKey: SiteParticleShapeId, locale: Locale): LocalS
     };
   }
   if (shapeKey === 'quoteMarks') {
-    return { id: 'debug-slot', descriptor: 'quotes:marks' };
+    return { id: 'debug-slot', descriptor: 'quotes:xl' };
   }
   return {
     id: 'debug-slot',
@@ -946,17 +970,18 @@ export default function SiteParticleStage({
     );
     camera.position.z = 100;
 
-    // 1. SINGLE GLOBAL MORPH BUFFER GEOMETRY (135k Hero / 70k sections desktop; 40k/25k mobile)
-    const morphCount = isSoftwareGl
-      ? HERO_PORTRAIT_CONFIG.softwareGlCount
-      : isMobile
-        ? HERO_PORTRAIT_CONFIG.mobileParticleCount
-        : HERO_PORTRAIT_CONFIG.particleCount;
+    // 1. SINGLE GLOBAL MORPH BUFFER GEOMETRY
+    // Desktop: hero-sized buffer. Mobile: no hero particles → section-sized buffer only.
     const nonHeroCount = isSoftwareGl
       ? SITE_PARTICLE_CONFIG.softwareGlCount
       : isMobile
         ? SITE_PARTICLE_CONFIG.mobileCount
         : SITE_PARTICLE_CONFIG.desktopCount;
+    const morphCount = isSoftwareGl
+      ? HERO_PORTRAIT_CONFIG.softwareGlCount
+      : isMobile
+        ? nonHeroCount
+        : HERO_PORTRAIT_CONFIG.particleCount;
     const trophyCount = isSoftwareGl ? 6500 : isMobile ? 7500 : 16500;
     const diagramCount = isSoftwareGl ? 12000 : isMobile ? 14000 : 22000;
 
@@ -1199,7 +1224,8 @@ export default function SiteParticleStage({
     let smoothHoverBoost = 0.42;
     let smoothDrawCount: number = morphCount;
     let heroGatherElapsed = 0;
-    let heroGatherDone = reduced || debugShapes;
+    // Mobile skips hero particle assembly (static photo instead)
+    let heroGatherDone = reduced || debugShapes || isMobile;
     let heroSlotHalfH = height * 0.5;
     let smoothHeroRevealActive = 0;
     let activeStripLen = width * 1.95;
@@ -1548,7 +1574,7 @@ export default function SiteParticleStage({
 
       enqueuePrewarm(
         'quoteMarks',
-        { id: 'testimonial-figure', descriptor: 'quotes:marks' },
+        { id: 'testimonial-figure', descriptor: 'quotes:xl' },
         nonHeroCount,
         diagramW,
         diagramH
@@ -1995,7 +2021,15 @@ export default function SiteParticleStage({
         const useIncoming = singularity.progress >= 0.22;
         const targetSec = useIncoming ? singularity.toSection : singularity.fromSection;
         const targetP = useIncoming ? 0.02 : 0.96;
-        resolved = resolveActiveSiteSlot(targetSec, targetP, st.locale, false);
+        resolved = resolveActiveSiteSlot(
+          targetSec,
+          targetP,
+          st.locale,
+          false,
+          undefined,
+          width < 768,
+          width < 1024
+        );
         // Never evaporate Statement out before the White Hole swallows it into Quote Marks
         if (singularity.fromSection === 'statement' && !useIncoming) {
           resolved = { ...resolved, evaporate: 0 };
@@ -2007,7 +2041,9 @@ export default function SiteParticleStage({
           secP,
           st.locale,
           st.heroPortraitHovered,
-          st.appsActiveIndex
+          st.appsActiveIndex,
+          width < 768,
+          width < 1024
         );
       }
       const secP = st.sectionProgress[st.activeSection] ?? 0;
@@ -2337,12 +2373,15 @@ export default function SiteParticleStage({
       }
     };
 
-    // Defer background prewarming for subsequent sections until Hero entrance assembly is completed
-    const prewarmInitTimer = window.setTimeout(() => {
-      if (!disposed) {
-        schedulePrewarmPipeline(useScrollStore.getState().locale);
-      }
-    }, Math.round((HERO_PORTRAIT_CONFIG.enterAssembleSec + 0.8) * 1000));
+    // Defer background prewarming until Hero entrance assembly completes (skip wait on mobile)
+    const prewarmInitTimer = window.setTimeout(
+      () => {
+        if (!disposed) {
+          schedulePrewarmPipeline(useScrollStore.getState().locale);
+        }
+      },
+      isMobile ? 120 : Math.round((HERO_PORTRAIT_CONFIG.enterAssembleSec + 0.8) * 1000)
+    );
 
     tick();
 

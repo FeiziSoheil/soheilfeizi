@@ -118,25 +118,27 @@ export default function PortfolioShell({
         useScrollStore.getState().setTabTransitionProgress(82);
       }
 
-      // Pre-bake the Hero portrait particles in background during Gateway progress counter
+      // Pre-bake the Hero portrait particles (desktop only — mobile uses static photo)
       try {
         const isMobileNow = typeof window !== 'undefined' && window.innerWidth < 768;
-        const targetCount = isMobileNow
-          ? HERO_PORTRAIT_CONFIG.mobileParticleCount
-          : HERO_PORTRAIT_CONFIG.particleCount;
-        const heroW = typeof window !== 'undefined'
-          ? Math.min(window.innerWidth * (isMobileNow ? 0.78 : 0.5), 680)
-          : 540;
-        const heroH = typeof window !== 'undefined'
-          ? isMobileNow ? Math.min(window.innerHeight * 0.42, 340) : Math.max(window.innerHeight, 720)
-          : 720;
+        if (!isMobileNow) {
+          const targetCount = HERO_PORTRAIT_CONFIG.particleCount;
+          const heroW =
+            typeof window !== 'undefined'
+              ? Math.min(window.innerWidth * 0.5, 680)
+              : 540;
+          const heroH =
+            typeof window !== 'undefined'
+              ? Math.max(window.innerHeight, 720)
+              : 720;
 
-        await particleRegistry.buildStoryTargetBuffer(
-          { id: 'hero-portrait', descriptor: 'image:portrait' },
-          targetCount,
-          heroW,
-          heroH
-        );
+          await particleRegistry.buildStoryTargetBuffer(
+            { id: 'hero-portrait', descriptor: 'image:portrait' },
+            targetCount,
+            heroW,
+            heroH
+          );
+        }
       } catch {
         // non-critical fallback
       }

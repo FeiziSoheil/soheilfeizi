@@ -1981,14 +1981,14 @@ export async function sampleStatementWordNormalized(
 }
 
 /**
- * 6. QUOTE MARKS SAMPLER ("« »") — Giant sculptural typographic guillemets/quotes
- *    sampled at 2048×1280 with crisp hollow contour emphasis, subtle 3D tilt relief,
- *    and indigo architectural edge accent.
+ * 6. QUOTE MARKS SAMPLER (“ ”) — Classic serif curly double quotes with a soft
+ *    expanded particle halo (matches the stippled typographic reference).
  */
 export async function sampleQuoteMarksNormalized(
   count: number
 ): Promise<NormalizedPoint[]> {
-  const cacheKey = `quoteMarks2k:${count}`;
+  // v7: much larger “ ” + heavier expanded halo
+  const cacheKey = `quoteMarksXl7k:${count}`;
   const cached = sampleCache.get(cacheKey);
   if (cached) return cached;
 
@@ -2013,114 +2013,158 @@ export async function sampleQuoteMarksNormalized(
   }
 
   ctx.clearRect(0, 0, w, h);
-  ctx.lineJoin = 'round';
-  ctx.lineCap = 'round';
+  ctx.fillStyle = '#000000';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  // Fill most of the frame — oversized typographic quotes
+  ctx.font =
+    '900 1180px Georgia, "Times New Roman", "Iowan Old Style", "Apple Garamond", serif';
 
-  // Draw large, iconic sculptural double-chevron quote marks « » with architectural balance
-  // Left opening guillemets « (upper-left focal)
-  const drawChevron = (cx: number, cy: number, scale: number, dir: 1 | -1) => {
+  const openX = 460;
+  const closeX = 1588;
+  const quoteY = 640;
+
+  // Wide soft halo layers for a more expanded stipple cloud
+  const paintQuotes = (blur: number, alpha: number) => {
     ctx!.save();
-    ctx!.translate(cx, cy);
-    ctx!.scale(dir * scale, scale);
-    ctx!.beginPath();
-    ctx!.moveTo(115, -245);
-    ctx!.lineTo(-105, 0);
-    ctx!.lineTo(115, 245);
-    ctx!.lineTo(18, 245);
-    ctx!.lineTo(-200, 0);
-    ctx!.lineTo(18, -245);
-    ctx!.closePath();
-    ctx!.fillStyle = '#000000';
-    ctx!.fill();
+    ctx!.shadowColor = '#000000';
+    ctx!.shadowBlur = blur;
+    ctx!.globalAlpha = alpha;
+    ctx!.fillText('\u201C', openX, quoteY);
+    ctx!.fillText('\u201D', closeX, quoteY);
     ctx!.restore();
   };
+  paintQuotes(120, 0.22);
+  paintQuotes(72, 0.38);
+  paintQuotes(36, 0.55);
 
-  // Opening « (slightly higher)
-  drawChevron(540, 520, 1.05, 1);
-  drawChevron(780, 520, 1.05, 1);
+  // Crisp typographic core
+  ctx.globalAlpha = 1;
+  ctx.shadowBlur = 0;
+  ctx.fillText('\u201C', openX, quoteY);
+  ctx.fillText('\u201D', closeX, quoteY);
 
-  // Closing » (slightly lower, counterbalanced sculptural composition)
-  drawChevron(1268, 760, 1.05, -1);
-  drawChevron(1508, 760, 1.05, -1);
-
-  // Thin architectural diagonal hairline frame accent connecting the two marks
-  ctx.strokeStyle = '#000000';
-  ctx.lineWidth = 8;
-  ctx.beginPath();
-  ctx.moveTo(960, 920);
-  ctx.lineTo(1090, 360);
-  ctx.stroke();
+  // If the serif face failed to resolve (empty ink), fall back to path commas
+  const probe = ctx.getImageData(0, 0, w, h).data;
+  let ink = 0;
+  for (let i = 3; i < probe.length; i += 64) {
+    if (probe[i] > 40) ink++;
+  }
+  if (ink < 80) {
+    ctx.clearRect(0, 0, w, h);
+    const drawCommaQuote = (cx: number, cy: number, dir: 1 | -1, scale = 1.55) => {
+      ctx!.save();
+      ctx!.translate(cx, cy);
+      ctx!.scale(dir * scale, scale);
+      const stroke = (ox: number) => {
+        ctx!.save();
+        ctx!.translate(ox, 0);
+        ctx!.beginPath();
+        ctx!.ellipse(0, -70, 78, 92, 0, 0, Math.PI * 2);
+        ctx!.fill();
+        ctx!.beginPath();
+        ctx!.moveTo(-40, -10);
+        ctx!.bezierCurveTo(-70, 40, -30, 110, 55, 175);
+        ctx!.bezierCurveTo(20, 120, -8, 70, 8, 20);
+        ctx!.bezierCurveTo(18, -5, 8, -20, -18, -28);
+        ctx!.closePath();
+        ctx!.fill();
+        ctx!.restore();
+      };
+      stroke(-110);
+      stroke(110);
+      ctx!.restore();
+    };
+    const paintFallback = (blur: number, alpha: number) => {
+      ctx!.shadowColor = '#000000';
+      ctx!.shadowBlur = blur;
+      ctx!.globalAlpha = alpha;
+      drawCommaQuote(openX, quoteY, 1);
+      drawCommaQuote(closeX, quoteY, -1);
+    };
+    paintFallback(120, 0.22);
+    paintFallback(72, 0.38);
+    paintFallback(36, 0.55);
+    ctx.globalAlpha = 1;
+    ctx.shadowBlur = 0;
+    drawCommaQuote(openX, quoteY, 1);
+    drawCommaQuote(closeX, quoteY, -1);
+  }
 
   const imgData = ctx.getImageData(0, 0, w, h).data;
-  const edgePts: number[] = [];
-  const interiorPts: number[] = [];
-  const stride = 4;
+  const coreEdgePts: number[] = [];
+  const coreIntPts: number[] = [];
+  const haloPts: number[] = [];
+  const stride = 3;
 
   for (let y = stride; y < h - stride; y += stride) {
     for (let x = stride; x < w - stride; x += stride) {
       const a = imgData[(y * w + x) * 4 + 3];
-      if (a <= 128) continue;
+      if (a <= 18) continue;
+
+      // Soft outer halo (expanded stipple)
+      if (a <= 140) {
+        haloPts.push(x, y);
+        continue;
+      }
 
       const aL = imgData[(y * w + (x - stride)) * 4 + 3];
       const aR = imgData[(y * w + (x + stride)) * 4 + 3];
       const aU = imgData[((y - stride) * w + x) * 4 + 3];
       const aD = imgData[((y + stride) * w + x) * 4 + 3];
 
-      if (aL <= 128 || aR <= 128 || aU <= 128 || aD <= 128) {
-        edgePts.push(x, y);
+      if (aL <= 140 || aR <= 140 || aU <= 140 || aD <= 140) {
+        coreEdgePts.push(x, y);
       } else {
-        interiorPts.push(x, y);
+        coreIntPts.push(x, y);
       }
     }
   }
 
   const result: NormalizedPoint[] = [];
-  const structTarget = Math.floor(count * 0.9);
-  const edgeCount = edgePts.length / 2;
-  const intCount = interiorPts.length / 2;
+  const structTarget = Math.floor(count * 0.94);
+  const edgeCount = coreEdgePts.length / 2;
+  const intCount = coreIntPts.length / 2;
+  const haloCount = haloPts.length / 2;
 
-  if (edgeCount === 0 && intCount === 0) {
+  if (edgeCount + intCount + haloCount === 0) {
     appendSurroundDust(result, count, rand);
     sampleCache.set(cacheKey, result);
     return result;
   }
 
-  // 64% razor-sharp contours + 36% lighter structural fill
-  const wantEdge = Math.floor(structTarget * 0.64);
-  const wantInt = structTarget - wantEdge;
+  // Heavier expanded rim + dense core
+  const wantHalo = haloCount > 0 ? Math.floor(structTarget * 0.34) : 0;
+  const wantEdge = edgeCount > 0 ? Math.floor(structTarget * 0.34) : 0;
+  const wantInt = structTarget - wantHalo - wantEdge;
 
-  for (let i = 0; i < wantEdge; i++) {
-    const pick = Math.floor(rand() * edgeCount) * 2;
-    const u = (edgePts[pick] + (rand() - 0.5) * 0.45) / w;
-    const v = (edgePts[pick + 1] + (rand() - 0.5) * 0.45) / h;
-    // Indigo accent on the inner chevron contours + central bridge
-    const nearCenter = Math.abs(u - 0.5) < 0.16;
-    const isAccent = nearCenter || rand() < 0.22 ? 1 : 0;
-    result.push({
-      u: Math.max(0.01, Math.min(0.99, u)),
-      v: Math.max(0.01, Math.min(0.99, v)),
-      z: (u - 0.5) * 0.42 + (isAccent ? 0.14 : 0) + (rand() - 0.5) * 0.08,
-      accent: isAccent,
-      order: u,
-      dust: 0,
-    });
-  }
+  const pushFrom = (pool: number[], poolLen: number, n: number, dust: number) => {
+    if (poolLen <= 0 || n <= 0) return;
+    for (let i = 0; i < n; i++) {
+      const pick = Math.floor(rand() * poolLen) * 2;
+      const jitter = dust ? 1.85 : 0.55;
+      const u = (pool[pick] + (rand() - 0.5) * jitter) / w;
+      const v = (pool[pick + 1] + (rand() - 0.5) * jitter) / h;
+      const isAccent = !dust && rand() < 0.09 ? 1 : 0;
+      result.push({
+        u: Math.max(0.005, Math.min(0.995, u)),
+        v: Math.max(0.005, Math.min(0.995, v)),
+        z: (u - 0.5) * 0.32 + (rand() - 0.5) * (dust ? 0.22 : 0.09),
+        accent: isAccent,
+        order: u,
+        dust,
+      });
+    }
+  };
 
-  const pool = intCount > 0 ? interiorPts : edgePts;
-  const poolLen = pool.length / 2;
-  for (let i = 0; i < wantInt; i++) {
-    const pick = Math.floor(rand() * poolLen) * 2;
-    const u = (pool[pick] + (rand() - 0.5) * 0.45) / w;
-    const v = (pool[pick + 1] + (rand() - 0.5) * 0.45) / h;
-    result.push({
-      u: Math.max(0.01, Math.min(0.99, u)),
-      v: Math.max(0.01, Math.min(0.99, v)),
-      z: (u - 0.5) * 0.35 + (rand() - 0.5) * 0.08,
-      accent: rand() < 0.08 ? 1 : 0,
-      order: u,
-      dust: 0,
-    });
-  }
+  pushFrom(haloPts, haloCount, wantHalo, 1);
+  pushFrom(coreEdgePts, edgeCount, wantEdge, 0);
+  pushFrom(
+    intCount > 0 ? coreIntPts : coreEdgePts,
+    intCount > 0 ? intCount : edgeCount,
+    wantInt,
+    0
+  );
 
   appendSurroundDust(result, count, rand);
   sampleCache.set(cacheKey, result);
