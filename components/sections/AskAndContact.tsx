@@ -570,6 +570,16 @@ export function FinalContactSection({
                   <ArrowUpRight className="h-3.5 w-3.5" />
                 </a>
                 <a
+                  href={t.person.telegram}
+                  target="_blank"
+                  rel="noreferrer"
+                  data-cursor="view"
+                  className="inline-flex items-center gap-1 rounded-full border border-[var(--hairline)] px-3.5 py-1 hover:border-[#5B5BF0] hover:text-[#8F8FFF] transition-colors"
+                >
+                  <span>Telegram</span>
+                  <ArrowUpRight className="h-3.5 w-3.5" />
+                </a>
+                <a
                   href={t.person.teamWebsite}
                   target="_blank"
                   rel="noreferrer"
@@ -586,15 +596,16 @@ export function FinalContactSection({
               <h3 className="font-mono text-[11px] opacity-45 mb-2">
                 {t.contact.footer.col3Title}
               </h3>
-              <button
-                type="button"
+              <a
+                href={t.person.telegram}
+                target="_blank"
+                rel="noreferrer"
                 data-cursor="view"
-                onClick={onOpenContact}
-                className="inline-flex items-center gap-2 rounded-full border border-[#5B5BF0]/40 bg-[#5B5BF0]/12 px-4 py-1.5 font-bold hover:bg-[#5B5BF0] hover:text-white transition-colors cursor-pointer"
+                className="inline-flex items-center gap-2 rounded-full border border-[#5B5BF0]/40 bg-[#5B5BF0]/12 px-4 py-1.5 font-bold hover:bg-[#5B5BF0] hover:text-white transition-colors"
               >
                 <Calendar className="h-3.5 w-3.5 text-[#8F8FFF]" />
                 <span>{t.contact.footer.scheduleCta}</span>
-              </button>
+              </a>
               <p className="mt-1.5 text-[11px] opacity-55">
                 {t.contact.footer.scheduleNote}
               </p>
@@ -649,6 +660,15 @@ export function FinalContactSection({
                     className="inline-flex min-h-[44px] items-center gap-2 rounded-full bg-[#5B5BF0] px-5 py-2.5 text-xs font-semibold text-white hover:bg-[#4949DC] transition-colors"
                   >
                     <span>{t.person.email}</span>
+                    <ArrowUpRight className="h-3.5 w-3.5" />
+                  </a>
+                  <a
+                    href={t.person.telegram}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-[#ECEAE6]/25 px-5 py-2.5 text-xs font-semibold hover:border-[#5B5BF0] hover:text-[#8F8FFF] transition-colors"
+                  >
+                    <span>@feizisoheil</span>
                     <ArrowUpRight className="h-3.5 w-3.5" />
                   </a>
                   <button

@@ -52,6 +52,7 @@ export interface LocalizedContent {
     email: string;
     linkedin: string;
     github: string;
+    telegram: string;
     teamWebsite: string;
     teamLabel: string;
     availability: string;
@@ -254,6 +255,7 @@ export const CONTENT: Record<Locale, LocalizedContent> = {
       email: 'soheil.feizi@hotmail.com',
       linkedin: 'https://linkedin.com/in/soheilfeizi',
       github: 'https://github.com/FeiziSoheil',
+      telegram: 'https://t.me/feizisoheil',
       teamWebsite: 'https://code1sprint.vercel.app',
       teamLabel: 'تیم Code1Sprint',
       availability: 'آماده همکاری در پروژه‌های پیشرفته و مشاوره معماری',
@@ -691,6 +693,7 @@ export const CONTENT: Record<Locale, LocalizedContent> = {
       email: 'soheil.feizi@hotmail.com',
       linkedin: 'https://linkedin.com/in/soheilfeizi',
       github: 'https://github.com/FeiziSoheil',
+      telegram: 'https://t.me/feizisoheil',
       teamWebsite: 'https://code1sprint.vercel.app',
       teamLabel: 'Code1Sprint (Team)',
       availability: 'Available for complex software & AI systems architecture',

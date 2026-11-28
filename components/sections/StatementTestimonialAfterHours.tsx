@@ -440,17 +440,18 @@ export function AfterHoursSection({
   activeTrack,
   onSelectTrack,
   onToggleSound,
+  onSoundCloudSlot,
 }: {
   locale: Locale;
   soundPlaying: boolean;
   activeTrack: number;
   onSelectTrack: (idx: number) => void;
   onToggleSound: () => void;
+  onSoundCloudSlot?: (el: HTMLElement | null) => void;
 }) {
   const t = CONTENT[locale];
   const p = useScrollStore((s) => s.sectionProgress.afterhours);
   const sectionRef = useRef<HTMLElement | null>(null);
-  const scIframeRef = useRef<HTMLIFrameElement | null>(null);
   const [liveBars, setLiveBars] = useState<number[]>(IDLE_BARS);
   const [mobileTab, setMobileTab] = useState<'player' | 'hobbies'>('player');
   const userInteractedTabRef = useRef(false);
@@ -465,12 +466,6 @@ export function AfterHoursSection({
       }
     }
   }, [p, mobileTab]);
-
-  useEffect(() => {
-    if (scIframeRef.current) {
-      soundEngine.registerSoundCloudWidget(scIframeRef.current);
-    }
-  }, [activeTrack]);
 
   useEffect(() => {
     if (!soundPlaying) return;
@@ -644,30 +639,17 @@ export function AfterHoursSection({
                   })}
                 </div>
 
-                {/* Embedded SoundCloud Player Frame (Active for SoundCloud Tracks) */}
+                {/* SoundCloud iframe is owned by SoundCloudPlayerHost; this slot receives the portal */}
                 {(() => {
                   const activeTrackData = t.afterhours.tracks.find((tr) => tr.id === activeTrack);
                   const isSoundCloud = activeTrackData?.type === 'soundcloud';
-                  const scUrl = activeTrackData?.soundcloudUrl ?? t.afterhours.tracks[0]?.soundcloudUrl ?? '';
                   return (
                     <div
+                      ref={(el) => onSoundCloudSlot?.(el)}
                       className={`mt-3 sm:mt-4 overflow-hidden rounded-[var(--radius-md)] border border-[var(--hairline)] bg-black/40 transition-all duration-300 ${
                         isSoundCloud ? 'block' : 'hidden'
                       }`}
-                    >
-                      <iframe
-                        key={scUrl}
-                        id="sc-player-iframe"
-                        ref={scIframeRef}
-                        width="100%"
-                        height="120"
-                        scrolling="no"
-                        frameBorder="no"
-                        allow="autoplay; encrypted-media"
-                        src={scUrl}
-                        className="block w-full opacity-90 transition-opacity hover:opacity-100"
-                      />
-                    </div>
+                    />
                   );
                 })()}
               </div>

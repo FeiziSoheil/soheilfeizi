@@ -1,6 +1,17 @@
 // Hybrid Procedural Web Audio Ambient Synthesizer & SoundCloud Controller
 // Supports SoundCloud external streams + Procedural DSP with real-time level analytics.
 
+type ScWidget = {
+  bind: (event: string, listener: (data?: { currentPosition?: number }) => void) => void;
+  play: () => void;
+  pause: () => void;
+  seekTo: (ms: number) => void;
+  load: (
+    url: string,
+    options?: { auto_play?: boolean; callback?: () => void }
+  ) => void;
+};
+
 class AmbientSoundEngine {
   private ctx: AudioContext | null = null;
   private masterGain: GainNode | null = null;
@@ -12,112 +23,155 @@ class AmbientSoundEngine {
   private freqBuffer = new Uint8Array(32);
   private singularityOsc: OscillatorNode | null = null;
   private singularityGain: GainNode | null = null;
-  private scWidget: any = null;
+  private scWidget: ScWidget | null = null;
   private scIframe: HTMLIFrameElement | null = null;
+  private scReady = false;
+  private scApiPromise: Promise<void> | null = null;
   private pendingSeekMs: number = 110000;
+  private seekAttempts = 0;
 
-  public registerSoundCloudWidget(iframe: HTMLIFrameElement | null) {
-    this.scIframe = iframe;
+  /** Start fetching the SoundCloud Widget API as early as possible (gateway / first paint). */
+  public preloadApi(): Promise<void> {
+    if (typeof window === 'undefined') return Promise.resolve();
+    if ((window as unknown as { SC?: { Widget?: unknown } }).SC?.Widget) {
+      return Promise.resolve();
+    }
+    if (this.scApiPromise) return this.scApiPromise;
+
+    this.scApiPromise = new Promise<void>((resolve) => {
+      const existing = document.getElementById('sc-widget-api') as HTMLScriptElement | null;
+      if (existing) {
+        if ((window as unknown as { SC?: { Widget?: unknown } }).SC?.Widget) {
+          resolve();
+          return;
+        }
+        existing.addEventListener('load', () => resolve(), { once: true });
+        existing.addEventListener('error', () => resolve(), { once: true });
+        return;
+      }
+      const script = document.createElement('script');
+      script.id = 'sc-widget-api';
+      script.src = 'https://w.soundcloud.com/player/api.js';
+      script.async = true;
+      script.onload = () => resolve();
+      script.onerror = () => resolve();
+      document.head.appendChild(script);
+    });
+
+    return this.scApiPromise;
+  }
+
+  public registerSoundCloudWidget(
+    iframe: HTMLIFrameElement | null,
+    options?: { force?: boolean }
+  ) {
     if (!iframe || typeof window === 'undefined') return;
+    if (this.scIframe === iframe && this.scWidget && !options?.force) return;
+
+    this.scIframe = iframe;
+    this.scReady = false;
+    this.scWidget = null;
+    this.seekAttempts = 0;
 
     const attach = () => {
-      const SC = (window as unknown as { SC?: { Widget?: (el: HTMLElement) => any } }).SC;
-      if (SC && SC.Widget) {
-        try {
-          this.scWidget = SC.Widget(iframe);
-          this.scWidget.bind('ready', () => {
-            if (this.pendingSeekMs > 0) {
-              try {
-                this.scWidget.seekTo(this.pendingSeekMs);
-              } catch {
-                // ignore
-              }
+      if (this.scIframe !== iframe) return;
+      const SC = (window as unknown as { SC?: { Widget?: (el: HTMLElement) => ScWidget } }).SC;
+      if (!SC?.Widget) return;
+
+      try {
+        const widget = SC.Widget(iframe);
+        this.scWidget = widget;
+
+        widget.bind('ready', () => {
+          if (this.scIframe !== iframe) return;
+          this.scReady = true;
+          this.seekAttempts = 0;
+          this.applyPendingSeek();
+          if (this.isPlaying && (this.currentTrack === 0 || this.currentTrack === 1)) {
+            try {
+              widget.play();
+            } catch {
+              // ignore
             }
-            if (this.isPlaying && (this.currentTrack === 0 || this.currentTrack === 1)) {
-              this.scWidget.play();
-            }
-          });
-          this.scWidget.bind('play', () => {
-            if (this.pendingSeekMs > 0) {
-              try {
-                this.scWidget.seekTo(this.pendingSeekMs);
-              } catch {
-                // ignore
-              }
-            }
-          });
-          this.scWidget.bind('playProgress', (data?: { currentPosition?: number }) => {
-            if (this.pendingSeekMs > 0) {
-              const pos = data?.currentPosition ?? 0;
-              if (pos < this.pendingSeekMs - 2000) {
-                try {
-                  this.scWidget.seekTo(this.pendingSeekMs);
-                } catch {
-                  // ignore
-                }
-              } else {
-                this.pendingSeekMs = 0;
-              }
-            }
-          });
-        } catch {
-          // ignore widget init error
-        }
+          }
+        });
+
+        widget.bind('play', () => {
+          this.applyPendingSeek();
+        });
+
+        widget.bind('playProgress', (data?: { currentPosition?: number }) => {
+          if (this.pendingSeekMs <= 0 || this.seekAttempts > 8) {
+            if (this.seekAttempts > 8) this.pendingSeekMs = 0;
+            return;
+          }
+          const pos = data?.currentPosition ?? 0;
+          if (pos < this.pendingSeekMs - 2000) {
+            this.seekAttempts += 1;
+            this.applyPendingSeek();
+          } else {
+            this.pendingSeekMs = 0;
+          }
+        });
+      } catch {
+        // ignore widget init error
       }
     };
 
-    if ((window as unknown as { SC?: { Widget?: unknown } }).SC?.Widget) {
-      attach();
-    } else {
-      const existing = document.getElementById('sc-widget-api');
-      if (!existing) {
-        const script = document.createElement('script');
-        script.id = 'sc-widget-api';
-        script.src = 'https://w.soundcloud.com/player/api.js';
-        script.async = true;
-        script.onload = attach;
-        document.body.appendChild(script);
-      } else {
-        existing.addEventListener('load', attach);
-      }
+    void this.preloadApi().then(attach);
+  }
+
+  private applyPendingSeek() {
+    if (!this.scWidget || this.pendingSeekMs <= 0) return;
+    try {
+      this.scWidget.seekTo(this.pendingSeekMs);
+    } catch {
+      // ignore
     }
   }
 
   public playSoundCloud(seekMs?: number) {
     if (seekMs !== undefined) {
       this.pendingSeekMs = seekMs;
+      this.seekAttempts = 0;
     }
-    if (this.scWidget) {
-      try {
-        if (this.pendingSeekMs > 0) {
-          this.scWidget.seekTo(this.pendingSeekMs);
-        }
-        this.scWidget.play();
-      } catch {
-        // ignore
-      }
+    if (!this.scWidget || !this.scReady) {
+      // Widget still warming — ready handler will play once SC is available.
+      return;
+    }
+    try {
+      this.applyPendingSeek();
+      this.scWidget.play();
+    } catch {
+      // ignore
     }
   }
 
   public loadSoundCloudTrack(url: string, seekMs?: number) {
     if (seekMs !== undefined) {
       this.pendingSeekMs = seekMs;
+      this.seekAttempts = 0;
     }
-    if (this.scWidget) {
-      try {
-        this.scWidget.load(url, {
-          auto_play: this.isPlaying,
-          callback: () => {
-            if (this.pendingSeekMs > 0) {
-              this.scWidget.seekTo(this.pendingSeekMs);
-              this.pendingSeekMs = 0;
-            }
-          },
-        });
-      } catch {
-        // ignore
-      }
+    if (!this.scWidget) return;
+    try {
+      this.scReady = false;
+      this.scWidget.load(url, {
+        auto_play: this.isPlaying,
+        callback: () => {
+          this.scReady = true;
+          this.applyPendingSeek();
+          if (this.pendingSeekMs > 0 && this.seekAttempts === 0) {
+            // Leave pendingSeekMs for playProgress to confirm position, but avoid endless seeks.
+          }
+        },
+      });
+    } catch {
+      // ignore
     }
+  }
+
+  public isSoundCloudReady(): boolean {
+    return this.scReady;
   }
 
   public pauseSoundCloud() {
